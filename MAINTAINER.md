@@ -322,6 +322,119 @@ Error: File too large
 5. Submit pull request
 6. Respond to review feedback
 
+## Package Configuration
+
+### Files Included in Distribution
+
+The `package.json` includes a `files` field to control what gets included when users install the package via GitHub:
+
+```json
+{
+  "files": [
+    "index.js",
+    "docs/processed/",
+    "README.md",
+    "USER-GUIDE.md",
+    "AI-INTEGRATION.md",
+    "MAINTAINER.md"
+  ]
+}
+```
+
+**Important**: The `docs/processed/` directory contains the essential documentation data that the MCP server requires to function. Without these files, users will see "Documentation not yet available" errors.
+
+### .npmignore Configuration
+
+The `.npmignore` file excludes development artifacts while ensuring essential files are included:
+
+```
+# Exclude development and build artifacts
+node_modules/
+.git/
+.github/
+.vscode/
+.idea/
+
+# Exclude raw documentation files (keep processed ones)
+docs/v*/
+
+# Exclude development files
+scripts/update-docs.js
+
+# Keep these important files (explicit inclusion)
+# index.js - main server file
+# docs/processed/ - processed documentation data
+# README.md, USER-GUIDE.md, AI-INTEGRATION.md, MAINTAINER.md - documentation
+```
+
+### GitHub Installation Issues
+
+When users install via `npm install git+git@github.com:...`, the following issues may occur:
+
+#### Common Problems:
+1. **Missing processed files**: If `docs/processed/` isn't properly included
+2. **Path resolution**: Server can't find files when installed in `node_modules`
+3. **Permission issues**: Files not readable in installed location
+
+#### Debugging Steps:
+1. **Check package contents after installation**:
+   ```bash
+   ls -la node_modules/mcp-server-pinescript/
+   ls -la node_modules/mcp-server-pinescript/docs/processed/
+   ```
+
+2. **Test server startup**:
+   ```bash
+   node ./node_modules/mcp-server-pinescript/index.js
+   # Look for specific error messages about missing files
+   ```
+
+3. **Verify file inclusion**:
+   - Ensure `docs/processed/` is committed to Git
+   - Check `.gitignore` doesn't exclude processed files
+   - Verify `package.json` files field includes necessary directories
+
+#### Error Message Enhancements:
+The server includes debugging code that provides specific file paths when documentation is missing:
+
+```javascript
+// Debug: Check if file exists
+try {
+  await fs.access(indexPath);
+} catch (accessError) {
+  throw new Error(`Documentation index not found at ${indexPath}. Please ensure the repository includes the docs/processed/ directory.`);
+}
+```
+
+This helps users and maintainers quickly identify whether the issue is:
+- Missing files in the package
+- Incorrect path resolution
+- File permission problems
+
+### Testing Package Installation
+
+Before releasing updates that affect packaging:
+
+1. **Test GitHub installation in clean environment**:
+   ```bash
+   mkdir test-install && cd test-install
+   npm install git+git@github.com:iamrichardD/mcp-server-pinescript.git
+   claude mcp add test-pinescript node ./node_modules/mcp-server-pinescript/index.js
+   claude mcp list  # Should show ✓ Connected
+   ```
+
+2. **Verify all essential files are present**:
+   ```bash
+   ls -la node_modules/mcp-server-pinescript/docs/processed/
+   # Should show: functions.json, index.json, language.json, style-rules.json
+   ```
+
+3. **Test functionality**:
+   ```bash
+   claude -p "Use pinescript_reference to look up ta.sma"
+   # Should return structured documentation, not error messages
+   ```
+
 ## Security Considerations
 
 ### API Key Management

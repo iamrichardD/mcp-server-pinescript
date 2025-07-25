@@ -44,35 +44,54 @@ Add to your `claude_desktop_config.json`:
 
 ### Claude Code CLI
 
-#### Option 1: MCP Config File
+#### Installation and Setup
+```bash
+# 1. Install the package from GitHub
+npm install git+git@github.com:iamrichardD/mcp-server-pinescript.git
+
+# 2. Add the MCP server (choose your preferred name)
+claude mcp add pinescript-docs node ./node_modules/mcp-server-pinescript/index.js
+
+# 3. Verify it's connected
+claude mcp list
+# Should show: pinescript-docs: node ./node_modules/mcp-server-pinescript/index.js - ✓ Connected
+```
+
+#### Usage Examples
+```bash
+# Interactive mode
+claude
+# Then use: "Use pinescript_reference to look up ta.sma function"
+
+# Non-interactive mode
+claude -p "Use pinescript_reference to look up ta.sma function"
+claude -p "Use pinescript_review to check this code: //@version=6\nindicator('Test')\nplot(close)"
+```
+
+#### Alternative Configuration Methods
+
+**Option 1: Project Scope (recommended for project-specific use)**
+```bash
+claude mcp add pinescript-docs node ./node_modules/mcp-server-pinescript/index.js --scope project
+# Creates .mcp.json in your project directory
+```
+
+**Option 2: Config File Approach**
 Create `mcp-config.json`:
 ```json
 {
   "mcpServers": {
     "pinescript": {
       "command": "node",
-      "args": ["/path/to/mcp-server-pinescript/index.js"]
+      "args": ["./node_modules/mcp-server-pinescript/index.js"]
     }
   }
 }
 ```
 
-Use with Claude Code CLI:
+Then use:
 ```bash
-# Interactive mode
-claude --mcp-config mcp-config.json
-
-# Non-interactive mode
-claude --mcp-config mcp-config.json -p "Use pinescript_reference to look up ta.sma function"
-```
-
-#### Option 2: Direct Configuration
-```bash
-# Start interactive session with PineScript MCP server
-claude --mcp-config '{"mcpServers":{"pinescript":{"command":"node","args":["/path/to/mcp-server-pinescript/index.js"]}}}'
-
-# Single query
-claude --mcp-config mcp-config.json -p "Review this PineScript code using pinescript_review: //@version=6\nindicator('Test')\nplot(close)"
+claude --mcp-config mcp-config.json -p "Use pinescript_reference to look up ta.sma"
 ```
 
 ### Gemini CLI
@@ -259,6 +278,57 @@ claude --mcp-config mcp-config.json -p "Based on the pinescript_review results, 
 - Verify all dependencies installed: `npm install`
 - Check for port conflicts
 
+### MCP Server Failed to Connect
+**Problem**: `claude mcp list` shows "✗ Failed to connect" after installing from GitHub
+**Solutions**:
+
+1. **Check Installation**:
+   ```bash
+   # Verify the package was installed correctly
+   ls node_modules/mcp-server-pinescript/
+   # Should show: index.js, docs/, package.json, etc.
+   ```
+
+2. **Verify Documentation Files**:
+   ```bash
+   # Check if processed docs exist
+   ls node_modules/mcp-server-pinescript/docs/processed/
+   # Should show: functions.json, index.json, language.json, style-rules.json
+   ```
+
+3. **Test Server Manually**:
+   ```bash
+   # Try running the server directly to see error messages
+   node ./node_modules/mcp-server-pinescript/index.js
+   # Look for specific error messages about missing files
+   ```
+
+4. **Reinstall if Needed**:
+   ```bash
+   # Remove and reinstall the package
+   npm uninstall mcp-server-pinescript
+   npm install git+git@github.com:iamrichardD/mcp-server-pinescript.git
+   ```
+
+5. **Check MCP Server Name**:
+   ```bash
+   # Make sure you're using the correct server name you added
+   claude mcp list
+   # Look for your server name (e.g., "pinescript-docs")
+   ```
+
+### Incorrect claude mcp add Syntax
+**Problem**: Server not being added correctly
+**Correct Syntax**:
+```bash
+# ✅ Correct
+claude mcp add pinescript-docs node ./node_modules/mcp-server-pinescript/index.js
+
+# ❌ Wrong (using "node" as server name)
+claude mcp add node ./node_modules/mcp-server-pinescript/index.js
+```
+
+**Note**: The server name (first argument) can be anything you choose: `pinescript-docs`, `pine-help`, `ps-reference`, etc.
 
 ## Best Practices
 

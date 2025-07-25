@@ -16,7 +16,7 @@ const __dirname = path.dirname(__filename);
 const server = new Server(
   {
     name: 'mcp-server-pinescript',
-    version: '1.1.1',
+    version: '1.1.2',
   },
   {
     capabilities: {

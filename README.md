@@ -30,13 +30,37 @@ Code validation against official style guide and language rules:
 
 ## Quick Start
 
-### 1. Installation
+### For End Users (Recommended)
+
+**See the [USER-GUIDE.md](USER-GUIDE.md) for complete setup instructions.**
+
+Quick installation with Claude Code CLI:
 ```bash
-npm install
+# 1. Install from GitHub repository
+npm install git+git@github.com:iamrichardD/mcp-server-pinescript.git
+
+# 2. Add MCP server
+claude mcp add pinescript-docs node ./node_modules/mcp-server-pinescript/index.js
+
+# 3. Verify connection
+claude mcp list
+# Should show: pinescript-docs: node ./node_modules/mcp-server-pinescript/index.js - ✓ Connected
+
+# 4. Use in Claude Code CLI
+claude -p "Use pinescript_reference to look up ta.sma function"
 ```
 
-### 2. Start the Server
+### For Local Development
+
 ```bash
+# 1. Clone repository
+git clone https://github.com/iamrichardD/mcp-server-pinescript.git
+cd mcp-server-pinescript
+
+# 2. Install dependencies
+npm install
+
+# 3. Start server
 npm start
 ```
 

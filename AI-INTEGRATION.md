@@ -8,14 +8,22 @@ This document is specifically for AI coding assistants, MCP clients, and automat
 Most AI systems will interact with this MCP server through CLI tools. Here are the essential patterns:
 
 ```bash
+# Step 1: Install and configure the MCP server
+npm install git+git@github.com:iamrichardD/mcp-server-pinescript.git
+claude mcp add pinescript-docs node ./node_modules/mcp-server-pinescript/index.js
+
+# Step 2: Use the configured server
 # Claude Code CLI - Reference lookup
-claude --mcp-config '{"mcpServers":{"pinescript":{"command":"node","args":["./index.js"]}}}' -p "Use pinescript_reference to look up ta.sma function"
+claude -p "Use pinescript_reference to look up ta.sma function"
 
 # Claude Code CLI - Code review  
-claude --mcp-config mcp-config.json -p "Use pinescript_review to validate: $(cat script.pine)"
+claude -p "Use pinescript_review to validate: $(cat script.pine)"
 
-# Gemini CLI - Interactive session
-gemini --allowed-mcp-server-names pinescript -p "Use pinescript_reference and pinescript_review to help develop a moving average crossover strategy"
+# Alternative: Config file approach
+claude --mcp-config '{"mcpServers":{"pinescript":{"command":"node","args":["./node_modules/mcp-server-pinescript/index.js"]}}}' -p "Use pinescript_reference to look up ta.sma"
+
+# Gemini CLI - Interactive session (assuming MCP server configured)
+gemini --allowed-mcp-server-names pinescript-docs -p "Use pinescript_reference and pinescript_review to help develop a moving average crossover strategy"
 ```
 
 ### Expected Response Format
@@ -399,26 +407,34 @@ await write_file("script.pine", improved_code)
 
 #### Claude Code CLI Integration
 ```bash
-# Configuration file approach
+# Method 1: Direct MCP server management (recommended)
+npm install git+git@github.com:iamrichardD/mcp-server-pinescript.git
+claude mcp add pinescript-docs node ./node_modules/mcp-server-pinescript/index.js
+
+# Usage examples (server auto-detected)
+claude -p "Use pinescript_reference to look up ta.sma"
+claude -p "Use pinescript_review to check: //@version=6\nindicator('Test')\nplot(close)"
+
+# Method 2: Configuration file approach
+# Create mcp-config.json:
 {
   "mcpServers": {
     "pinescript": {
       "command": "node", 
-      "args": ["/path/to/mcp-server-pinescript/index.js"]
+      "args": ["./node_modules/mcp-server-pinescript/index.js"]
     }
   }
 }
 
-# Usage examples
+# Then use:
 claude --mcp-config mcp-config.json -p "Use pinescript_reference to look up ta.sma"
-claude --mcp-config mcp-config.json -p "Use pinescript_review to check: //@version=6\nindicator('Test')\nplot(close)"
 ```
 
 #### Gemini CLI Integration  
 ```bash
-# Usage examples (assuming MCP server configured)
-gemini --allowed-mcp-server-names pinescript -p "Use pinescript_reference to explain array functions"
-gemini --allowed-mcp-server-names pinescript -p "Use pinescript_review to validate this PineScript code"
+# Usage examples (assuming MCP server configured in Gemini)
+gemini --allowed-mcp-server-names pinescript-docs -p "Use pinescript_reference to explain array functions"
+gemini --allowed-mcp-server-names pinescript-docs -p "Use pinescript_review to validate this PineScript code"
 ```
 
 ### Usage in Prompts
