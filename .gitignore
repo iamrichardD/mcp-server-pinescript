@@ -1,0 +1,45 @@
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Documentation files (raw markdown from scraping)
+docs/v*/
+!docs/v*/.gitkeep
+
+# Keep processed JSON files (these are small and useful to commit)
+!docs/processed/
+
+# Logs
+logs
+*.log

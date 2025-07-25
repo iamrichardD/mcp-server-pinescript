@@ -1,0 +1,12 @@
+{
+  "naming_convention": {
+    "rule": "Use snake_case for variable names",
+    "severity": "suggestion",
+    "category": "style_guide"
+  },
+  "indentation": {
+    "rule": "Use consistent indentation",
+    "severity": "suggestion",
+    "category": "style_guide"
+  }
+}
