@@ -1,0 +1,344 @@
+# User Guide
+
+This guide is for developers who want to integrate the PineScript MCP Documentation Server into their AI-powered coding workflow.
+
+## What This Does
+
+The PineScript MCP Documentation Server provides two powerful tools for AI assistants:
+
+- **🔍 pinescript_reference**: Get instant access to PineScript documentation, style guides, and function references
+- **🔧 pinescript_review**: Automatically review your PineScript code for style and syntax issues
+
+## Quick Setup
+
+### 1. Install
+```bash
+git clone https://github.com/iamrichardD/mcp-server-pinescript.git
+cd mcp-server-pinescript
+npm install
+```
+
+### 2. Start the Server
+```bash
+npm start
+```
+
+That's it! The PineScript v6 documentation is already processed and included in the repository.
+
+## Integration with AI Tools
+
+### Claude Desktop
+
+Add to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "pinescript": {
+      "command": "node",
+      "args": ["/path/to/mcp-server-pinescript/index.js"]
+    }
+  }
+}
+```
+
+### Claude Code CLI
+
+#### Option 1: MCP Config File
+Create `mcp-config.json`:
+```json
+{
+  "mcpServers": {
+    "pinescript": {
+      "command": "node",
+      "args": ["/path/to/mcp-server-pinescript/index.js"]
+    }
+  }
+}
+```
+
+Use with Claude Code CLI:
+```bash
+# Interactive mode
+claude --mcp-config mcp-config.json
+
+# Non-interactive mode
+claude --mcp-config mcp-config.json -p "Use pinescript_reference to look up ta.sma function"
+```
+
+#### Option 2: Direct Configuration
+```bash
+# Start interactive session with PineScript MCP server
+claude --mcp-config '{"mcpServers":{"pinescript":{"command":"node","args":["/path/to/mcp-server-pinescript/index.js"]}}}'
+
+# Single query
+claude --mcp-config mcp-config.json -p "Review this PineScript code using pinescript_review: //@version=6\nindicator('Test')\nplot(close)"
+```
+
+### Gemini CLI
+
+```bash
+# Start interactive session (assuming MCP server configured in Gemini)
+gemini --allowed-mcp-server-names pinescript
+
+# Single query
+gemini --allowed-mcp-server-names pinescript -p "Use pinescript_reference to explain array functions in PineScript"
+```
+
+**Note**: Gemini CLI MCP configuration may vary - check Gemini documentation for MCP server setup.
+
+### Cursor IDE
+
+Add to your `.cursorrules` file:
+```
+When working with PineScript files (.pine):
+1. Use pinescript_reference for function lookups and documentation
+2. Use pinescript_review to validate code before completion
+3. Follow PineScript v6 style guidelines from the documentation
+```
+
+## How to Use
+
+### Getting Documentation
+
+Ask your AI assistant natural questions:
+
+```
+"Use pinescript_reference to show me how to create moving averages"
+"Look up array functions using pinescript_reference"
+"Find style guide naming conventions with pinescript_reference"
+```
+
+**Common Searches:**
+- Function names: `"ta.sma"`, `"array.push"`, `"strategy.entry"`
+- Concepts: `"arrays"`, `"loops"`, `"conditional structures"`
+- Style guide: `"naming conventions"`, `"formatting rules"`
+
+### Code Review
+
+Have your AI assistant review your code:
+
+```
+"Review this PineScript code using pinescript_review"
+"Check my indicator for style violations using pinescript_review"
+"Validate this strategy code with pinescript_review"
+```
+
+## Workflow Examples
+
+### Creating a New Indicator (Claude Code CLI)
+
+```bash
+# 1. Research RSI indicators
+claude --mcp-config mcp-config.json -p "Use pinescript_reference to research RSI indicators and show implementation patterns"
+
+# 2. Check style guide
+claude --mcp-config mcp-config.json -p "Use pinescript_reference to find style guide for indicator structure and naming conventions"
+
+# 3. Interactive development session
+claude --mcp-config mcp-config.json
+# Then in interactive mode:
+# "Create an RSI indicator using the patterns from pinescript_reference, then review it with pinescript_review"
+
+# 4. Review specific code file
+claude --mcp-config mcp-config.json -p "Use pinescript_review to check this PineScript file: $(cat my_rsi_indicator.pine)"
+```
+
+### Debugging Existing Code (Gemini CLI)
+
+```bash
+# 1. Review existing file for issues
+gemini --allowed-mcp-server-names pinescript -p "Use pinescript_review to find issues in this code: $(cat broken_script.pine)"
+
+# 2. Look up correct function syntax
+gemini --allowed-mcp-server-names pinescript -p "Use pinescript_reference to show the correct syntax for strategy.entry function"
+
+# 3. Interactive debugging session
+gemini --allowed-mcp-server-names pinescript
+# Then ask: "Help me fix the issues found in the review using pinescript_reference for correct syntax"
+```
+
+### Learning PineScript Concepts
+
+```bash
+# Learn about arrays
+claude --mcp-config mcp-config.json -p "Use pinescript_reference to explain PineScript arrays with examples"
+
+# Practice with immediate feedback
+claude --mcp-config mcp-config.json -p "Help me write a simple array manipulation script, then use pinescript_review to check my code"
+
+# Study conditional structures
+claude --mcp-config mcp-config.json -p "Use pinescript_reference to show examples of conditional structures and best practices"
+```
+
+### File-Based Workflows
+
+```bash
+# Create and review a new script
+echo '//@version=6
+indicator("My Test")
+myVar = close
+plot(myVar)' > test_script.pine
+
+# Review the file
+claude --mcp-config mcp-config.json -p "Use pinescript_review to check this file: $(cat test_script.pine)"
+
+# Get improvement suggestions and apply them
+claude --mcp-config mcp-config.json -p "Based on the pinescript_review results, use pinescript_reference to find better practices for this code: $(cat test_script.pine)"
+```
+
+## Output Formats
+
+### Documentation Results (pinescript_reference)
+```json
+{
+  "query": "ta.sma",
+  "results": [
+    {
+      "title": "ta.sma Function",
+      "content": "Simple moving average calculation...",
+      "type": "reference",
+      "examples": ["ta.sma(close, 14)", "plot(ta.sma(close, 20))"]
+    }
+  ]
+}
+```
+
+### Code Review Results (pinescript_review)
+
+**JSON Format** (default):
+```json
+{
+  "summary": {
+    "total_issues": 2,
+    "errors": 1,
+    "warnings": 0,
+    "suggestions": 1
+  },
+  "violations": [
+    {
+      "line": 1,
+      "rule": "version_declaration",
+      "severity": "error",
+      "message": "Missing PineScript version declaration"
+    }
+  ]
+}
+```
+
+**Markdown Format** (human-readable):
+```markdown
+# PineScript Code Review Results
+
+## Summary
+- 🔴 1 Error
+- 💡 1 Suggestion
+
+## Issues
+🔴 **Line 1:** Missing PineScript version declaration
+- Suggested fix: Add //@version=6 at the top
+```
+
+## Troubleshooting
+
+### "Documentation not yet available"
+**Problem**: Tools return "Run 'npm run update-docs'" message
+**Solution**: This indicates the processed documentation files are missing. The repository should include pre-processed documentation. If you're seeing this error, please file an issue on GitHub as the documentation files may not have been properly committed.
+
+### "No documentation found"
+**Problem**: Search returns no results
+**Solutions**:
+- Try broader terms ("array" instead of "array.push")
+- Check spelling
+- Use function names without parameters ("ta.sma" not "ta.sma(close, 14)")
+
+### Server won't start
+**Problem**: `npm start` fails
+**Solutions**:
+- Check Node.js version (need 18+)
+- Verify all dependencies installed: `npm install`
+- Check for port conflicts
+
+
+## Best Practices
+
+### Effective Prompts
+
+**Good**:
+- *"Use pinescript_reference to look up ta.sma function details"*
+- *"Review this PineScript indicator code using pinescript_review"*
+- *"Find array manipulation functions with pinescript_reference"*
+
+**Less Effective**:
+- *"Help me with PineScript"* (too vague)
+- *"Fix my code"* (specify to use pinescript_review)
+- *"What functions exist?"* (be more specific)
+
+### Workflow Integration
+
+1. **Always review code** before considering it complete
+2. **Look up functions** you're unfamiliar with  
+3. **Check style guide** when learning new patterns
+4. **Use specific searches** rather than general questions
+
+### Performance Tips
+
+- **Cache common queries**: Your AI assistant will remember recent lookups
+- **Use specific function names**: Faster than concept searches
+- **Review code in chunks**: Better results for complex scripts
+
+## Version Management
+
+### Current Version: PineScript v6
+The server is configured for PineScript v6 by default. All documentation and code review rules are based on v6 standards.
+
+### Future Versions
+When PineScript v7 is released:
+1. Maintainers will update the documentation
+2. You'll need to run `npm run update-docs` again
+3. The server will support both v6 and v7 side-by-side
+
+## Getting Help
+
+### Common Issues
+1. Check this troubleshooting section first
+2. Verify your setup follows the Quick Setup steps
+3. Ensure the server is running (`npm start`)
+
+### Documentation
+- **This guide**: End-user focused setup and usage
+- **README.md**: Complete technical documentation  
+- **MAINTAINER.md**: For contributors and advanced users
+- **AI-INTEGRATION.md**: For AI system developers
+
+### Support
+- GitHub Issues: https://github.com/iamrichardD/mcp-server-pinescript/issues
+- Discussions: Use GitHub Discussions for questions
+
+## Advanced Usage
+
+### Multiple MCP Servers
+This server works great with other MCP servers:
+
+```
+"Create a trading strategy, review it with pinescript_review, save it to a file, and commit to git"
+```
+
+This workflow uses:
+- **pinescript** server: For documentation and review
+- **filesystem** server: For file operations  
+- **git** server: For version control
+
+### Custom Configurations
+
+You can modify the server behavior by editing `index.js`, but this is advanced usage covered in the maintainer documentation.
+
+### API Integration
+
+If you're building custom tools, see `AI-INTEGRATION.md` for detailed API specifications and integration examples.
+
+---
+
+**Ready to supercharge your PineScript development with AI assistance!** 🚀
+
+The combination of instant documentation access and automated code review will dramatically improve your PineScript development speed and code quality.

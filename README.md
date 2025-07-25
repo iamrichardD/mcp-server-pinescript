@@ -2,6 +2,16 @@
 
 AI-optimized Model Context Protocol (MCP) server for PineScript v6 development, providing comprehensive documentation access, style guide adherence, and code review capabilities specifically designed for AI coding agents.
 
+## 📖 Documentation for Different Users
+
+This project serves three distinct audiences with tailored documentation:
+
+- **👤 [User Guide](USER-GUIDE.md)**: For developers integrating this into their AI workflow
+- **🔧 [Maintainer Guide](MAINTAINER.md)**: For contributors and project maintainers  
+- **🤖 [AI Integration Guide](AI-INTEGRATION.md)**: For AI systems and MCP client developers
+
+**New users should start with the [User Guide](USER-GUIDE.md)** for quick setup and usage examples.
+
 ## Features
 
 ### 🔍 **pinescript_reference**
@@ -25,23 +35,12 @@ Code validation against official style guide and language rules:
 npm install
 ```
 
-### 2. Set up Firecrawl API Key
-```bash
-export FIRECRAWL_API_KEY="your_api_key_here"
-```
-Get your API key from [Firecrawl](https://firecrawl.dev/)
-
-### 3. Download Documentation
-```bash
-npm run update-docs
-```
-This will scrape and process PineScript v6 documentation from TradingView.
-**Note**: This process takes 5-10 minutes due to respectful rate limiting (5-second delays between requests).
-
-### 4. Start the Server
+### 2. Start the Server
 ```bash
 npm start
 ```
+
+The PineScript v6 documentation is already processed and included in the repository.
 
 ## Usage Examples
 
@@ -118,48 +117,16 @@ AI:
     language.json        # Language concepts
 ```
 
-## Documentation Update Process
+## Documentation Updates (For Maintainers)
 
-### When to Update
-- When new PineScript versions are released (typically multi-year intervals)
-- When significant documentation changes are published by TradingView
+**Note**: End users don't need to update documentation - it's already included in the repository.
 
-### Manual Update Process
+Maintainers update documentation when:
+- New PineScript versions are released (typically multi-year intervals)  
+- Significant documentation changes are published by TradingView
 
-1. **Set Environment Variable**
-   ```bash
-   export FIRECRAWL_API_KEY="your_api_key_here"
-   ```
+See [MAINTAINER.md](MAINTAINER.md) for detailed update procedures.
 
-2. **Run Update Script**
-   ```bash
-   npm run update-docs
-   ```
-
-3. **Verify Results**
-   - Check `docs/processed/` for generated JSON files
-   - Test both MCP tools with sample queries
-   - Commit changes to Git
-
-4. **For Future Versions (e.g., v7)**
-   ```bash
-   # The script will automatically create /docs/v7/ structure
-   npm run update-docs
-   ```
-
-### What Gets Updated
-- **Style Guide**: Latest formatting and naming conventions
-- **Language Documentation**: Syntax, operators, control structures
-- **API Reference**: All functions, methods, and namespaces
-- **Migration Guides**: Official upgrade documentation (when available)
-
-### Rate Limiting & Respectful Scraping
-- Built-in 5-second delays between requests
-- Exponential backoff retry logic for 429 errors (10s, 20s, 30s delays)
-- Uses Firecrawl's rate limiting features
-- Graceful error handling for temporary failures
-- Only scrapes during manual updates (not runtime)
-- Total process time: 5-10 minutes for complete documentation
 
 ## Integration with Claude Desktop
 
@@ -170,10 +137,7 @@ Add to your Claude Desktop configuration:
   "mcpServers": {
     "pinescript": {
       "command": "node",
-      "args": ["/path/to/mcp-server-pinescript/index.js"],
-      "env": {
-        "FIRECRAWL_API_KEY": "your_api_key_here"
-      }
+      "args": ["/path/to/mcp-server-pinescript/index.js"]
     }
   }
 }
@@ -194,22 +158,7 @@ This server is designed to integrate with other MCP servers:
 ```
 Error: Documentation not yet available. Run 'npm run update-docs'
 ```
-**Solution**: Run the documentation update script first.
-
-### Firecrawl API Issues
-```
-Error: Failed to scrape [URL]: API key invalid
-```
-**Solutions**:
-- Verify `FIRECRAWL_API_KEY` environment variable
-- Check API key validity at firecrawl.dev
-- Ensure sufficient API credits
-
-### Rate Limiting
-```
-Warning: Failed to scrape [topic]: Rate limited
-```
-**Solution**: The script will continue and retry. This is normal for large documentation sets.
+**Solution**: The processed documentation should be included in the repository. If you see this error, please file a GitHub issue as the documentation files may be missing.
 
 ### Empty Results
 ```
