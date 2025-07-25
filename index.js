@@ -16,7 +16,7 @@ const __dirname = path.dirname(__filename);
 const server = new Server(
   {
     name: 'mcp-server-pinescript',
-    version: '1.0.0',
+    version: '1.1.1',
   },
   {
     capabilities: {
@@ -95,6 +95,14 @@ async function searchReference(query, version) {
   try {
     // Load processed documentation index
     const indexPath = path.join(__dirname, 'docs', 'processed', 'index.json');
+    
+    // Debug: Check if file exists
+    try {
+      await fs.access(indexPath);
+    } catch (accessError) {
+      throw new Error(`Documentation index not found at ${indexPath}. Please ensure the repository includes the docs/processed/ directory.`);
+    }
+    
     const index = JSON.parse(await fs.readFile(indexPath, 'utf8'));
     
     // Perform grep-style keyword search
@@ -159,6 +167,14 @@ async function reviewCode(code, format, version) {
     // Load style guide rules
     const rulesPath = path.join(__dirname, 'docs', 'processed', 'style-rules.json');
     const functionsPath = path.join(__dirname, 'docs', 'processed', 'functions.json');
+    
+    // Debug: Check if files exist
+    try {
+      await fs.access(rulesPath);
+      await fs.access(functionsPath);
+    } catch (accessError) {
+      throw new Error(`Documentation files not found. Expected at ${rulesPath} and ${functionsPath}. Please ensure the repository includes the docs/processed/ directory.`);
+    }
     
     const styleGuide = JSON.parse(await fs.readFile(rulesPath, 'utf8'));
     const functions = JSON.parse(await fs.readFile(functionsPath, 'utf8'));
