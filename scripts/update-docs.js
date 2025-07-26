@@ -255,11 +255,21 @@ class PineScriptDocProcessor {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       
-      if (line.includes('snake_case') || line.includes('naming')) {
+      if (line.includes('camelCase') || line.includes('naming')) {
         rules['naming_convention'] = {
-          rule: 'Use snake_case for variable names',
+          rule: 'Use camelCase for variable names',
           severity: 'suggestion',
           category: 'style_guide',
+          examples: ['myVariable', 'priceData', 'signalStrength', 'maLengthInput']
+        };
+      }
+      
+      if (line.includes('SNAKE_CASE') || line.includes('constants')) {
+        rules['constant_naming'] = {
+          rule: 'Use SNAKE_CASE for constants',
+          severity: 'suggestion',
+          category: 'style_guide',
+          examples: ['BULL_COLOR', 'BEAR_COLOR', 'MAX_LOOKBACK']
         };
       }
       
