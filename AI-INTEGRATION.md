@@ -16,8 +16,10 @@ claude mcp add pinescript-docs node ./node_modules/mcp-server-pinescript/index.j
 # Claude Code CLI - Reference lookup
 claude -p "Use pinescript_reference to look up ta.sma function"
 
-# Claude Code CLI - Code review  
+# Claude Code CLI - Code review (multiple modes)
 claude -p "Use pinescript_review to validate: $(cat script.pine)"
+claude -p "Use pinescript_review with source_type=file and file_path=./script.pine"
+claude -p "Use pinescript_review with source_type=directory and directory_path=./src"
 
 # Alternative: Config file approach
 claude --mcp-config '{"mcpServers":{"pinescript":{"command":"node","args":["./node_modules/mcp-server-pinescript/index.js"]}}}' -p "Use pinescript_reference to look up ta.sma"
@@ -38,12 +40,22 @@ Both tools return structured JSON that AI systems can parse:
 }
 ```
 
-**pinescript_review** returns:
+**pinescript_review** returns (single file):
 ```json
 {
   "summary": {"total_issues": 2, "errors": 1, "suggestions": 1},
   "violations": [{"line": 1, "rule": "version_declaration", "severity": "error"}],
-  "reviewed_lines": 5
+  "reviewed_lines": 5,
+  "file_path": "script.pine"
+}
+```
+
+**pinescript_review** returns (directory, NEW in v1.3.0):
+```json
+{
+  "directory_path": "./src",
+  "summary": {"total_files": 5, "total_issues": 8, "files_with_issues": 3},
+  "files": [{"file_path": "indicators/rsi.pine", "summary": {...}, "violations": [...]}]
 }
 ```
 
@@ -129,7 +141,7 @@ Both tools return structured JSON that AI systems can parse:
 
 ### pinescript_review
 
-**Purpose**: Code validation against style guide and language rules
+**Purpose**: Multi-source code validation with streaming support (v1.3.0 enhanced)
 
 #### Input Schema
 ```json
@@ -138,14 +150,27 @@ Both tools return structured JSON that AI systems can parse:
   "inputSchema": {
     "type": "object",
     "properties": {
+      "source_type": {
+        "type": "string",
+        "enum": ["code", "file", "directory"],
+        "description": "Source type: code (string), file (path), directory (scan)",
+        "default": "code"
+      },
       "code": {
         "type": "string",
-        "description": "PineScript code to review",
-        "required": true
+        "description": "PineScript code to review (required when source_type=code)"
+      },
+      "file_path": {
+        "type": "string", 
+        "description": "Path to PineScript file (required when source_type=file)"
+      },
+      "directory_path": {
+        "type": "string",
+        "description": "Directory path to scan (required when source_type=directory)"
       },
       "format": {
         "type": "string",
-        "enum": ["json", "markdown"],
+        "enum": ["json", "markdown", "stream"],
         "description": "Output format (default: json)",
         "default": "json"
       },
@@ -153,9 +178,31 @@ Both tools return structured JSON that AI systems can parse:
         "type": "string",
         "description": "PineScript version (default: v6)",
         "default": "v6"
+      },
+      "chunk_size": {
+        "type": "number",
+        "description": "Violations per chunk in stream mode (default: 20)",
+        "default": 20
+      },
+      "severity_filter": {
+        "type": "string",
+        "enum": ["all", "error", "warning", "suggestion"],
+        "description": "Filter violations by severity (default: all)",
+        "default": "all"
+      },
+      "recursive": {
+        "type": "boolean",
+        "description": "For directory: scan subdirectories (default: true)", 
+        "default": true
+      },
+      "file_extensions": {
+        "type": "array",
+        "items": {"type": "string"},
+        "description": "File extensions to scan (default: [\".pine\", \".pinescript\"])",
+        "default": [".pine", ".pinescript"]
       }
     },
-    "required": ["code"]
+    "required": []
   }
 }
 ```
@@ -367,6 +414,55 @@ pinescript_review({
 pinescript_review({
   code: updated_script_content,
   format: "markdown"  // For human-readable output
+})
+```
+
+### Directory Review Workflows (NEW in v1.3.0)
+
+#### Project-Wide Code Quality Assessment
+```javascript
+// Review entire PineScript project
+pinescript_review({
+  source_type: "directory",
+  directory_path: "./trading-strategies",
+  format: "stream",  // Handle large projects efficiently
+  severity_filter: "error"  // Focus on critical issues
+})
+
+// Single directory review with detailed output
+pinescript_review({
+  source_type: "directory", 
+  directory_path: "./indicators",
+  format: "json",
+  recursive: true,
+  file_extensions: [".pine"]
+})
+
+// Non-recursive scan (current directory only)
+pinescript_review({
+  source_type: "directory",
+  directory_path: "./src",
+  recursive: false,
+  severity_filter: "all"
+})
+```
+
+#### CI/CD Integration Patterns
+```javascript
+// Pre-commit hook: Check only errors
+pinescript_review({
+  source_type: "directory",
+  directory_path: process.env.CHANGED_FILES_DIR,
+  severity_filter: "error",
+  format: "json"
+})
+
+// Release validation: Full project scan
+pinescript_review({
+  source_type: "directory", 
+  directory_path: "./",
+  format: "stream",
+  chunk_size: 50  // Larger chunks for CI efficiency
 })
 ```
 

@@ -27,6 +27,9 @@ npm run update-docs
 
 # Test with sample MCP calls
 echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"pinescript_reference","arguments":"{\"query\":\"ta.sma\"}"}}' | npm start
+
+# Test directory review functionality (v1.3.0+)
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"pinescript_review","arguments":"{\"source_type\":\"directory\",\"directory_path\":\"./test_dir\"}"}}' | npm start
 ```
 
 ## Architecture Overview

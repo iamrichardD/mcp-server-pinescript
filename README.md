@@ -24,9 +24,12 @@ Enhanced documentation search with streaming support:
 - Enhanced keyword matching for technical terms
 
 ### 🔧 **pinescript_review** 
-Advanced code validation with streaming capabilities:
-- **Stream-optimized** for large files (automatically chunks violations)
+Advanced code validation with multi-source streaming capabilities:
+- **Directory support** - Review entire PineScript projects recursively
+- **Single file** and **inline code** review modes
+- **Stream-optimized** for large files and directories (automatically chunks violations)
 - **Severity filtering** (errors, warnings, suggestions)
+- **Aggregated summaries** for multi-file analysis
 - Structured violation reports (JSON/Markdown/Stream)
 - Style guide compliance checking (corrected to camelCase)
 - Enhanced rule detection (spacing, line length, naming)
@@ -88,6 +91,23 @@ AI: Uses pinescript_review(code=large_file, format="stream", chunk_size=20)
 → Claude Code CLI processes violations incrementally without token limits
 ```
 
+### Directory Review Workflow (NEW in v1.3.0)
+```
+User: "Review all PineScript files in my project directory"
+AI: Uses pinescript_review(source_type="directory", directory_path="./src", format="stream")
+→ Scans directory recursively for .pine files
+→ Returns aggregated summary + per-file violation streams
+→ Handles large projects without token limits via streaming
+```
+
+### Single File Review
+```
+User: "Review this specific indicator file"
+AI: Uses pinescript_review(source_type="file", file_path="./indicators/rsi.pine")
+→ Reads and analyzes the specified file
+→ Returns structured violation report with file context
+```
+
 ### Filtered Review Workflow
 ```
 User: "Show only critical errors in my code"
@@ -126,18 +146,24 @@ AI: Uses pinescript_reference(query="array functions", format="stream", max_resu
 
 ### pinescript_review
 
-**Purpose**: Advanced code review with streaming for large files
+**Purpose**: Advanced code review with multi-source streaming capabilities
 
 **Parameters**:
-- `code` (string, required): PineScript code to review
-- `format` (string, optional): "json" (default), "markdown", or "stream" for large files
+- `source_type` (string, optional): "code" (default), "file", or "directory"
+- `code` (string, conditional): PineScript code to review (required when source_type="code")
+- `file_path` (string, conditional): Path to PineScript file (required when source_type="file")
+- `directory_path` (string, conditional): Path to directory with PineScript files (required when source_type="directory")
+- `format` (string, optional): "json" (default), "markdown", or "stream" for large files/directories
 - `version` (string, optional): PineScript version (default: "v6")
 - `chunk_size` (number, optional): Violations per chunk in stream mode (default: 20, max: 100)
 - `severity_filter` (string, optional): Filter by "all" (default), "error", "warning", "suggestion"
+- `recursive` (boolean, optional): For directory source: scan subdirectories (default: true)
+- `file_extensions` (array, optional): File extensions to scan (default: [".pine", ".pinescript"])
 
 **Returns**: 
-- **JSON/Markdown**: Standard violation report
-- **Stream format**: Metadata chunk + violation chunks (automatically used for large files)
+- **Single file/code**: Standard violation report with file context
+- **Directory**: Aggregated summary + per-file results
+- **Stream format**: Metadata chunk + violation/file chunks (automatically used for large datasets)
 
 **Enhanced Rules**:
 - Corrected camelCase naming validation (per official Pine Script style guide)
@@ -146,8 +172,10 @@ AI: Uses pinescript_reference(query="array functions", format="stream", max_resu
 - Comprehensive style guide compliance
 
 **Streaming Benefits**:
-- Handles large files (500+ lines) without token limits
+- Handles large files (500+ lines) and entire directories without token limits
 - Real-time violation processing via Claude Code CLI
+- **Directory scanning**: Process entire PineScript projects with aggregated reporting
+- **Security safeguards**: Path validation, file size limits, recursive depth protection
 - Filtered results for focused debugging
 
 ## Architecture

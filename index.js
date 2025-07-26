@@ -13,6 +13,107 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// File system utilities with security safeguards
+class FileSystemUtils {
+  static isValidPath(inputPath) {
+    // Prevent path traversal attacks
+    const normalizedPath = path.normalize(inputPath);
+    return !normalizedPath.includes('..') && path.isAbsolute(normalizedPath) || inputPath.startsWith('./');
+  }
+  
+  static hasValidExtension(filePath, allowedExtensions) {
+    const ext = path.extname(filePath).toLowerCase();
+    return allowedExtensions.includes(ext);
+  }
+  
+  static async safeReadFile(filePath) {
+    try {
+      if (!this.isValidPath(filePath)) {
+        throw new Error(`Invalid file path: ${filePath}`);
+      }
+      
+      const stats = await fs.stat(filePath);
+      if (!stats.isFile()) {
+        throw new Error(`Path is not a file: ${filePath}`);
+      }
+      
+      // Limit file size to 10MB for safety
+      const maxSize = 10 * 1024 * 1024;
+      if (stats.size > maxSize) {
+        throw new Error(`File too large: ${filePath} (${Math.round(stats.size / 1024 / 1024)}MB > 10MB)`);
+      }
+      
+      return await fs.readFile(filePath, 'utf8');
+    } catch (error) {
+      throw new Error(`Failed to read file ${filePath}: ${error.message}`);
+    }
+  }
+  
+  static async scanDirectory(dirPath, options = {}) {
+    const {
+      recursive = true,
+      extensions = ['.pine', '.pinescript'],
+      maxFiles = 1000
+    } = options;
+    
+    if (!this.isValidPath(dirPath)) {
+      throw new Error(`Invalid directory path: ${dirPath}`);
+    }
+    
+    const files = [];
+    
+    async function scanDir(currentPath, depth = 0) {
+      try {
+        if (depth > 10) { // Prevent infinite recursion
+          return;
+        }
+        
+        const stats = await fs.stat(currentPath);
+        if (!stats.isDirectory()) {
+          throw new Error(`Path is not a directory: ${currentPath}`);
+        }
+        
+        const entries = await fs.readdir(currentPath);
+        
+        for (const entry of entries) {
+          if (files.length >= maxFiles) {
+            break;
+          }
+          
+          const fullPath = path.join(currentPath, entry);
+          
+          try {
+            const entryStats = await fs.stat(fullPath);
+            
+            if (entryStats.isFile()) {
+              if (FileSystemUtils.hasValidExtension(fullPath, extensions)) {
+                files.push({
+                  path: fullPath,
+                  relativePath: path.relative(dirPath, fullPath),
+                  size: entryStats.size
+                });
+              }
+            } else if (entryStats.isDirectory() && recursive) {
+              // Skip hidden directories and common ignore patterns
+              if (!entry.startsWith('.') && !['node_modules', '__pycache__', 'dist', 'build'].includes(entry)) {
+                await scanDir(fullPath, depth + 1);
+              }
+            }
+          } catch (entryError) {
+            // Skip files/dirs we can't access
+            continue;
+          }
+        }
+      } catch (error) {
+        throw new Error(`Failed to scan directory ${currentPath}: ${error.message}`);
+      }
+    }
+    
+    await scanDir(dirPath);
+    return files;
+  }
+}
+
 // Global variables for preloaded documentation data
 let PRELOADED_INDEX = null;
 let PRELOADED_STYLE_RULES = null;
@@ -94,7 +195,7 @@ function validatePreloadedData() {
 const server = new Server(
   {
     name: 'mcp-server-pinescript',
-    version: '1.2.0',
+    version: '1.3.0',
   },
   {
     capabilities: {
@@ -138,18 +239,32 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: 'pinescript_review',
-        description: 'Review PineScript code against style guide and language rules. Supports streaming for large files via JSON chunks.',
+        description: 'Review PineScript code against style guide and language rules. Supports single files, directories, and streaming for large results via JSON chunks.',
         inputSchema: {
           type: 'object',
           properties: {
+            source_type: {
+              type: 'string',
+              enum: ['code', 'file', 'directory'],
+              description: 'Source type: code (string input), file (single file path), directory (scan for .pine files)',
+              default: 'code',
+            },
             code: {
               type: 'string',
-              description: 'PineScript code to review',
+              description: 'PineScript code to review (required when source_type=code)',
+            },
+            file_path: {
+              type: 'string',
+              description: 'Path to PineScript file to review (required when source_type=file)',
+            },
+            directory_path: {
+              type: 'string',
+              description: 'Path to directory containing PineScript files (required when source_type=directory)',
             },
             format: {
               type: 'string',
               enum: ['json', 'markdown', 'stream'],
-              description: 'Output format: json (single response), markdown (formatted), stream (chunked JSON for large files)',
+              description: 'Output format: json (single response), markdown (formatted), stream (chunked JSON for large files/directories)',
               default: 'json',
             },
             version: {
@@ -168,8 +283,21 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               description: 'Filter violations by severity (default: all)',
               default: 'all',
             },
+            recursive: {
+              type: 'boolean',
+              description: 'For directory source: scan subdirectories recursively (default: true)',
+              default: true,
+            },
+            file_extensions: {
+              type: 'array',
+              items: {
+                type: 'string'
+              },
+              description: 'File extensions to scan for (default: [".pine", ".pinescript"])',
+              default: ['.pine', '.pinescript'],
+            },
           },
-          required: ['code'],
+          required: [],
         },
       },
     ],
@@ -184,7 +312,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return await searchReference(args.query, args.version || 'v6', args.format || 'json', args.max_results || 10);
     
     case 'pinescript_review':
-      return await reviewCode(args.code, args.format || 'json', args.version || 'v6', args.chunk_size || 20, args.severity_filter || 'all');
+      return await reviewCode(args, args.format || 'json', args.version || 'v6', args.chunk_size || 20, args.severity_filter || 'all');
     
     default:
       throw new Error(`Unknown tool: ${name}`);
@@ -369,13 +497,67 @@ async function streamSearchResults(scored, query, version, maxResults, searchTer
   };
 }
 
-async function reviewCode(code, format, version, chunkSize = 20, severityFilter = 'all') {
+async function reviewCode(args, format, version, chunkSize = 20, severityFilter = 'all') {
   try {
     // Use preloaded style guide rules for optimal performance
     if (!PRELOADED_STYLE_RULES || !PRELOADED_FUNCTIONS) {
       throw new Error('Style guide rules not preloaded. Server initialization may have failed.');
     }
     
+    const {
+      source_type = 'code',
+      code,
+      file_path,
+      directory_path,
+      recursive = true,
+      file_extensions = ['.pine', '.pinescript']
+    } = args;
+    
+    // Validate source type and required parameters
+    if (source_type === 'code' && !code) {
+      throw new Error('code parameter is required when source_type is "code"');
+    }
+    if (source_type === 'file' && !file_path) {
+      throw new Error('file_path parameter is required when source_type is "file"');
+    }
+    if (source_type === 'directory' && !directory_path) {
+      throw new Error('directory_path parameter is required when source_type is "directory"');
+    }
+    
+    // Handle different source types
+    if (source_type === 'directory') {
+      return await reviewDirectory(directory_path, {
+        recursive,
+        file_extensions,
+        format,
+        version,
+        chunkSize,
+        severityFilter
+      });
+    }
+    
+    if (source_type === 'file') {
+      const fileContent = await FileSystemUtils.safeReadFile(file_path);
+      return await reviewSingleCode(fileContent, format, version, chunkSize, severityFilter, file_path);
+    }
+    
+    // Default: source_type === 'code'
+    return await reviewSingleCode(code, format, version, chunkSize, severityFilter);
+    
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Code review failed: ${error.message}`,
+        },
+      ],
+    };
+  }
+}
+
+async function reviewSingleCode(code, format, version, chunkSize = 20, severityFilter = 'all', filePath = null) {
+  try {
     const styleGuide = PRELOADED_STYLE_RULES;
     const functions = PRELOADED_FUNCTIONS;
     
@@ -496,6 +678,7 @@ async function reviewCode(code, format, version, chunkSize = 20, severityFilter 
       violations: filteredViolations,
       version,
       reviewed_lines: lines.length,
+      file_path: filePath || 'inline_code',
     };
     
     // Handle streaming format for large violation sets
@@ -534,6 +717,208 @@ async function reviewCode(code, format, version, chunkSize = 20, severityFilter 
       ],
     };
   }
+}
+
+// Directory review function with streaming support
+async function reviewDirectory(directoryPath, options = {}) {
+  const {
+    recursive = true,
+    file_extensions = ['.pine', '.pinescript'],
+    format = 'json',
+    version = 'v6',
+    chunkSize = 20,
+    severityFilter = 'all'
+  } = options;
+  
+  try {
+    // Scan directory for PineScript files
+    const files = await FileSystemUtils.scanDirectory(directoryPath, {
+      recursive,
+      extensions: file_extensions,
+      maxFiles: 1000
+    });
+    
+    if (files.length === 0) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              summary: {
+                total_files: 0,
+                total_issues: 0,
+                errors: 0,
+                warnings: 0,
+                suggestions: 0
+              },
+              message: `No PineScript files found in directory: ${directoryPath}`
+            }, null, 2),
+          },
+        ],
+      };
+    }
+    
+    // Process files and collect results
+    const fileResults = [];
+    let totalViolations = 0;
+    let aggregatedSummary = {
+      total_files: files.length,
+      total_issues: 0,
+      errors: 0,
+      warnings: 0,
+      suggestions: 0,
+      files_with_issues: 0
+    };
+    
+    for (const file of files) {
+      try {
+        const fileContent = await FileSystemUtils.safeReadFile(file.path);
+        const result = await reviewSingleCode(fileContent, 'json', version, chunkSize, severityFilter, file.relativePath);
+        
+        // Parse the JSON result to extract violations
+        const resultJson = JSON.parse(result.content[0].text);
+        
+        // Add to aggregated summary
+        aggregatedSummary.total_issues += resultJson.summary.total_issues;
+        aggregatedSummary.errors += resultJson.summary.errors;
+        aggregatedSummary.warnings += resultJson.summary.warnings;
+        aggregatedSummary.suggestions += resultJson.summary.suggestions;
+        
+        if (resultJson.summary.total_issues > 0) {
+          aggregatedSummary.files_with_issues++;
+        }
+        
+        // Store file result for streaming
+        fileResults.push({
+          file_path: file.relativePath,
+          file_size: file.size,
+          ...resultJson
+        });
+        
+        totalViolations += resultJson.violations.length;
+      } catch (fileError) {
+        // Add error result for files that couldn't be processed
+        const errorResult = {
+          file_path: file.relativePath,
+          file_size: file.size,
+          summary: {
+            total_issues: 1,
+            errors: 1,
+            warnings: 0,
+            suggestions: 0
+          },
+          violations: [{
+            line: 1,
+            column: 1,
+            rule: 'file_access_error',
+            severity: 'error',
+            message: `Failed to process file: ${fileError.message}`,
+            category: 'system',
+            suggested_fix: 'Check file permissions and encoding'
+          }],
+          version,
+          reviewed_lines: 0
+        };
+        
+        fileResults.push(errorResult);
+        aggregatedSummary.total_issues++;
+        aggregatedSummary.errors++;
+        aggregatedSummary.files_with_issues++;
+        totalViolations++;
+      }
+    }
+    
+    const directoryResult = {
+      directory_path: directoryPath,
+      summary: aggregatedSummary,
+      files: fileResults,
+      version,
+      scan_options: {
+        recursive,
+        file_extensions
+      }
+    };
+    
+    // Handle streaming format for large result sets
+    if (format === 'stream' && (fileResults.length > 5 || totalViolations > chunkSize)) {
+      return await streamDirectoryReview(directoryResult, chunkSize);
+    }
+    
+    if (format === 'markdown') {
+      const markdown = formatDirectoryAsMarkdown(directoryResult);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: markdown,
+          },
+        ],
+      };
+    }
+    
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(directoryResult, null, 2),
+        },
+      ],
+    };
+    
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Directory review failed: ${error.message}`,
+        },
+      ],
+    };
+  }
+}
+
+// Helper function for streaming directory review results
+async function streamDirectoryReview(directoryResult, chunkSize) {
+  const chunks = [];
+  const files = directoryResult.files;
+  
+  // Create metadata chunk
+  chunks.push({
+    type: 'metadata',
+    data: {
+      directory_path: directoryResult.directory_path,
+      summary: directoryResult.summary,
+      version: directoryResult.version,
+      scan_options: directoryResult.scan_options,
+      total_files: files.length,
+      format: 'stream',
+      chunks_total: Math.ceil(files.length / Math.max(1, Math.floor(chunkSize / 5))) // Fewer files per chunk
+    }
+  });
+  
+  // Create file chunks (group files together)
+  const filesPerChunk = Math.max(1, Math.floor(chunkSize / 5)); // Adjust chunk size for files
+  for (let i = 0; i < files.length; i += filesPerChunk) {
+    const chunkFiles = files.slice(i, i + filesPerChunk);
+    
+    chunks.push({
+      type: 'files',
+      chunk_index: Math.floor(i / filesPerChunk),
+      data: chunkFiles
+    });
+  }
+  
+  // Return as concatenated JSON stream
+  const streamText = chunks.map(chunk => JSON.stringify(chunk)).join('\n');
+  
+  return {
+    content: [
+      {
+        type: 'text',
+        text: streamText,
+      },
+    ],
+  };
 }
 
 // Helper function for streaming code review results
@@ -609,6 +994,47 @@ function formatAsMarkdown(result) {
     markdown += `${icon} **Line ${violation.line}:** ${violation.message}\n`;
     markdown += `- Rule: \`${violation.rule}\` (${violation.category})\n`;
     markdown += `- Suggested fix: ${violation.suggested_fix}\n\n`;
+  }
+  
+  return markdown;
+}
+
+function formatDirectoryAsMarkdown(directoryResult) {
+  let markdown = `# PineScript Directory Review Results\n\n`;
+  markdown += `**Directory:** \`${directoryResult.directory_path}\`\n\n`;
+  
+  markdown += '## Summary\n';
+  markdown += `- 📁 ${directoryResult.summary.total_files} file${directoryResult.summary.total_files !== 1 ? 's' : ''} scanned\n`;
+  markdown += `- 🔴 ${directoryResult.summary.errors} Error${directoryResult.summary.errors !== 1 ? 's' : ''}\n`;
+  markdown += `- 🟡 ${directoryResult.summary.warnings} Warning${directoryResult.summary.warnings !== 1 ? 's' : ''}\n`;
+  markdown += `- 💡 ${directoryResult.summary.suggestions} Suggestion${directoryResult.summary.suggestions !== 1 ? 's' : ''}\n`;
+  markdown += `- ⚠️ ${directoryResult.summary.files_with_issues} file${directoryResult.summary.files_with_issues !== 1 ? 's' : ''} with issues\n\n`;
+  
+  if (directoryResult.summary.total_issues === 0) {
+    markdown += '✅ **No issues found in any files!**\n';
+    return markdown;
+  }
+  
+  markdown += '## Files with Issues\n\n';
+  
+  for (const file of directoryResult.files) {
+    if (file.summary.total_issues > 0) {
+      markdown += `### \`${file.file_path}\`\n`;
+      markdown += `- 🔴 ${file.summary.errors} Error${file.summary.errors !== 1 ? 's' : ''}\n`;
+      markdown += `- 🟡 ${file.summary.warnings} Warning${file.summary.warnings !== 1 ? 's' : ''}\n`;
+      markdown += `- 💡 ${file.summary.suggestions} Suggestion${file.summary.suggestions !== 1 ? 's' : ''}\n\n`;
+      
+      for (const violation of file.violations) {
+        const icon = violation.severity === 'error' ? '🔴' : 
+                     violation.severity === 'warning' ? '🟡' : '💡';
+        
+        markdown += `${icon} **Line ${violation.line}:** ${violation.message}\n`;
+        markdown += `- Rule: \`${violation.rule}\` (${violation.category})\n`;
+        markdown += `- Suggested fix: ${violation.suggested_fix}\n\n`;
+      }
+      
+      markdown += '---\n\n';
+    }
   }
   
   return markdown;

@@ -7,7 +7,7 @@ This guide is for developers who want to integrate the PineScript MCP Documentat
 The PineScript MCP Documentation Server provides two powerful tools for AI assistants:
 
 - **🔍 pinescript_reference**: Get instant access to PineScript documentation, style guides, and function references
-- **🔧 pinescript_review**: Automatically review your PineScript code for style and syntax issues
+- **🔧 pinescript_review**: Automatically review PineScript code, files, or entire directories for style and syntax issues
 
 ## Quick Setup
 
@@ -135,12 +135,22 @@ Ask your AI assistant natural questions:
 
 ### Code Review
 
-Have your AI assistant review your code:
+Have your AI assistant review your code in multiple ways:
 
+**Inline Code Review:**
 ```
 "Review this PineScript code using pinescript_review"
-"Check my indicator for style violations using pinescript_review"
-"Validate this strategy code with pinescript_review"
+```
+
+**Single File Review:**
+```
+"Use pinescript_review to check the file ./indicators/my_rsi.pine"
+```
+
+**Directory Review (NEW in v1.3.0):**
+```
+"Review all PineScript files in my project using pinescript_review with directory_path ./src"
+"Check my entire indicators directory for style violations"
 ```
 
 ## Workflow Examples
@@ -206,6 +216,23 @@ claude --mcp-config mcp-config.json -p "Use pinescript_review to check this file
 claude --mcp-config mcp-config.json -p "Based on the pinescript_review results, use pinescript_reference to find better practices for this code: $(cat test_script.pine)"
 ```
 
+### Directory Review Workflows (NEW in v1.3.0)
+
+```bash
+# Review entire project directory
+claude --mcp-config mcp-config.json -p "Use pinescript_review with source_type=directory and directory_path=./src to review all PineScript files in my project"
+
+# Review with streaming for large projects
+claude --mcp-config mcp-config.json -p "Use pinescript_review with source_type=directory, directory_path=./indicators, and format=stream to review my indicators directory"
+
+# Review only errors in project
+claude --mcp-config mcp-config.json -p "Use pinescript_review with source_type=directory, directory_path=./strategies, and severity_filter=error to find critical issues"
+
+# Interactive directory review
+claude --mcp-config mcp-config.json
+# Then ask: "Review my entire PineScript project in ./trading-bots directory, focus on errors and provide improvement suggestions"
+```
+
 ## Output Formats
 
 ### Documentation Results (pinescript_reference)
@@ -225,7 +252,7 @@ claude --mcp-config mcp-config.json -p "Based on the pinescript_review results, 
 
 ### Code Review Results (pinescript_review)
 
-**JSON Format** (default):
+**JSON Format for Single File/Code** (default):
 ```json
 {
   "summary": {
@@ -240,6 +267,29 @@ claude --mcp-config mcp-config.json -p "Based on the pinescript_review results, 
       "rule": "version_declaration",
       "severity": "error",
       "message": "Missing PineScript version declaration"
+    }
+  ],
+  "file_path": "indicator.pine"
+}
+```
+
+**JSON Format for Directory Review** (NEW):
+```json
+{
+  "directory_path": "./src",
+  "summary": {
+    "total_files": 5,
+    "total_issues": 8,
+    "errors": 2,
+    "warnings": 3,
+    "suggestions": 3,
+    "files_with_issues": 3
+  },
+  "files": [
+    {
+      "file_path": "indicators/rsi.pine",
+      "summary": { "total_issues": 1, "errors": 0, "warnings": 1, "suggestions": 0 },
+      "violations": ["...violations array..."]
     }
   ]
 }
