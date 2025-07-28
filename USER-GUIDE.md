@@ -343,7 +343,7 @@ claude --mcp-config mcp-config.json
    ```bash
    # Check if processed docs exist
    ls node_modules/mcp-server-pinescript/docs/processed/
-   # Should show: functions.json, index.json, language.json, style-rules.json
+   # Should show: index.json, language-reference.json, style-rules.json
    ```
 
 3. **Test Server Manually**:

@@ -3,28 +3,21 @@
     "rule": "Use camelCase for variable names",
     "severity": "suggestion",
     "category": "style_guide",
-    "examples": ["myVariable", "priceData", "signalStrength", "maLengthInput"]
+    "examples": [
+      "myVariable",
+      "priceData",
+      "signalStrength",
+      "maLengthInput"
+    ]
   },
   "constant_naming": {
     "rule": "Use SNAKE_CASE for constants",
-    "severity": "suggestion", 
-    "category": "style_guide",
-    "examples": ["BULL_COLOR", "BEAR_COLOR", "MAX_LOOKBACK"]
-  },
-  "operator_spacing": {
-    "rule": "Add spaces around operators",
     "severity": "suggestion",
     "category": "style_guide",
-    "examples": ["a + b", "close > open", "x = y * 2"]
-  },
-  "line_length": {
-    "rule": "Keep lines under 120 characters",
-    "severity": "suggestion",
-    "category": "style_guide"
-  },
-  "indentation": {
-    "rule": "Use consistent indentation",
-    "severity": "suggestion",
-    "category": "style_guide"
+    "examples": [
+      "BULL_COLOR",
+      "BEAR_COLOR",
+      "MAX_LOOKBACK"
+    ]
   }
 }

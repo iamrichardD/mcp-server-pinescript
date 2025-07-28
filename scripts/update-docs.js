@@ -18,6 +18,13 @@ class PineScriptDocProcessor {
     this.styleRules = {};
     this.functions = {};
     this.language = {};
+    this.qualityStats = {
+      totalAttempts: 0,
+      successfulScrapes: 0,
+      failedScrapes: 0,
+      validContent: 0,
+      invalidContent: 0
+    };
   }
 
   async updateDocumentation() {
@@ -41,12 +48,100 @@ class PineScriptDocProcessor {
       // Process and save data
       await this.saveProcessedData();
       
+      // Generate quality report
+      this.generateQualityReport();
+      
       console.log('✅ Documentation update completed successfully!');
       console.log(`📊 Processed ${Object.keys(this.processedIndex).length} documentation entries`);
       
     } catch (error) {
       console.error('❌ Documentation update failed:', error);
       process.exit(1);
+    }
+  }
+
+  validateScrapedContent(content, url) {
+    this.qualityStats.totalAttempts++;
+    
+    const issues = [];
+    
+    // Check for HTTP error responses
+    if (content.includes('404 Not Found') || 
+        content.includes('403 Forbidden') || 
+        content.includes('500 Internal Server Error')) {
+      issues.push('HTTP error response detected');
+    }
+    
+    // Check for AWS S3 errors
+    if (content.includes('NoSuchKey') || 
+        content.includes('AccessDenied')) {
+      issues.push('AWS S3 error detected');
+    }
+    
+    // Check for TradingView "page not found" messages
+    if (content.includes("This isn't the page you're looking for") ||
+        content.includes('Head back') ||
+        content.includes('move along to the homepage')) {
+      issues.push('TradingView page not found error detected');
+    }
+    
+    // Check for empty or minimal content
+    if (content.trim().length < 100) {
+      issues.push('Content too short (< 100 characters)');
+    }
+    
+    // Check for valid Pine Script content
+    const hasValidContent = content.includes('Pine Script') || 
+                           content.includes('PineScript') ||
+                           content.includes('@version=6') ||
+                           content.includes('TradingView') ||
+                           content.includes('ta.') ||
+                           content.includes('math.') ||
+                           content.includes('array.') ||
+                           content.includes('table.cell');
+    
+    if (!hasValidContent) {
+      issues.push('No recognizable Pine Script content');
+    }
+    
+    // Check for redirect pages
+    if (content.includes('Redirecting') || 
+        (content.includes('redirect') && content.trim().length < 500)) {
+      issues.push('Appears to be redirect page');
+    }
+    
+    const isValid = issues.length === 0;
+    
+    if (isValid) {
+      this.qualityStats.validContent++;
+    } else {
+      this.qualityStats.invalidContent++;
+      console.warn(`⚠️  Content quality issues for ${url}:`, issues.join(', '));
+    }
+    
+    return {
+      isValid,
+      issues,
+      url
+    };
+  }
+
+  generateQualityReport() {
+    console.log('\n📋 SCRAPING QUALITY REPORT');
+    console.log('=============================');
+    console.log(`📊 Total scraping attempts: ${this.qualityStats.totalAttempts}`);
+    console.log(`✅ Valid content: ${this.qualityStats.validContent}`);
+    console.log(`❌ Invalid content: ${this.qualityStats.invalidContent}`);
+    
+    if (this.qualityStats.totalAttempts > 0) {
+      const successRate = ((this.qualityStats.validContent / this.qualityStats.totalAttempts) * 100).toFixed(1);
+      console.log(`📈 Success rate: ${successRate}%`);
+    }
+    
+    if (this.qualityStats.invalidContent > 0) {
+      console.log('\n⚠️  Some content failed quality checks. Review warnings above.');
+    } else {
+      console.log('\n✅ All scraped content passed quality validation!');
     }
   }
 
@@ -90,11 +185,12 @@ class PineScriptDocProcessor {
       'variable-declarations',
       'conditional-structures',
       'loops',
-      'functions',
       'methods',
       'objects',
       'arrays',
       'matrices',
+      'execution-model',
+      'type-system'
     ];
     
     for (const topic of languageTopics) {
@@ -177,6 +273,13 @@ class PineScriptDocProcessor {
   }
 
   async processStyleGuideContent(markdown) {
+    // Validate content quality first
+    const validation = this.validateScrapedContent(markdown, 'style-guide');
+    if (!validation.isValid) {
+      console.warn('⚠️  Style guide content failed validation, skipping processing');
+      return;
+    }
+
     const hash = this.generateHash(markdown);
     const filename = `${hash}.md`;
     
@@ -200,6 +303,13 @@ class PineScriptDocProcessor {
   }
 
   async processLanguageContent(markdown, topic) {
+    // Validate content quality first
+    const validation = this.validateScrapedContent(markdown, `language/${topic}`);
+    if (!validation.isValid) {
+      console.warn(`⚠️  Language content for ${topic} failed validation, skipping processing`);
+      return;
+    }
+
     const hash = this.generateHash(markdown + topic);
     const filename = `${hash}.md`;
     
@@ -224,6 +334,13 @@ class PineScriptDocProcessor {
   }
 
   async processReferenceContent(markdown, category) {
+    // Validate content quality first
+    const validation = this.validateScrapedContent(markdown, `reference/${category}`);
+    if (!validation.isValid) {
+      console.warn(`⚠️  Reference content for ${category} failed validation, skipping processing`);
+      return;
+    }
+
     const hash = this.generateHash(markdown + category);
     const filename = `${hash}.md`;
     

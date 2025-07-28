@@ -117,8 +117,7 @@ class FileSystemUtils {
 // Global variables for preloaded documentation data
 let PRELOADED_INDEX = null;
 let PRELOADED_STYLE_RULES = null;
-let PRELOADED_FUNCTIONS = null;
-let PRELOADED_LANGUAGE = null; // For future use
+let PRELOADED_LANGUAGE_REFERENCE = null;
 
 // Preload documentation into memory for optimal performance
 async function preloadDocumentation() {
@@ -127,15 +126,13 @@ async function preloadDocumentation() {
   try {
     const indexPath = path.join(__dirname, 'docs', 'processed', 'index.json');
     const rulesPath = path.join(__dirname, 'docs', 'processed', 'style-rules.json');
-    const functionsPath = path.join(__dirname, 'docs', 'processed', 'functions.json');
-    const languagePath = path.join(__dirname, 'docs', 'processed', 'language.json');
+    const languageReferencePath = path.join(__dirname, 'docs', 'processed', 'language-reference.json');
     
     // Check if files exist
     try {
       await fs.access(indexPath);
       await fs.access(rulesPath);
-      await fs.access(functionsPath);
-      // language.json is optional for now
+      await fs.access(languageReferencePath);
     } catch (accessError) {
       throw new Error(`Documentation files not found. Please ensure the docs/processed/ directory exists with required files.`);
     }
@@ -143,28 +140,23 @@ async function preloadDocumentation() {
     // Load all documentation files
     PRELOADED_INDEX = JSON.parse(await fs.readFile(indexPath, 'utf8'));
     PRELOADED_STYLE_RULES = JSON.parse(await fs.readFile(rulesPath, 'utf8'));
-    PRELOADED_FUNCTIONS = JSON.parse(await fs.readFile(functionsPath, 'utf8'));
-    
-    // Load language.json if it exists
-    try {
-      await fs.access(languagePath);
-      PRELOADED_LANGUAGE = JSON.parse(await fs.readFile(languagePath, 'utf8'));
-    } catch {
-      // Language file is optional
-      PRELOADED_LANGUAGE = {};
-    }
+    PRELOADED_LANGUAGE_REFERENCE = JSON.parse(await fs.readFile(languageReferencePath, 'utf8'));
     
     const stats = {
       indexEntries: Object.keys(PRELOADED_INDEX).length,
       styleRules: Object.keys(PRELOADED_STYLE_RULES).length,
-      functionEntries: Object.keys(PRELOADED_FUNCTIONS).length,
+      functionEntries: Object.keys(PRELOADED_LANGUAGE_REFERENCE.functions).length,
+      variableEntries: Object.keys(PRELOADED_LANGUAGE_REFERENCE.variables).length,
+      totalLanguageItems: PRELOADED_LANGUAGE_REFERENCE.metadata.total_functions + PRELOADED_LANGUAGE_REFERENCE.metadata.total_variables,
       memoryUsage: Math.round(process.memoryUsage().heapUsed / 1024 / 1024)
     };
     
     console.log(`✅ Documentation preloaded successfully:`);
     console.log(`   📖 ${stats.indexEntries} documentation entries`);
     console.log(`   📋 ${stats.styleRules} style rules`);
-    console.log(`   🔧 ${stats.functionEntries} function entries`);
+    console.log(`   🔧 ${stats.functionEntries} functions`);
+    console.log(`   📊 ${stats.variableEntries} variables (built-ins, constants, keywords, types, operators, annotations)`);
+    console.log(`   🎯 ${stats.totalLanguageItems} total Pine Script language items`);
     console.log(`   💾 ${stats.memoryUsage}MB total memory usage`);
     
     return stats;
@@ -500,7 +492,7 @@ async function streamSearchResults(scored, query, version, maxResults, searchTer
 async function reviewCode(args, format, version, chunkSize = 20, severityFilter = 'all') {
   try {
     // Use preloaded style guide rules for optimal performance
-    if (!PRELOADED_STYLE_RULES || !PRELOADED_FUNCTIONS) {
+    if (!PRELOADED_STYLE_RULES || !PRELOADED_LANGUAGE_REFERENCE) {
       throw new Error('Style guide rules not preloaded. Server initialization may have failed.');
     }
     
@@ -559,7 +551,7 @@ async function reviewCode(args, format, version, chunkSize = 20, severityFilter 
 async function reviewSingleCode(code, format, version, chunkSize = 20, severityFilter = 'all', filePath = null) {
   try {
     const styleGuide = PRELOADED_STYLE_RULES;
-    const functions = PRELOADED_FUNCTIONS;
+    const functions = PRELOADED_LANGUAGE_REFERENCE.functions;
     
     const violations = [];
     const lines = code.split('\n');

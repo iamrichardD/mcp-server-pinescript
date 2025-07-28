@@ -204,8 +204,7 @@ AI: Uses pinescript_reference(query="array functions", format="stream", max_resu
   /processed/
     index.json           # Master search index
     style-rules.json     # Structured style rules
-    functions.json       # API reference data
-    language.json        # Language concepts
+    language-reference.json  # Complete Pine Script language reference (functions, variables, constants, keywords, types, operators, annotations)
 ```
 
 ## Documentation Updates (For Maintainers)

@@ -1,6 +1,6 @@
 {
   "name": "mcp-server-pinescript",
-  "version": "1.3.0",
+  "version": "2.0.0",
   "description": "AI-optimized MCP server for PineScript documentation and code review",
   "main": "index.js",
   "type": "module",
@@ -9,12 +9,20 @@
     "dev": "node --watch index.js",
     "update-docs": "node scripts/update-docs.js"
   },
-  "keywords": ["mcp", "pinescript", "tradingview", "trading", "documentation", "code-review"],
+  "keywords": [
+    "mcp",
+    "pinescript",
+    "tradingview",
+    "trading",
+    "documentation",
+    "code-review"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@mendable/firecrawl-js": "^1.0.0",
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "@mendable/firecrawl-js": "^1.0.0"
+    "jsdom": "^26.1.0"
   },
   "engines": {
     "node": ">=18"
@@ -25,6 +33,7 @@
     "README.md",
     "USER-GUIDE.md",
     "AI-INTEGRATION.md",
-    "MAINTAINER.md"
+    "MAINTAINER.md",
+    "CHANGELOG.md"
   ]
 }

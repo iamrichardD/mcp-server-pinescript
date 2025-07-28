@@ -155,8 +155,7 @@ docs/
 │   └── f7e8d9c2.md
 └── processed/             # Structured data (committed to git)
     ├── index.json         # Master search index
-    ├── functions.json     # API reference
-    ├── language.json      # Language concepts
+    ├── language-reference.json  # Complete Pine Script reference (457 functions + 427 variables/constants/keywords/types/operators/annotations)
     └── style-rules.json   # Style guide rules
 ```
 
@@ -175,6 +174,11 @@ npm run update-docs
 # Verify processed files
 ls -la docs/processed/
 cat docs/processed/index.json | jq keys | head
+
+# Check language reference structure
+cat docs/processed/language-reference.json | jq '.metadata'
+cat docs/processed/language-reference.json | jq '.functions | keys | length'
+cat docs/processed/language-reference.json | jq '.variables | keys | length'
 
 # Test MCP tools
 npm start &
