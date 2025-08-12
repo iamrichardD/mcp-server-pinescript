@@ -576,6 +576,26 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
       
       if (line.includes('indicator(') || line.includes('strategy(')) {
         hasDeclaration = true;
+        
+        // SHORT_TITLE_TOO_LONG validation using AST parser
+        try {
+          const { quickValidateShortTitle } = await import('./src/parser/index.js');
+          const validationResult = await quickValidateShortTitle(line);
+          
+          if (validationResult.hasShortTitleError) {
+            violations.push(...validationResult.violations.map(violation => ({
+              line: i + 1,
+              column: violation.column,
+              severity: violation.severity,
+              message: violation.message,
+              rule: violation.rule,
+              category: violation.category
+            })));
+          }
+        } catch (error) {
+          // Fallback: continue without advanced validation if parser fails
+          console.warn('Advanced validation unavailable:', error.message);
+        }
       }
       
       // Style guide checks - corrected to camelCase per official Pine Script style guide

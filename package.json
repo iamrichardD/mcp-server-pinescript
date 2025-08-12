@@ -7,7 +7,12 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
-    "update-docs": "node scripts/update-docs.js"
+    "update-docs": "node scripts/update-docs.js",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:parser": "vitest run tests/parser/",
+    "test:performance": "vitest run tests/parser/performance.test.js",
+    "test:short-title": "vitest run tests/parser/short-title-validation.test.js"
   },
   "keywords": [
     "mcp",
@@ -35,5 +40,8 @@
     "AI-INTEGRATION.md",
     "MAINTAINER.md",
     "CHANGELOG.md"
-  ]
+  ],
+  "devDependencies": {
+    "vitest": "^3.2.4"
+  }
 }

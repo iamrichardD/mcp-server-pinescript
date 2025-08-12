@@ -4,7 +4,11 @@
       "Bash(node:*)",
       "Bash(grep:*)",
       "WebFetch(domain:www.tradingview.com)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(npm run:*)",
+      "Bash(sed:*)",
+      "Bash(npm test:*)",
+      "Bash(pkill:*)"
     ],
     "deny": []
   }
