@@ -1,0 +1,216 @@
+{
+  "version": "1.0.0",
+  "description": "Pine Script validation constraints not available in official documentation. These rules are merged during language-reference.json processing to enhance parameter validation.",
+  "metadata": {
+    "lastUpdated": "2025-08-12",
+    "source": "TradingView Pine Script validation requirements",
+    "maintainer": "mcp-server-pinescript team"
+  },
+  "functionValidationRules": {
+    "fun_strategy": {
+      "argumentConstraints": {
+        "shorttitle": {
+          "validation_constraints": {
+            "maxLength": 10,
+            "errorCode": "SHORT_TITLE_TOO_LONG",
+            "errorMessage": "The shorttitle is too long ({length} characters). It should be 10 characters or less.(SHORT_TITLE_TOO_LONG)",
+            "severity": "error",
+            "category": "parameter_validation",
+            "source": "TradingView Pine Script Editor validation"
+          }
+        },
+        "max_bars_back": {
+          "validation_constraints": {
+            "type": "integer",
+            "min": 1,
+            "max": 5000,
+            "errorCode": "INVALID_MAX_BARS_BACK",
+            "errorMessage": "max_bars_back must be between 1 and 5000.",
+            "severity": "error",
+            "category": "parameter_validation"
+          }
+        },
+        "precision": {
+          "validation_constraints": {
+            "type": "integer", 
+            "min": 0,
+            "max": 8,
+            "errorCode": "INVALID_PRECISION",
+            "errorMessage": "precision must be between 0 and 8.",
+            "severity": "error",
+            "category": "parameter_validation"
+          }
+        },
+        "pyramiding": {
+          "validation_constraints": {
+            "type": "integer",
+            "min": 0,
+            "errorCode": "INVALID_PYRAMIDING", 
+            "errorMessage": "pyramiding must be 0 or greater.",
+            "severity": "error",
+            "category": "parameter_validation"
+          }
+        },
+        "max_lines_count": {
+          "validation_constraints": {
+            "type": "integer",
+            "min": 1,
+            "max": 500,
+            "errorCode": "INVALID_MAX_LINES_COUNT",
+            "errorMessage": "max_lines_count must be between 1 and 500.",
+            "severity": "error",
+            "category": "parameter_validation"
+          }
+        },
+        "max_labels_count": {
+          "validation_constraints": {
+            "type": "integer",
+            "min": 1,
+            "max": 500,
+            "errorCode": "INVALID_MAX_LABELS_COUNT",
+            "errorMessage": "max_labels_count must be between 1 and 500.",
+            "severity": "error",
+            "category": "parameter_validation"
+          }
+        },
+        "max_boxes_count": {
+          "validation_constraints": {
+            "type": "integer",
+            "min": 1,
+            "max": 500,
+            "errorCode": "INVALID_MAX_BOXES_COUNT",
+            "errorMessage": "max_boxes_count must be between 1 and 500.",
+            "severity": "error",
+            "category": "parameter_validation"
+          }
+        }
+      }
+    },
+    "fun_indicator": {
+      "argumentConstraints": {
+        "shorttitle": {
+          "validation_constraints": {
+            "maxLength": 10,
+            "errorCode": "SHORT_TITLE_TOO_LONG", 
+            "errorMessage": "The shorttitle is too long ({length} characters). It should be 10 characters or less.(SHORT_TITLE_TOO_LONG)",
+            "severity": "error",
+            "category": "parameter_validation",
+            "source": "TradingView Pine Script Editor validation"
+          }
+        },
+        "max_bars_back": {
+          "validation_constraints": {
+            "type": "integer",
+            "min": 1,
+            "max": 5000,
+            "errorCode": "INVALID_MAX_BARS_BACK",
+            "errorMessage": "max_bars_back must be between 1 and 5000.",
+            "severity": "error",
+            "category": "parameter_validation"
+          }
+        },
+        "precision": {
+          "validation_constraints": {
+            "type": "integer",
+            "min": 0,
+            "max": 8,
+            "errorCode": "INVALID_PRECISION",
+            "errorMessage": "precision must be between 0 and 8.",
+            "severity": "error",
+            "category": "parameter_validation"
+          }
+        },
+        "max_lines_count": {
+          "validation_constraints": {
+            "type": "integer",
+            "min": 1,
+            "max": 500,
+            "errorCode": "INVALID_MAX_LINES_COUNT",
+            "errorMessage": "max_lines_count must be between 1 and 500.",
+            "severity": "error",
+            "category": "parameter_validation"
+          }
+        },
+        "max_labels_count": {
+          "validation_constraints": {
+            "type": "integer",
+            "min": 1,
+            "max": 500,
+            "errorCode": "INVALID_MAX_LABELS_COUNT", 
+            "errorMessage": "max_labels_count must be between 1 and 500.",
+            "severity": "error",
+            "category": "parameter_validation"
+          }
+        },
+        "max_boxes_count": {
+          "validation_constraints": {
+            "type": "integer",
+            "min": 1,
+            "max": 500,
+            "errorCode": "INVALID_MAX_BOXES_COUNT",
+            "errorMessage": "max_boxes_count must be between 1 and 500.",
+            "severity": "error",
+            "category": "parameter_validation"
+          }
+        }
+      }
+    }
+  },
+  "errorCodeDefinitions": {
+    "SHORT_TITLE_TOO_LONG": {
+      "description": "Function shorttitle parameter exceeds 10 character limit",
+      "severity": "error",
+      "category": "parameter_validation",
+      "documentation": "The shorttitle parameter is displayed in chart legends and must be concise"
+    },
+    "INVALID_MAX_BARS_BACK": {
+      "description": "max_bars_back parameter outside valid range (1-5000)",
+      "severity": "error", 
+      "category": "parameter_validation",
+      "documentation": "Controls how far back the script can reference historical data"
+    },
+    "INVALID_PRECISION": {
+      "description": "precision parameter outside valid range (0-8)",
+      "severity": "error",
+      "category": "parameter_validation", 
+      "documentation": "Controls decimal places displayed for indicator values"
+    },
+    "INVALID_PYRAMIDING": {
+      "description": "pyramiding parameter must be non-negative",
+      "severity": "error",
+      "category": "parameter_validation",
+      "documentation": "Controls maximum number of entries in same direction"
+    },
+    "INVALID_MAX_LINES_COUNT": {
+      "description": "max_lines_count parameter outside valid range (1-500)",
+      "severity": "error",
+      "category": "parameter_validation", 
+      "documentation": "Controls maximum drawing objects to prevent performance issues"
+    },
+    "INVALID_MAX_LABELS_COUNT": {
+      "description": "max_labels_count parameter outside valid range (1-500)",
+      "severity": "error",
+      "category": "parameter_validation",
+      "documentation": "Controls maximum label objects to prevent performance issues"
+    },
+    "INVALID_MAX_BOXES_COUNT": {
+      "description": "max_boxes_count parameter outside valid range (1-500)",
+      "severity": "error",
+      "category": "parameter_validation",
+      "documentation": "Controls maximum box objects to prevent performance issues"
+    }
+  },
+  "processingInstructions": {
+    "mergeStrategy": "overlay",
+    "description": "During language-reference.json processing, merge validation_constraints into matching function arguments",
+    "matchingCriteria": {
+      "functionId": "Match by function ID (e.g., 'fun_strategy')",
+      "argumentName": "Match by argument name (e.g., 'shorttitle')"
+    },
+    "outputFormat": {
+      "location": "Add 'validation_constraints' field to argument objects",
+      "preserve": "Maintain all existing argument properties",
+      "fallback": "Skip validation if function/argument not found"
+    }
+  }
+}
