@@ -41,7 +41,29 @@
 - `.claude/agents/pinescript-parser-expert.md`
 - `index.js` (integration points)
 
-### 🔴 **C2: Fix Version Inconsistency**
+### 🔴 **C2: TypeScript Migration Foundation**
+**Impact**: High - Enables type-safe development and enhanced maintainability  
+**Effort**: 1-2 sessions  
+**Dependencies**: typescript-expert (Anders) agent available  
+
+**Tasks**:
+- Set up TypeScript build configuration and tooling
+- Begin gradual migration starting with Ash parsing implementation  
+- Implement type definitions for Pine Script language structures
+- Maintain existing performance benchmarks (sub-15ms response times)
+
+**Success Criteria**:
+- TypeScript compilation pipeline established
+- Existing JavaScript functionality preserved during migration
+- Type-safe AST generation and parameter extraction for Ash
+- Performance requirements maintained throughout migration
+
+**Files Involved**:
+- New: `tsconfig.json`, `package.json` (TypeScript dependencies)
+- Migration target: Core validation and parsing modules
+- Agent: `/home/rdelgado/Development/claude-code-agents/.claude/agents/typescript-expert.md`
+
+### 🔴 **C3: Fix Version Inconsistency**
 **Impact**: Low - Cosmetic issue affecting logs  
 **Effort**: 5 minutes  
 **Dependencies**: None  
@@ -241,3 +263,32 @@
 ---
 
 **Note**: This prioritization matrix should be reviewed and updated regularly based on user feedback, technical discoveries, and evolving project requirements.
+
+# 🔄 Process Improvement from Phase 1 Retrospective
+
+## CRITICAL Process Change
+**Mandatory Agile-Coach Integration**: ALL future technical implementations MUST begin with agile-coach (Herbie) coordination. This is now a REQUIRED step in the workflow.
+
+## Updated Collaboration Framework
+1. **project-manager** (Seldon) → **agile-coach** (Herbie) → **context-manager** (Fletcher) → Specialized agents
+2. No exceptions: Technical work without agile-coach involvement violates team protocol
+3. Agile-coach responsible for workflow coordination, impediment removal, and continuous feedback
+
+## Quality Standards Enhancement
+- **Definition of Done**: >95% test pass rate required before declaring implementation complete
+- **Sprint Planning**: Proper user story breakdown mandatory before coding begins
+- **Mid-Sprint Reviews**: Regular check-ins during complex implementations
+- **Retrospective Rhythm**: Team reflection after major feature completions
+
+## Next Sprint Protocol
+Phase 2 will implement these process improvements while completing:
+1. Fix 22 failing integration tests
+2. Complete MCP server integration
+3. Establish continuous testing workflow
+4. Standardize documentation practices
+
+**Accountability**: project-manager (Seldon) will enforce agile-coach involvement
+**Timeline**: Immediate implementation starting next session
+**Success Metric**: 100% agile-coach utilization in all technical work
+
+
