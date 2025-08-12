@@ -187,7 +187,7 @@ function validatePreloadedData() {
 const server = new Server(
   {
     name: 'mcp-server-pinescript',
-    version: '1.3.0',
+    version: '2.0.0',
   },
   {
     capabilities: {
