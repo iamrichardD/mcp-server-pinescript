@@ -615,6 +615,45 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
           // Fallback: continue without precision validation if parser fails
           console.warn("Precision validation unavailable:", error.message);
         }
+        // INVALID_MAX_BARS_BACK validation using same AST parser
+        try {
+          const { quickValidateMaxBarsBack } = await import("./src/parser/index.js");
+          const maxBarsBackValidationResult = await quickValidateMaxBarsBack(line);
+          
+          if (maxBarsBackValidationResult.hasMaxBarsBackError) {
+            violations.push(...maxBarsBackValidationResult.violations.map(violation => ({
+              line: i + 1,
+              column: violation.column,
+              severity: violation.severity,
+              message: violation.message,
+              rule: violation.rule,
+              category: violation.category
+            })));
+          }
+        } catch (error) {
+          // Fallback: continue without max_bars_back validation if parser fails
+          console.warn("Max bars back validation unavailable:", error.message);
+        }
+        
+        // INVALID_DRAWING_OBJECT_COUNTS validation using batch AST parser
+        try {
+          const { quickValidateDrawingObjectCounts } = await import("./src/parser/index.js");
+          const drawingObjectCountsValidationResult = await quickValidateDrawingObjectCounts(line);
+          
+          if (drawingObjectCountsValidationResult.hasDrawingObjectCountError) {
+            violations.push(...drawingObjectCountsValidationResult.violations.map(violation => ({
+              line: i + 1,
+              column: violation.column,
+              severity: violation.severity,
+              message: violation.message,
+              rule: violation.rule,
+              category: violation.category
+            })));
+          }
+        } catch (error) {
+          // Fallback: continue without drawing object count validation if parser fails
+          console.warn("Drawing object count validation unavailable:", error.message);
+        }
       }
       
       // Style guide checks - corrected to camelCase per official Pine Script style guide

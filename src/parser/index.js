@@ -49,6 +49,16 @@ import {
   loadValidationRules as _loadValidationRules,
   validatePrecision as _validatePrecision,
   quickValidatePrecision as _quickValidatePrecision,
+  validateMaxBarsBack as _validateMaxBarsBack,
+  quickValidateMaxBarsBack as _quickValidateMaxBarsBack,
+  validateMaxLinesCount as _validateMaxLinesCount,
+  quickValidateMaxLinesCount as _quickValidateMaxLinesCount,
+  validateMaxLabelsCount as _validateMaxLabelsCount,
+  quickValidateMaxLabelsCount as _quickValidateMaxLabelsCount,
+  validateMaxBoxesCount as _validateMaxBoxesCount,
+  quickValidateMaxBoxesCount as _quickValidateMaxBoxesCount,
+  validateDrawingObjectCounts as _validateDrawingObjectCounts,
+  quickValidateDrawingObjectCounts as _quickValidateDrawingObjectCounts,
 } from './validator.js';
 
 export {
@@ -58,6 +68,16 @@ export {
   _loadValidationRules as loadValidationRules,
   _validatePrecision as validatePrecision,
   _quickValidatePrecision as quickValidatePrecision,
+  _validateMaxBarsBack as validateMaxBarsBack,
+  _quickValidateMaxBarsBack as quickValidateMaxBarsBack,
+  _validateMaxLinesCount as validateMaxLinesCount,
+  _quickValidateMaxLinesCount as quickValidateMaxLinesCount,
+  _validateMaxLabelsCount as validateMaxLabelsCount,
+  _quickValidateMaxLabelsCount as quickValidateMaxLabelsCount,
+  _validateMaxBoxesCount as validateMaxBoxesCount,
+  _quickValidateMaxBoxesCount as quickValidateMaxBoxesCount,
+  _validateDrawingObjectCounts as validateDrawingObjectCounts,
+  _quickValidateDrawingObjectCounts as quickValidateDrawingObjectCounts,
 };
 
 /**

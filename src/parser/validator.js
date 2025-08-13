@@ -448,3 +448,419 @@ export function validatePrecision(source) {
 export function quickValidatePrecision(source) {
   return validatePrecision(source);
 }
+/**
+ * Create an INVALID_MAX_BARS_BACK validation specifically
+ * This implements the constraint: 1 ≤ max_bars_back ≤ 5000 (integer) for strategy() and indicator() functions
+ * Following the atomic testing success pattern from INVALID_PRECISION
+ * @param {string} source - Pine Script source code
+ * @returns {Object} - Focused validation result for max_bars_back parameter
+ */
+export function validateMaxBarsBack(source) {
+  // Quick validation rules for max_bars_back only
+  const maxBarsBackRules = {
+    functionValidationRules: {
+      fun_indicator: {
+        argumentConstraints: {
+          max_bars_back: {
+            validation_constraints: {
+              type: 'integer',
+              min: 1,
+              max: 5000,
+              errorCode: 'INVALID_MAX_BARS_BACK',
+              errorMessage: 'Parameter max_bars_back must be between 1 and 5000 (inclusive), got {value}. (INVALID_MAX_BARS_BACK)',
+              severity: 'error',
+              category: 'parameter_validation'
+            }
+          }
+        }
+      },
+      fun_strategy: {
+        argumentConstraints: {
+          max_bars_back: {
+            validation_constraints: {
+              type: 'integer',
+              min: 1,
+              max: 5000,
+              errorCode: 'INVALID_MAX_BARS_BACK',
+              errorMessage: 'Parameter max_bars_back must be between 1 and 5000 (inclusive), got {value}. (INVALID_MAX_BARS_BACK)',
+              severity: 'error',
+              category: 'parameter_validation'
+            }
+          }
+        }
+      }
+    },
+    errorDefinitions: {
+      INVALID_MAX_BARS_BACK: {
+        description: "max_bars_back parameter outside valid range (1-5000)",
+        severity: "error",
+        category: "parameter_validation",
+        documentation: "Controls how far back the script can reference historical data"
+      }
+    }
+  };
+
+  // Use the focused validation approach with limited rules
+  const result = validatePineScriptParameters(source, maxBarsBackRules);
+  
+  return {
+    success: true,
+    hasMaxBarsBackError: result.violations.some(v => v.rule === 'INVALID_MAX_BARS_BACK'),
+    violations: result.violations,
+    metrics: result.metrics
+  };
+}
+/**
+ * Quick max_bars_back validation function for atomic testing integration
+ * Implements the same pattern as quickValidatePrecision for consistency
+ * @param {string} source - Pine Script source code
+ * @returns {Object} - Validation result matching test expectations
+ */
+export function quickValidateMaxBarsBack(source) {
+  return validateMaxBarsBack(source);
+}
+
+/**
+ * Validates max_lines_count parameter for drawing object count limits
+ * Prevents performance issues from excessive line objects
+ * @param {string} source - Pine Script source code
+ * @returns {Object} - Validation result with line count violations
+ */
+export function validateMaxLinesCount(source) {
+  // Quick validation rules for max_lines_count only
+  const maxLinesCountRules = {
+    functionValidationRules: {
+      fun_indicator: {
+        argumentConstraints: {
+          max_lines_count: {
+            validation_constraints: {
+              type: 'integer',
+              min: 1,
+              max: 500,
+              errorCode: 'INVALID_MAX_LINES_COUNT',
+              errorMessage: 'Parameter max_lines_count must be between 1 and 500 (inclusive), got {value}. (INVALID_MAX_LINES_COUNT)',
+              severity: 'error',
+              category: 'parameter_validation'
+            }
+          }
+        }
+      },
+      fun_strategy: {
+        argumentConstraints: {
+          max_lines_count: {
+            validation_constraints: {
+              type: 'integer',
+              min: 1,
+              max: 500,
+              errorCode: 'INVALID_MAX_LINES_COUNT',
+              errorMessage: 'Parameter max_lines_count must be between 1 and 500 (inclusive), got {value}. (INVALID_MAX_LINES_COUNT)',
+              severity: 'error',
+              category: 'parameter_validation'
+            }
+          }
+        }
+      }
+    },
+    errorDefinitions: {
+      INVALID_MAX_LINES_COUNT: {
+        description: "max_lines_count parameter outside valid range (1-500)",
+        severity: "error",
+        category: "parameter_validation",
+        documentation: "Controls maximum drawing objects to prevent performance issues"
+      }
+    }
+  };
+
+  // Use the focused validation approach with limited rules
+  const result = validatePineScriptParameters(source, maxLinesCountRules);
+  
+  return {
+    success: true,
+    hasMaxLinesCountError: result.violations.some(v => v.rule === 'INVALID_MAX_LINES_COUNT'),
+    violations: result.violations,
+    metrics: result.metrics
+  };
+}
+
+/**
+ * Quick max_lines_count validation function for atomic testing integration
+ * @param {string} source - Pine Script source code
+ * @returns {Object} - Validation result matching test expectations
+ */
+export function quickValidateMaxLinesCount(source) {
+  return validateMaxLinesCount(source);
+}
+
+/**
+ * Validates max_labels_count parameter for drawing object count limits
+ * Prevents performance issues from excessive label objects
+ * @param {string} source - Pine Script source code
+ * @returns {Object} - Validation result with label count violations
+ */
+export function validateMaxLabelsCount(source) {
+  // Quick validation rules for max_labels_count only
+  const maxLabelsCountRules = {
+    functionValidationRules: {
+      fun_indicator: {
+        argumentConstraints: {
+          max_labels_count: {
+            validation_constraints: {
+              type: 'integer',
+              min: 1,
+              max: 500,
+              errorCode: 'INVALID_MAX_LABELS_COUNT',
+              errorMessage: 'Parameter max_labels_count must be between 1 and 500 (inclusive), got {value}. (INVALID_MAX_LABELS_COUNT)',
+              severity: 'error',
+              category: 'parameter_validation'
+            }
+          }
+        }
+      },
+      fun_strategy: {
+        argumentConstraints: {
+          max_labels_count: {
+            validation_constraints: {
+              type: 'integer',
+              min: 1,
+              max: 500,
+              errorCode: 'INVALID_MAX_LABELS_COUNT',
+              errorMessage: 'Parameter max_labels_count must be between 1 and 500 (inclusive), got {value}. (INVALID_MAX_LABELS_COUNT)',
+              severity: 'error',
+              category: 'parameter_validation'
+            }
+          }
+        }
+      }
+    },
+    errorDefinitions: {
+      INVALID_MAX_LABELS_COUNT: {
+        description: "max_labels_count parameter outside valid range (1-500)",
+        severity: "error",
+        category: "parameter_validation",
+        documentation: "Controls maximum label objects to prevent performance issues"
+      }
+    }
+  };
+
+  // Use the focused validation approach with limited rules
+  const result = validatePineScriptParameters(source, maxLabelsCountRules);
+  
+  return {
+    success: true,
+    hasMaxLabelsCountError: result.violations.some(v => v.rule === 'INVALID_MAX_LABELS_COUNT'),
+    violations: result.violations,
+    metrics: result.metrics
+  };
+}
+
+/**
+ * Quick max_labels_count validation function for atomic testing integration
+ * @param {string} source - Pine Script source code
+ * @returns {Object} - Validation result matching test expectations
+ */
+export function quickValidateMaxLabelsCount(source) {
+  return validateMaxLabelsCount(source);
+}
+
+/**
+ * Validates max_boxes_count parameter for drawing object count limits
+ * Prevents performance issues from excessive box objects
+ * @param {string} source - Pine Script source code
+ * @returns {Object} - Validation result with box count violations
+ */
+export function validateMaxBoxesCount(source) {
+  // Quick validation rules for max_boxes_count only
+  const maxBoxesCountRules = {
+    functionValidationRules: {
+      fun_indicator: {
+        argumentConstraints: {
+          max_boxes_count: {
+            validation_constraints: {
+              type: 'integer',
+              min: 1,
+              max: 500,
+              errorCode: 'INVALID_MAX_BOXES_COUNT',
+              errorMessage: 'Parameter max_boxes_count must be between 1 and 500 (inclusive), got {value}. (INVALID_MAX_BOXES_COUNT)',
+              severity: 'error',
+              category: 'parameter_validation'
+            }
+          }
+        }
+      },
+      fun_strategy: {
+        argumentConstraints: {
+          max_boxes_count: {
+            validation_constraints: {
+              type: 'integer',
+              min: 1,
+              max: 500,
+              errorCode: 'INVALID_MAX_BOXES_COUNT',
+              errorMessage: 'Parameter max_boxes_count must be between 1 and 500 (inclusive), got {value}. (INVALID_MAX_BOXES_COUNT)',
+              severity: 'error',
+              category: 'parameter_validation'
+            }
+          }
+        }
+      }
+    },
+    errorDefinitions: {
+      INVALID_MAX_BOXES_COUNT: {
+        description: "max_boxes_count parameter outside valid range (1-500)",
+        severity: "error",
+        category: "parameter_validation",
+        documentation: "Controls maximum box objects to prevent performance issues"
+      }
+    }
+  };
+
+  // Use the focused validation approach with limited rules
+  const result = validatePineScriptParameters(source, maxBoxesCountRules);
+  
+  return {
+    success: true,
+    hasMaxBoxesCountError: result.violations.some(v => v.rule === 'INVALID_MAX_BOXES_COUNT'),
+    violations: result.violations,
+    metrics: result.metrics
+  };
+}
+
+/**
+ * Quick max_boxes_count validation function for atomic testing integration
+ * @param {string} source - Pine Script source code
+ * @returns {Object} - Validation result matching test expectations
+ */
+export function quickValidateMaxBoxesCount(source) {
+  return validateMaxBoxesCount(source);
+}
+
+/**
+ * Batch validation for all drawing object count parameters
+ * Efficient validation of max_lines_count, max_labels_count, and max_boxes_count
+ * @param {string} source - Pine Script source code
+ * @returns {Object} - Combined validation result for all drawing object counts
+ */
+export function validateDrawingObjectCounts(source) {
+  // Combined validation rules for all drawing object count parameters
+  const drawingObjectCountRules = {
+    functionValidationRules: {
+      fun_indicator: {
+        argumentConstraints: {
+          max_lines_count: {
+            validation_constraints: {
+              type: 'integer',
+              min: 1,
+              max: 500,
+              errorCode: 'INVALID_MAX_LINES_COUNT',
+              errorMessage: 'Parameter max_lines_count must be between 1 and 500 (inclusive), got {value}. (INVALID_MAX_LINES_COUNT)',
+              severity: 'error',
+              category: 'parameter_validation'
+            }
+          },
+          max_labels_count: {
+            validation_constraints: {
+              type: 'integer',
+              min: 1,
+              max: 500,
+              errorCode: 'INVALID_MAX_LABELS_COUNT',
+              errorMessage: 'Parameter max_labels_count must be between 1 and 500 (inclusive), got {value}. (INVALID_MAX_LABELS_COUNT)',
+              severity: 'error',
+              category: 'parameter_validation'
+            }
+          },
+          max_boxes_count: {
+            validation_constraints: {
+              type: 'integer',
+              min: 1,
+              max: 500,
+              errorCode: 'INVALID_MAX_BOXES_COUNT',
+              errorMessage: 'Parameter max_boxes_count must be between 1 and 500 (inclusive), got {value}. (INVALID_MAX_BOXES_COUNT)',
+              severity: 'error',
+              category: 'parameter_validation'
+            }
+          }
+        }
+      },
+      fun_strategy: {
+        argumentConstraints: {
+          max_lines_count: {
+            validation_constraints: {
+              type: 'integer',
+              min: 1,
+              max: 500,
+              errorCode: 'INVALID_MAX_LINES_COUNT',
+              errorMessage: 'Parameter max_lines_count must be between 1 and 500 (inclusive), got {value}. (INVALID_MAX_LINES_COUNT)',
+              severity: 'error',
+              category: 'parameter_validation'
+            }
+          },
+          max_labels_count: {
+            validation_constraints: {
+              type: 'integer',
+              min: 1,
+              max: 500,
+              errorCode: 'INVALID_MAX_LABELS_COUNT',
+              errorMessage: 'Parameter max_labels_count must be between 1 and 500 (inclusive), got {value}. (INVALID_MAX_LABELS_COUNT)',
+              severity: 'error',
+              category: 'parameter_validation'
+            }
+          },
+          max_boxes_count: {
+            validation_constraints: {
+              type: 'integer',
+              min: 1,
+              max: 500,
+              errorCode: 'INVALID_MAX_BOXES_COUNT',
+              errorMessage: 'Parameter max_boxes_count must be between 1 and 500 (inclusive), got {value}. (INVALID_MAX_BOXES_COUNT)',
+              severity: 'error',
+              category: 'parameter_validation'
+            }
+          }
+        }
+      }
+    },
+    errorDefinitions: {
+      INVALID_MAX_LINES_COUNT: {
+        description: "max_lines_count parameter outside valid range (1-500)",
+        severity: "error",
+        category: "parameter_validation",
+        documentation: "Controls maximum drawing objects to prevent performance issues"
+      },
+      INVALID_MAX_LABELS_COUNT: {
+        description: "max_labels_count parameter outside valid range (1-500)",
+        severity: "error",
+        category: "parameter_validation",
+        documentation: "Controls maximum label objects to prevent performance issues"
+      },
+      INVALID_MAX_BOXES_COUNT: {
+        description: "max_boxes_count parameter outside valid range (1-500)",
+        severity: "error",
+        category: "parameter_validation",
+        documentation: "Controls maximum box objects to prevent performance issues"
+      }
+    }
+  };
+
+  // Use the focused validation approach with limited rules
+  const result = validatePineScriptParameters(source, drawingObjectCountRules);
+  
+  return {
+    success: true,
+    hasDrawingObjectCountError: result.violations.some(v => 
+      ['INVALID_MAX_LINES_COUNT', 'INVALID_MAX_LABELS_COUNT', 'INVALID_MAX_BOXES_COUNT'].includes(v.rule)
+    ),
+    hasMaxLinesCountError: result.violations.some(v => v.rule === 'INVALID_MAX_LINES_COUNT'),
+    hasMaxLabelsCountError: result.violations.some(v => v.rule === 'INVALID_MAX_LABELS_COUNT'),
+    hasMaxBoxesCountError: result.violations.some(v => v.rule === 'INVALID_MAX_BOXES_COUNT'),
+    violations: result.violations,
+    metrics: result.metrics
+  };
+}
+
+/**
+ * Quick batch validation function for all drawing object count parameters
+ * @param {string} source - Pine Script source code
+ * @returns {Object} - Combined validation result for atomic testing
+ */
+export function quickValidateDrawingObjectCounts(source) {
+  return validateDrawingObjectCounts(source);
+}
