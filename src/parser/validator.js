@@ -102,14 +102,27 @@ export function validateParameters(source, validationRules = null) {
 function validateFunctionCall(funcCall, rules) {
   const violations = [];
   
+  // Construct full function name for validation lookup
+  const fullFunctionName = funcCall.namespace ? `${funcCall.namespace}.${funcCall.name}` : funcCall.name;
+  
   // Get validation rules for this function
-  const functionRules = getFunctionValidationRules(funcCall.name, rules);
+  const functionRules = getFunctionValidationRules(fullFunctionName, rules);
   if (!functionRules || !functionRules.argumentConstraints) {
     return violations; // No rules for this function
   }
   
+  // Special handling for strategy function to avoid duplicate shorttitle validation
+  const isStrategy = fullFunctionName === 'strategy';
+  const hasShortTitle = 'shorttitle' in funcCall.parameters;
+  
   // Validate each parameter
   for (const [paramName, paramValue] of Object.entries(funcCall.parameters)) {
+    // Skip _1 validation for strategy if shorttitle is also present (avoid duplicate)
+    if (isStrategy && paramName === '_1' && hasShortTitle && 
+        funcCall.parameters.shorttitle === funcCall.parameters._1) {
+      continue;
+    }
+    
     const paramRules = functionRules.argumentConstraints[paramName];
     if (paramRules && paramRules.validation_constraints) {
       const paramViolations = validateParameter(
@@ -136,6 +149,9 @@ function validateFunctionCall(funcCall, rules) {
 function validateParameter(paramName, paramValue, constraints, funcCall) {
   const violations = [];
   
+  // Construct full function name for metadata
+  const fullFunctionName = funcCall.namespace ? `${funcCall.namespace}.${funcCall.name}` : funcCall.name;
+  
   // STRING LENGTH VALIDATION (SHORT_TITLE_TOO_LONG, etc.)
   if (constraints.maxLength && typeof paramValue === 'string') {
     if (paramValue.length > constraints.maxLength) {
@@ -150,7 +166,7 @@ function validateParameter(paramName, paramValue, constraints, funcCall) {
         severity: constraints.severity || 'error',
         category: constraints.category || 'parameter_validation',
         metadata: {
-          functionName: funcCall.name,
+          functionName: fullFunctionName,
           parameterName: paramName,
           actualLength: paramValue.length,
           maxLength: constraints.maxLength,
@@ -172,7 +188,7 @@ function validateParameter(paramName, paramValue, constraints, funcCall) {
         severity: constraints.severity || 'error',
         category: constraints.category || 'parameter_validation',
         metadata: {
-          functionName: funcCall.name,
+          functionName: fullFunctionName,
           parameterName: paramName,
           actualValue: paramValue,
           expectedType: constraints.type
@@ -192,7 +208,7 @@ function validateParameter(paramName, paramValue, constraints, funcCall) {
           severity: constraints.severity || 'error',
           category: constraints.category || 'parameter_validation',
           metadata: {
-            functionName: funcCall.name,
+            functionName: fullFunctionName,
             parameterName: paramName,
             actualValue: numValue,
             minValue: constraints.min
@@ -212,7 +228,7 @@ function validateParameter(paramName, paramValue, constraints, funcCall) {
           severity: constraints.severity || 'error',
           category: constraints.category || 'parameter_validation',
           metadata: {
-            functionName: funcCall.name,
+            functionName: fullFunctionName,
             parameterName: paramName,
             actualValue: numValue,
             maxValue: constraints.max
@@ -229,7 +245,7 @@ function validateParameter(paramName, paramValue, constraints, funcCall) {
           severity: constraints.severity || 'error',
           category: constraints.category || 'parameter_validation',
           metadata: {
-            functionName: funcCall.name,
+            functionName: fullFunctionName,
             parameterName: paramName,
             actualValue: numValue
           }

@@ -149,7 +149,7 @@ export function isFunctionCallNode(node) {
  */
 export function isParameterNode(node) {
   return isASTNode(node) && 
-         node.type === 'Parameter' &&
+         node.type === AST_NODE_TYPES.PARAMETER &&
          node.value &&
          typeof node.position === 'number' &&
          typeof node.isNamed === 'boolean';
@@ -188,7 +188,7 @@ export function createFunctionCallNode(name, parameters, location, namespace) {
  */
 export function createParameterNode(value, location, name, position) {
   return {
-    type: 'Parameter',
+    type: AST_NODE_TYPES.PARAMETER,
     value,
     location,
     name,

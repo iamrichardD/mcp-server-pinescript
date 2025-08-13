@@ -25,7 +25,7 @@ export {
   tokenize, 
   createLexer, 
   TOKEN_TYPES, 
-  KEYWORDS 
+  KEYWORDS
 } from './lexer.js';
 
 // AST type definitions and utilities

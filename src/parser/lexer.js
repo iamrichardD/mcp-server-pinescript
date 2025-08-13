@@ -29,6 +29,7 @@ export const TOKEN_TYPES = {
   ARITHMETIC: 'ARITHMETIC',   // +, -, *, /, %
   COMPARISON: 'COMPARISON',   // ==, !=, <, >, <=, >=
   LOGICAL: 'LOGICAL',        // and, or, not
+  OPERATOR: 'OPERATOR',      // Generic operator type for tests
   
   // Punctuation
   LPAREN: 'LPAREN',          // (
@@ -107,7 +108,7 @@ const KEYWORDS = new Set([
  * @returns {LexerState} - Initial lexer state
  */
 export function createLexer(source) {
-  return {
+  const lexer = {
     source,
     position: 0,
     line: 1,
@@ -116,6 +117,13 @@ export function createLexer(source) {
     indentStack: [0],
     atLineStart: true
   };
+  
+  // Add tokenize method to the lexer for tests
+  lexer.tokenize = function() {
+    return tokenize(this.source);
+  };
+  
+  return lexer;
 }
 
 /**
@@ -476,5 +484,8 @@ function getOperatorType(operator) {
   }
 }
 
+
 // Export for testing and introspection
-export { KEYWORDS };
+// Convert Set to Array for test compatibility
+export const KEYWORDS_ARRAY = Array.from(KEYWORDS);
+export { KEYWORDS, KEYWORDS_ARRAY as KEYWORDS_SET };

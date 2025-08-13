@@ -109,38 +109,46 @@ export function extractFunctionParameters(source) {
   const functionCalls = [];
   
   // Extract function calls with their parameters
+  // Process both direct function calls and function calls within assignments
   for (const stmt of result.ast.statements) {
     if (stmt.type === AST_NODE_TYPES.FUNCTION_CALL) {
-      const params = {};
-      
-      // Process both positional and named parameters
-      for (const param of stmt.parameters) {
-        if (param.isNamed && param.name) {
-          params[param.name] = extractParameterValue(param.value);
-        } else {
-          // For positional parameters, use index
-          params[`_${param.position}`] = extractParameterValue(param.value);
-          
-          // Special handling for strategy function: second positional parameter is shorttitle
-          if (stmt.name === 'strategy' && param.position === 1) {
-            params['shorttitle'] = extractParameterValue(param.value);
-          }
+      addFunctionCall(stmt, functionCalls);
+    }
+  }
+  
+  // Also check the body for assignments and other statements
+  for (const stmt of result.ast.body) {
+    if (stmt && Array.isArray(stmt)) {
+      // Handle assignments that return arrays of function calls
+      for (const funcCall of stmt) {
+        if (funcCall && funcCall.type === AST_NODE_TYPES.FUNCTION_CALL) {
+          addFunctionCall(funcCall, functionCalls);
+          // Recursively extract nested function calls
+          extractNestedFunctionCalls(funcCall, functionCalls);
         }
       }
-      
-      functionCalls.push({
-        name: stmt.name,
-        namespace: stmt.namespace,
-        parameters: params,
-        location: stmt.location,
-        isBuiltIn: stmt.isBuiltIn
-      });
+    } else if (stmt && stmt.type === AST_NODE_TYPES.FUNCTION_CALL) {
+      addFunctionCall(stmt, functionCalls);
+      // Recursively extract nested function calls
+      extractNestedFunctionCalls(stmt, functionCalls);
+    }
+  }
+  
+  // Remove duplicates based on location
+  const uniqueFunctionCalls = [];
+  const seenLocations = new Set();
+  
+  for (const funcCall of functionCalls) {
+    const locationKey = `${funcCall.location.line}:${funcCall.location.column}:${funcCall.name}`;
+    if (!seenLocations.has(locationKey)) {
+      seenLocations.add(locationKey);
+      uniqueFunctionCalls.push(funcCall);
     }
   }
   
   return {
     success: result.success,
-    functionCalls,
+    functionCalls: uniqueFunctionCalls,
     errors: result.errors,
     metrics: result.metrics
   };
@@ -179,9 +187,14 @@ function parseStatement(parser) {
     return null;
   }
   
-  // Check for function calls
+  // Check for assignments and function calls
   if (check(parser, TOKEN_TYPES.IDENTIFIER) || check(parser, TOKEN_TYPES.KEYWORD)) {
     const startToken = peek(parser);
+    
+    // Look ahead for assignment pattern: identifier '='
+    if (peekNext(parser) && peekNext(parser).type === TOKEN_TYPES.ASSIGN) {
+      return parseAssignment(parser);
+    }
     
     // Look ahead for function call pattern: identifier '('
     if (peekNext(parser) && peekNext(parser).type === TOKEN_TYPES.LPAREN) {
@@ -285,6 +298,100 @@ function parseNamespacedFunctionCall(parser, namespace) {
 }
 
 /**
+ * Recursively extract nested function calls from a function call's parameters
+ * @param {Object} funcCall - Function call AST node
+ * @param {Array} functionCalls - Array to add function calls to
+ */
+function extractNestedFunctionCalls(funcCall, functionCalls) {
+  if (!funcCall.parameters) return;
+  
+  for (const param of funcCall.parameters) {
+    if (param.value && param.value.type === AST_NODE_TYPES.FUNCTION_CALL) {
+      addFunctionCall(param.value, functionCalls);
+      // Recursively check this nested function call for more nesting
+      extractNestedFunctionCalls(param.value, functionCalls);
+    }
+  }
+}
+
+/**
+ * Add a function call to the function calls array with parameter processing
+ * @param {Object} stmt - Function call AST node
+ * @param {Array} functionCalls - Array to add the function call to
+ */
+function addFunctionCall(stmt, functionCalls) {
+  const params = {};
+  
+  // Process both positional and named parameters
+  for (const param of stmt.parameters) {
+    if (param.isNamed && param.name) {
+      params[param.name] = extractParameterValue(param.value);
+    } else {
+      // For positional parameters, use index
+      params[`_${param.position}`] = extractParameterValue(param.value);
+      
+      // Special handling for strategy function: second positional parameter is shorttitle
+      if (stmt.name === 'strategy' && param.position === 1) {
+        params['shorttitle'] = extractParameterValue(param.value);
+      }
+    }
+  }
+  
+  functionCalls.push({
+    name: stmt.name,
+    namespace: stmt.namespace,
+    parameters: params,
+    location: stmt.location,
+    isBuiltIn: stmt.isBuiltIn
+  });
+}
+
+/**
+ * Parse an assignment statement
+ * @param {ParserState} parser - Parser state  
+ * @returns {Array} - Array of function call nodes found in the assignment
+ */
+function parseAssignment(parser) {
+  const varName = advance(parser); // consume variable name
+  advance(parser); // consume '='
+  
+  // Parse the right-hand side expression which may contain function calls
+  const expr = parseExpression(parser);
+  
+  // Extract function calls from the expression
+  const functionCalls = extractFunctionCallsFromExpression(expr);
+  
+  // Return all function calls found in the assignment
+  return functionCalls;
+}
+
+/**
+ * Extract function calls from an expression recursively
+ * @param {Object} expr - Expression node
+ * @returns {Array} - Array of function call nodes
+ */
+function extractFunctionCallsFromExpression(expr) {
+  const functionCalls = [];
+  
+  if (!expr) return functionCalls;
+  
+  if (expr.type === AST_NODE_TYPES.FUNCTION_CALL) {
+    functionCalls.push(expr);
+    
+    // Also check parameters for nested function calls
+    if (expr.parameters) {
+      for (const param of expr.parameters) {
+        if (param.value) {
+          functionCalls.push(...extractFunctionCallsFromExpression(param.value));
+        }
+      }
+    }
+  }
+  
+  return functionCalls;
+}
+
+/**
  * Parse a function parameter
  * @param {ParserState} parser - Parser state
  * @param {number} position - Parameter position
@@ -293,8 +400,8 @@ function parseNamespacedFunctionCall(parser, namespace) {
 function parseParameter(parser, position) {
   const startLocation = getCurrentLocation(parser);
   
-  // Check for named parameter: identifier '='
-  if (check(parser, TOKEN_TYPES.IDENTIFIER) && 
+  // Check for named parameter: (identifier or keyword) '='
+  if ((check(parser, TOKEN_TYPES.IDENTIFIER) || check(parser, TOKEN_TYPES.KEYWORD)) && 
       peekNext(parser) && peekNext(parser).type === TOKEN_TYPES.ASSIGN) {
     const nameToken = advance(parser); // consume parameter name
     advance(parser); // consume '='
@@ -370,6 +477,47 @@ function parseExpression(parser) {
       }
     }
     
+    // Check if this is a function call after the member expression
+    if (check(parser, TOKEN_TYPES.LPAREN)) {
+      // Convert member expression to function call
+      if (expr.type === 'MemberExpression') {
+        // We need to construct this as a namespaced function call
+        const namespace = expr.object.name;
+        const functionName = expr.property.name;
+        
+        // Manually parse the function call parts
+        advance(parser); // consume '('
+        
+        const parameters = [];
+        let position = 0;
+        
+        while (!check(parser, TOKEN_TYPES.RPAREN) && !isAtEnd(parser)) {
+          skipNewlines(parser);
+          
+          const param = parseParameter(parser, position);
+          if (param) {
+            parameters.push(param);
+            position++;
+          }
+          
+          skipNewlines(parser);
+          
+          if (!check(parser, TOKEN_TYPES.RPAREN)) {
+            consume(parser, TOKEN_TYPES.COMMA, "Expected ',' between parameters");
+            skipNewlines(parser);
+          }
+        }
+        
+        consume(parser, TOKEN_TYPES.RPAREN, "Expected ')' after parameters");
+        
+        return createFunctionCallNode(functionName, parameters, expr.location, namespace);
+      } else if (expr.type === AST_NODE_TYPES.IDENTIFIER) {
+        // Reset parser position to parse the function call properly
+        parser.current--; // Go back to the identifier
+        return parseFunctionCall(parser);
+      }
+    }
+    
     return expr;
   }
   
@@ -398,11 +546,25 @@ function parseExpression(parser) {
  */
 function extractParameterValue(parameterValue) {
   if (parameterValue.type === AST_NODE_TYPES.LITERAL) {
-    return parameterValue.value;
+    const value = parameterValue.value;
+    
+    // Try to convert numeric strings to numbers
+    if (typeof value === 'string' && /^\d+(\.\d+)?$/.test(value)) {
+      return parseFloat(value);
+    }
+    
+    return value;
   }
   
   if (parameterValue.type === AST_NODE_TYPES.IDENTIFIER) {
     return parameterValue.name;
+  }
+  
+  // Handle boolean literals
+  if (parameterValue.type === AST_NODE_TYPES.BOOLEAN || 
+      (parameterValue.type === AST_NODE_TYPES.LITERAL && 
+       (parameterValue.value === 'true' || parameterValue.value === 'false'))) {
+    return parameterValue.value === 'true';
   }
   
   if (parameterValue.type === 'MemberExpression') {
