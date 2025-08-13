@@ -46,14 +46,18 @@ import {
   validateParameters as _validateParameters,
   validatePineScriptParameters as _validatePineScriptParameters,
   validateShortTitle as _validateShortTitle,
-  loadValidationRules as _loadValidationRules
+  loadValidationRules as _loadValidationRules,
+  validatePrecision as _validatePrecision,
+  quickValidatePrecision as _quickValidatePrecision,
 } from './validator.js';
 
 export {
   _validateParameters as validateParameters,
   _validatePineScriptParameters as validatePineScriptParameters,  
   _validateShortTitle as validateShortTitle,
-  _loadValidationRules as loadValidationRules
+  _loadValidationRules as loadValidationRules,
+  _validatePrecision as validatePrecision,
+  _quickValidatePrecision as quickValidatePrecision,
 };
 
 /**

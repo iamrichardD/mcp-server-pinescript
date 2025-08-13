@@ -596,6 +596,25 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
           // Fallback: continue without advanced validation if parser fails
           console.warn('Advanced validation unavailable:', error.message);
         }
+        // INVALID_PRECISION validation using same AST parser
+        try {
+          const { quickValidatePrecision } = await import("./src/parser/index.js");
+          const precisionValidationResult = await quickValidatePrecision(line);
+          
+          if (precisionValidationResult.hasPrecisionError) {
+            violations.push(...precisionValidationResult.violations.map(violation => ({
+              line: i + 1,
+              column: violation.column,
+              severity: violation.severity,
+              message: violation.message,
+              rule: violation.rule,
+              category: violation.category
+            })));
+          }
+        } catch (error) {
+          // Fallback: continue without precision validation if parser fails
+          console.warn("Precision validation unavailable:", error.message);
+        }
       }
       
       // Style guide checks - corrected to camelCase per official Pine Script style guide

@@ -202,6 +202,11 @@ export function nextToken(lexer) {
   if (isDigit(char) || (char === '.' && isDigit(peekNext(lexer)))) {
     return readNumber(lexer, startLine, startColumn, start);
   }
+
+  // Handle negative numbers (unary minus followed by digit)
+  if (char === '-' && !isAtEnd(lexer) && isDigit(peekNext(lexer))) {
+    return readNegativeNumber(lexer, startLine, startColumn, start);
+  }
   
   // Identifiers and keywords
   if (isAlpha(char) || char === '_') {
@@ -489,3 +494,41 @@ function getOperatorType(operator) {
 // Convert Set to Array for test compatibility
 export const KEYWORDS_ARRAY = Array.from(KEYWORDS);
 export { KEYWORDS, KEYWORDS_ARRAY as KEYWORDS_SET };
+
+/**
+ * Read a negative number literal
+ * @param {LexerState} lexer - Lexer state
+ * @param {number} startLine - Start line
+ * @param {number} startColumn - Start column
+ * @param {number} start - Start position
+ * @returns {Token} - Number token with negative value
+ */
+function readNegativeNumber(lexer, startLine, startColumn, start) {
+  let value = '';
+  
+  // Consume the minus sign
+  value += advance(lexer);
+  
+  // Read the number part
+  let hasDecimal = false;
+  while (!isAtEnd(lexer) && (isDigit(peek(lexer)) || (!hasDecimal && peek(lexer) === '.'))) {
+    if (peek(lexer) === '.') {
+      hasDecimal = true;
+    }
+    value += advance(lexer);
+  }
+  
+  // Handle scientific notation
+  if (!isAtEnd(lexer) && (peek(lexer) === 'e' || peek(lexer) === 'E')) {
+    value += advance(lexer);
+    if (!isAtEnd(lexer) && (peek(lexer) === '+' || peek(lexer) === '-')) {
+      value += advance(lexer);
+    }
+    while (!isAtEnd(lexer) && isDigit(peek(lexer))) {
+      value += advance(lexer);
+    }
+  }
+  
+  const length = lexer.position - start;
+  return createToken(TOKEN_TYPES.NUMBER, value, startLine, startColumn, start, length);
+}

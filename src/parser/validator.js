@@ -211,7 +211,8 @@ function validateParameter(paramName, paramValue, constraints, funcCall) {
             functionName: fullFunctionName,
             parameterName: paramName,
             actualValue: numValue,
-            minValue: constraints.min
+            minValue: constraints.min,
+            maxValue: constraints.max
           }
         });
       }
@@ -231,6 +232,7 @@ function validateParameter(paramName, paramValue, constraints, funcCall) {
             functionName: fullFunctionName,
             parameterName: paramName,
             actualValue: numValue,
+            minValue: constraints.min,
             maxValue: constraints.max
           }
         });
@@ -382,3 +384,67 @@ export function validateShortTitle(source) {
 
 // Export for testing
 export { getFunctionValidationRules, formatErrorMessage };
+
+/**
+ * Create an INVALID_PRECISION validation specifically
+ * This implements the constraint: 0 ≤ precision ≤ 8 (integer) for strategy() and indicator() functions
+ * Following the atomic testing success pattern from SHORT_TITLE_TOO_LONG
+ * @param {string} source - Pine Script source code
+ * @returns {Object} - Focused validation result for precision parameter
+ */
+export function validatePrecision(source) {
+  // Quick validation rules for precision only
+  const precisionRules = {
+    functionValidationRules: {
+      fun_indicator: {
+        argumentConstraints: {
+          precision: {
+            validation_constraints: {
+              type: 'integer',
+              min: 0,
+              max: 8,
+              errorCode: 'INVALID_PRECISION',
+              errorMessage: 'Parameter precision must be between 0 and 8 (inclusive), got {value}. (INVALID_PRECISION)',
+              severity: 'error',
+              category: 'parameter_validation'
+            }
+          }
+        }
+      },
+      fun_strategy: {
+        argumentConstraints: {
+          precision: {
+            validation_constraints: {
+              type: 'integer',
+              min: 0,
+              max: 8,
+              errorCode: 'INVALID_PRECISION',
+              errorMessage: 'Parameter precision must be between 0 and 8 (inclusive), got {value}. (INVALID_PRECISION)',
+              severity: 'error',
+              category: 'parameter_validation'
+            }
+          }
+        }
+      }
+    }
+  };
+  
+  const result = validatePineScriptParameters(source, precisionRules);
+  
+  return {
+    success: true,
+    hasPrecisionError: result.violations.some(v => v.rule === 'INVALID_PRECISION'),
+    violations: result.violations,
+    metrics: result.metrics
+  };
+}
+
+/**
+ * Quick precision validation function for atomic testing integration
+ * Implements the same pattern as quickValidateShortTitle for consistency
+ * @param {string} source - Pine Script source code
+ * @returns {Object} - Validation result matching test expectations
+ */
+export function quickValidatePrecision(source) {
+  return validatePrecision(source);
+}
