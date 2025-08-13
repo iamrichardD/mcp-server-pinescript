@@ -9,7 +9,11 @@
       "Bash(sed:*)",
       "Bash(npm test:*)",
       "Bash(pkill:*)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(git push:*)",
+      "Bash(npx vitest run:*)",
+      "Bash(find:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }

@@ -996,6 +996,17 @@ export function inferParameterTypes(paramValue) {
     if (['close', 'open', 'high', 'low', 'volume', 'time'].includes(trimmed)) {
       return 'series float';
     }
+    
+    // Pine Script constants
+    if (trimmed.startsWith('alert.freq_') || 
+        trimmed.startsWith('barmerge.') ||
+        trimmed.startsWith('location.') ||
+        trimmed.startsWith('size.') ||
+        trimmed.startsWith('shape.') ||
+        trimmed.startsWith('plot.')) {
+      return 'input string';
+    }
+    
     // Could be any variable - assume series for safety
     return 'series';
   }
@@ -1112,6 +1123,27 @@ function checkTypeCompatibility(expected, actual) {
     if (baseExpected === 'int/float' && (baseActual === 'int' || baseActual === 'float')) {
       return { isCompatible: true, reason: 'series_numeric_compatible' };
     }
+  }
+  
+  // Handle const string accepting regular string
+  if (expected === 'const string' && actual === 'string') {
+    return { isCompatible: true, reason: 'const_string_compatible' };
+  }
+  
+  // Handle const int accepting regular int
+  if (expected === 'const int' && actual === 'int') {
+    return { isCompatible: true, reason: 'const_int_compatible' };
+  }
+  
+  // Handle const bool accepting regular bool
+  if (expected === 'const bool' && actual === 'bool') {
+    return { isCompatible: true, reason: 'const_bool_compatible' };
+  }
+  
+  // Series exact match check
+  if (expected.includes('series') && actual.includes('series')) {
+    const baseExpected = expected.replace('series ', '');
+    const baseActual = actual.replace('series ', '');
     if (baseExpected === baseActual) {
       return { isCompatible: true, reason: 'series_exact_match' };
     }
@@ -1239,4 +1271,285 @@ export function validateInputTypes(source) {
  */
 export function quickValidateInputTypes(source) {
   return validateInputTypes(source);
+}
+
+/**
+ * PHASE 2: FUNCTION SIGNATURE VALIDATION
+ * Implementation of atomic testing pattern for Pine Script function signature validation.
+ * Tests function calls against expected signatures to ensure correct parameter count and types.
+ * Following the proven atomic methodology that achieved 100% test pass rate with 6 validation rules.
+ */
+
+/**
+ * Get expected function signature from Pine Script language reference
+ * @param {string} functionName - Function name to get signature for
+ * @returns {Object} - Function signature with parameters and requirements
+ */
+export function getExpectedSignature(functionName) {
+  // Extended function signatures based on Pine Script v6 language reference
+  const signatures = {
+    'ta.sma': {
+      name: 'ta.sma',
+      parameters: [
+        { name: 'source', type: 'series int/float', required: true },
+        { name: 'length', type: 'series int', required: true }
+      ]
+    },
+    'ta.ema': {
+      name: 'ta.ema',
+      parameters: [
+        { name: 'source', type: 'series int/float', required: true },
+        { name: 'length', type: 'series int', required: true }
+      ]
+    },
+    'math.max': {
+      name: 'math.max',
+      parameters: [
+        { name: 'value1', type: 'int/float', required: true },
+        { name: 'value2', type: 'int/float', required: true }
+      ]
+    },
+    'math.min': {
+      name: 'math.min',
+      parameters: [
+        { name: 'value1', type: 'int/float', required: true },
+        { name: 'value2', type: 'int/float', required: true }
+      ]
+    },
+    'str.contains': {
+      name: 'str.contains',
+      parameters: [
+        { name: 'source', type: 'string', required: true },
+        { name: 'substring', type: 'string', required: true }
+      ]
+    },
+    'alert': {
+      name: 'alert',
+      parameters: [
+        { name: 'message', type: 'series string', required: true },
+        { name: 'freq', type: 'input string', required: false }
+      ]
+    },
+    'alertcondition': {
+      name: 'alertcondition',
+      parameters: [
+        { name: 'condition', type: 'series bool', required: true },
+        { name: 'title', type: 'const string', required: false },
+        { name: 'message', type: 'const string', required: false }
+      ]
+    },
+    'strategy': {
+      name: 'strategy',
+      parameters: [
+        { name: 'title', type: 'const string', required: true },
+        { name: 'shorttitle', type: 'const string', required: false },
+        { name: 'overlay', type: 'const bool', required: false },
+        { name: 'format', type: 'const string', required: false },
+        { name: 'precision', type: 'const int', required: false }
+      ]
+    },
+    'indicator': {
+      name: 'indicator',
+      parameters: [
+        { name: 'title', type: 'const string', required: true },
+        { name: 'shorttitle', type: 'const string', required: false },
+        { name: 'overlay', type: 'const bool', required: false },
+        { name: 'format', type: 'const string', required: false },
+        { name: 'precision', type: 'const int', required: false }
+      ]
+    },
+    'plot': {
+      name: 'plot',
+      parameters: [
+        { name: 'series', type: 'series int/float', required: true },
+        { name: 'title', type: 'const string', required: false },
+        { name: 'color', type: 'series color', required: false },
+        { name: 'linewidth', type: 'input int', required: false }
+      ]
+    }
+  };
+  
+  return signatures[functionName] || { name: functionName, parameters: [] };
+}
+
+/**
+ * Validate parameter count against expected signature
+ * @param {Object} signature - Expected function signature
+ * @param {Array} actualParams - Actual parameters passed
+ * @returns {Object} - Parameter count validation result
+ */
+export function validateParameterCount(signature, actualParams) {
+  const requiredCount = signature.parameters.filter(p => p.required).length;
+  const maxCount = signature.parameters.length;
+  const actualCount = actualParams.length;
+  
+  if (actualCount < requiredCount) {
+    return {
+      isValid: false,
+      reason: 'missing_required_parameters',
+      expected: requiredCount,
+      actual: actualCount,
+      missingParams: signature.parameters
+        .filter((p, i) => p.required && i >= actualCount)
+        .map(p => p.name)
+    };
+  }
+  
+  if (actualCount > maxCount) {
+    return {
+      isValid: false,
+      reason: 'too_many_parameters',
+      expected: maxCount,
+      actual: actualCount,
+      extraParams: actualParams.slice(maxCount)
+    };
+  }
+  
+  return { isValid: true };
+}
+
+/**
+ * Validate parameter types against expected signature
+ * @param {Object} signature - Expected function signature
+ * @param {Array} actualParams - Actual parameters with inferred types
+ * @returns {Object} - Parameter type validation result
+ */
+export function validateParameterTypes(signature, actualParams) {
+  const violations = [];
+  
+  for (let i = 0; i < Math.min(signature.parameters.length, actualParams.length); i++) {
+    const expectedParam = signature.parameters[i];
+    const actualParam = actualParams[i];
+    
+    const typeComparison = compareTypes(expectedParam.type, actualParam.type);
+    
+    if (!typeComparison.isValid) {
+      violations.push({
+        parameter: expectedParam.name,
+        expectedType: expectedParam.type,
+        actualType: actualParam.type,
+        reason: typeComparison.reason
+      });
+    }
+  }
+  
+  return {
+    isValid: violations.length === 0,
+    violations: violations
+  };
+}
+
+/**
+ * Main function signature validation implementation
+ * @param {string} source - Pine Script source code
+ * @returns {Object} - Signature validation result
+ */
+export function validateFunctionSignatures(source) {
+  const violations = [];
+  
+  // Handle null/undefined inputs gracefully
+  if (!source || typeof source !== 'string') {
+    return {
+      success: true,
+      violations: [],
+      metrics: {
+        functionsAnalyzed: 0,
+        signatureChecksPerformed: 0
+      }
+    };
+  }
+  
+  const lines = source.split('\n');
+  
+  lines.forEach((line, lineIndex) => {
+    const functionCalls = extractFunctionCalls(line);
+    
+    functionCalls.forEach(funcCall => {
+      const signature = getExpectedSignature(funcCall.name);
+      
+      if (signature.parameters.length === 0) {
+        return; // Skip functions we don't have signature info for
+      }
+      
+      // Validate parameter count
+      const countValidation = validateParameterCount(signature, funcCall.parameters);
+      
+      if (!countValidation.isValid) {
+        violations.push({
+          line: lineIndex + 1,
+          column: funcCall.position + 1,
+          severity: 'error',
+          message: createSignatureErrorMessage(funcCall.name, countValidation),
+          rule: 'FUNCTION_SIGNATURE_VALIDATION',
+          category: 'function_signature',
+          functionName: funcCall.name,
+          reason: countValidation.reason,
+          expectedParams: countValidation.expected,
+          actualParams: countValidation.actual,
+          missingParams: countValidation.missingParams,
+          extraParams: countValidation.extraParams
+        });
+      } else {
+        // If parameter count is correct, validate types
+        const paramsWithTypes = funcCall.parameters.map(param => ({
+          value: param,
+          type: inferParameterTypes(param)
+        }));
+        
+        const typeValidation = validateParameterTypes(signature, paramsWithTypes);
+        
+        if (!typeValidation.isValid) {
+          typeValidation.violations.forEach(violation => {
+            violations.push({
+              line: lineIndex + 1,
+              column: funcCall.position + 1,
+              severity: 'error',
+              message: `Function ${funcCall.name}() parameter "${violation.parameter}" expects ${violation.expectedType} but got ${violation.actualType}. (FUNCTION_SIGNATURE_VALIDATION)`,
+              rule: 'FUNCTION_SIGNATURE_VALIDATION',
+              category: 'function_signature',
+              functionName: funcCall.name,
+              reason: 'parameter_type_mismatch',
+              parameterName: violation.parameter,
+              expectedType: violation.expectedType,
+              actualType: violation.actualType
+            });
+          });
+        }
+      }
+    });
+  });
+  
+  return {
+    success: true,
+    violations: violations,
+    metrics: {
+      functionsAnalyzed: lines.reduce((total, line) => total + extractFunctionCalls(line).length, 0),
+      signatureChecksPerformed: lines.reduce((total, line) => total + extractFunctionCalls(line).length, 0)
+    }
+  };
+}
+
+/**
+ * Create appropriate error message for signature validation
+ * @param {string} functionName - Function name
+ * @param {Object} countValidation - Parameter count validation result
+ * @returns {string} - Error message
+ */
+function createSignatureErrorMessage(functionName, countValidation) {
+  if (countValidation.reason === 'too_many_parameters') {
+    return `Function ${functionName}() expects ${countValidation.expected} parameters but got ${countValidation.actual}. Extra parameters: ${countValidation.extraParams.join(', ')}. (FUNCTION_SIGNATURE_VALIDATION)`;
+  } else if (countValidation.reason === 'missing_required_parameters') {
+    return `Function ${functionName}() is missing required parameters: ${countValidation.missingParams.join(', ')}. Expected ${countValidation.expected} but got ${countValidation.actual}. (FUNCTION_SIGNATURE_VALIDATION)`;
+  }
+  return `Function ${functionName}() has signature validation error. (FUNCTION_SIGNATURE_VALIDATION)`;
+}
+
+/**
+ * Quick function signature validation following proven atomic pattern
+ * Implements the same pattern as quickValidateInputTypes for consistency
+ * @param {string} source - Pine Script source code
+ * @returns {Object} - Function signature validation result
+ */
+export function quickValidateFunctionSignatures(source) {
+  return validateFunctionSignatures(source);
 }

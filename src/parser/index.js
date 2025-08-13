@@ -65,6 +65,11 @@ import {
   inferParameterTypes as _inferParameterTypes,
   getExpectedTypes as _getExpectedTypes,
   compareTypes as _compareTypes,
+  validateFunctionSignatures as _validateFunctionSignatures,
+  quickValidateFunctionSignatures as _quickValidateFunctionSignatures,
+  getExpectedSignature as _getExpectedSignature,
+  validateParameterCount as _validateParameterCount,
+  validateParameterTypes as _validateParameterTypes,
 } from './validator.js';
 
 export {
@@ -90,6 +95,11 @@ export {
   _inferParameterTypes as inferParameterTypes,
   _getExpectedTypes as getExpectedTypes,
   _compareTypes as compareTypes,
+  _validateFunctionSignatures as validateFunctionSignatures,
+  _quickValidateFunctionSignatures as quickValidateFunctionSignatures,
+  _getExpectedSignature as getExpectedSignature,
+  _validateParameterCount as validateParameterCount,
+  _validateParameterTypes as validateParameterTypes,
 };
 
 /**

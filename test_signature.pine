@@ -1,0 +1,11 @@
+//@version=6
+indicator("Test Script")
+
+// Valid calls
+sma = ta.sma(close, 14)
+alert("Test message")
+
+// Invalid calls - should be detected by FUNCTION_SIGNATURE_VALIDATION  
+badSma = ta.sma(close, 14, extra)
+badAlert = alert()
+badStrategy = strategy()

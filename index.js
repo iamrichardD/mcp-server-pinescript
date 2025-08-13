@@ -736,6 +736,26 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
       }
     }
     
+    // FUNCTION_SIGNATURE_VALIDATION - validate all function calls across entire script
+    try {
+      const { quickValidateFunctionSignatures } = await import("./src/parser/index.js");
+      const functionSignatureValidationResult = await quickValidateFunctionSignatures(code);
+      
+      if (functionSignatureValidationResult.violations.length > 0) {
+        violations.push(...functionSignatureValidationResult.violations.map(violation => ({
+          line: violation.line,
+          column: violation.column,
+          severity: violation.severity,
+          message: violation.message,
+          rule: violation.rule,
+          category: violation.category
+        })));
+      }
+    } catch (error) {
+      // Fallback: continue without function signature validation if parser fails
+      console.warn("Function signature validation unavailable:", error.message);
+    }
+    
     if (!hasDeclaration) {
       violations.push({
         line: 1,
