@@ -864,3 +864,379 @@ export function validateDrawingObjectCounts(source) {
 export function quickValidateDrawingObjectCounts(source) {
   return validateDrawingObjectCounts(source);
 }
+
+/**
+ * Phase 1: Core Type Validation Functions Following Atomic Pattern
+ * INPUT_TYPE_MISMATCH validation for detecting Pine Script type mismatches
+ * Following the proven success methodology from 5 validated rules
+ */
+
+/**
+ * ATOMIC FUNCTION 1: Extract function calls from a Pine Script line
+ * @param {string} line - Single line of Pine Script code
+ * @returns {Array} - Array of function call objects with name and parameters
+ */
+export function extractFunctionCalls(line) {
+  const functionCalls = [];
+  
+  if (!line || typeof line !== 'string') {
+    return functionCalls;
+  }
+  
+  // Pine Script function call pattern: functionName(params...)
+  const functionCallRegex = /([a-zA-Z_][a-zA-Z0-9_.]*)\s*\(/g;
+  
+  let match;
+  while ((match = functionCallRegex.exec(line)) !== null) {
+    const functionName = match[1];
+    const startPos = match.index + match[1].length;
+    
+    // Skip common false positives that aren't function calls
+    if (['if', 'while', 'for'].includes(functionName)) {
+      continue;
+    }
+    
+    // Extract parameters for this function call
+    const params = extractParametersForFunction(line, startPos);
+    
+    functionCalls.push({
+      name: functionName,
+      parameters: params,
+      position: match.index
+    });
+  }
+  
+  return functionCalls;
+}
+
+/**
+ * ATOMIC FUNCTION 2: Extract parameters from a function call
+ * @param {string} line - Line containing function call
+ * @param {number} startPos - Position after function name and opening paren
+ * @returns {Array} - Array of parameter values
+ */
+function extractParametersForFunction(line, startPos) {
+  const params = [];
+  let depth = 1;
+  let current = '';
+  let i = startPos + 1; // Skip opening parenthesis
+  
+  while (i < line.length && depth > 0) {
+    const char = line[i];
+    
+    if (char === '(') {
+      depth++;
+      current += char;
+    } else if (char === ')') {
+      depth--;
+      if (depth === 0) {
+        if (current.trim()) {
+          params.push(current.trim());
+        }
+        break;
+      } else {
+        current += char;
+      }
+    } else if (char === ',' && depth === 1) {
+      if (current.trim()) {
+        params.push(current.trim());
+      }
+      current = '';
+    } else {
+      current += char;
+    }
+    
+    i++;
+  }
+  
+  return params;
+}
+
+/**
+ * ATOMIC FUNCTION 3: Infer parameter types from Pine Script usage
+ * @param {string} paramValue - Parameter value as string
+ * @returns {string} - Inferred type (int, float, string, bool, series, etc.)
+ */
+export function inferParameterTypes(paramValue) {
+  if (!paramValue || typeof paramValue !== 'string') {
+    return 'unknown';
+  }
+  
+  const trimmed = paramValue.trim();
+  
+  // String literals (quoted)
+  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+      (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+    return 'string';
+  }
+  
+  // Boolean literals
+  if (trimmed === 'true' || trimmed === 'false') {
+    return 'bool';
+  }
+  
+  // Integer literals
+  if (/^-?\d+$/.test(trimmed)) {
+    return 'int';
+  }
+  
+  // Float literals
+  if (/^-?\d*\.\d+$/.test(trimmed)) {
+    return 'float';
+  }
+  
+  // Color literals
+  if (trimmed.startsWith('#') || trimmed.startsWith('color.')) {
+    return 'color';
+  }
+  
+  // Variable/series references
+  if (/^[a-zA-Z_][a-zA-Z0-9_.]*$/.test(trimmed)) {
+    // Common Pine Script series variables
+    if (['close', 'open', 'high', 'low', 'volume', 'time'].includes(trimmed)) {
+      return 'series float';
+    }
+    // Could be any variable - assume series for safety
+    return 'series';
+  }
+  
+  // Function call result - infer return type based on function
+  if (trimmed.includes('(')) {
+    const functionMatch = trimmed.match(/^([a-zA-Z_][a-zA-Z0-9_.]*)\s*\(/);
+    if (functionMatch) {
+      const functionName = functionMatch[1];
+      // Common Pine Script function return types
+      const returnTypes = {
+        'ta.sma': 'series float',
+        'ta.ema': 'series float',
+        'ta.rsi': 'series float',
+        'ta.macd': 'series float',
+        'math.max': 'float',
+        'math.min': 'float',
+        'math.abs': 'float',
+        'str.tostring': 'string',
+        'str.tonumber': 'float'
+      };
+      
+      return returnTypes[functionName] || 'function_result';
+    }
+    return 'function_result';
+  }
+  
+  return 'unknown';
+}
+
+/**
+ * ATOMIC FUNCTION 4: Get expected parameter types from language reference
+ * @param {string} functionName - Pine Script function name
+ * @returns {Object} - Expected parameter types and constraints
+ */
+export function getExpectedTypes(functionName) {
+  // Common Pine Script functions with type requirements
+  const typeDefinitions = {
+    'ta.sma': {
+      params: [
+        { name: 'source', type: 'series int/float', required: true },
+        { name: 'length', type: 'series int', required: true }
+      ]
+    },
+    'ta.ema': {
+      params: [
+        { name: 'source', type: 'series int/float', required: true },
+        { name: 'length', type: 'series int', required: true }
+      ]
+    },
+    'math.max': {
+      params: [
+        { name: 'value1', type: 'int/float', required: true },
+        { name: 'value2', type: 'int/float', required: true }
+      ]
+    },
+    'str.contains': {
+      params: [
+        { name: 'source', type: 'string', required: true },
+        { name: 'substring', type: 'string', required: true }
+      ]
+    },
+    'alert': {
+      params: [
+        { name: 'message', type: 'series string', required: true },
+        { name: 'freq', type: 'input string', required: false }
+      ]
+    }
+  };
+  
+  return typeDefinitions[functionName] || { params: [] };
+}
+
+/**
+ * ATOMIC FUNCTION 5: Compare expected vs actual types for mismatches
+ * @param {string} expectedType - Expected parameter type from language reference
+ * @param {string} actualType - Actual inferred type from code
+ * @returns {Object} - Type comparison result with mismatch details
+ */
+export function compareTypes(expectedType, actualType) {
+  if (!expectedType || !actualType) {
+    return { isValid: false, reason: 'missing_type_info' };
+  }
+  
+  // Exact match
+  if (expectedType === actualType) {
+    return { isValid: true };
+  }
+  
+  // Type compatibility rules for Pine Script
+  const compatible = checkTypeCompatibility(expectedType, actualType);
+  
+  return {
+    isValid: compatible.isCompatible,
+    reason: compatible.reason || 'type_mismatch',
+    expected: expectedType,
+    actual: actualType
+  };
+}
+
+/**
+ * Helper function: Check Pine Script type compatibility
+ * @param {string} expected - Expected type
+ * @param {string} actual - Actual type  
+ * @returns {Object} - Compatibility result
+ */
+function checkTypeCompatibility(expected, actual) {
+  // Handle series types more flexibly
+  if (expected.includes('series') && actual.includes('series')) {
+    const baseExpected = expected.replace('series ', '');
+    const baseActual = actual.replace('series ', '');
+    
+    // series int/float can accept series float, series int, etc.
+    if (baseExpected === 'int/float' && (baseActual === 'int' || baseActual === 'float')) {
+      return { isCompatible: true, reason: 'series_numeric_compatible' };
+    }
+    if (baseExpected === baseActual) {
+      return { isCompatible: true, reason: 'series_exact_match' };
+    }
+  }
+  
+  // Series can accept simpler types
+  if (expected.includes('series') && !actual.includes('series')) {
+    const baseExpected = expected.replace('series ', '');
+    if (baseExpected === actual || 
+        (baseExpected === 'int/float' && (actual === 'int' || actual === 'float'))) {
+      return { isCompatible: true, reason: 'series_accepts_simple' };
+    }
+  }
+  
+  // int/float accepts both int and float
+  if (expected === 'int/float' && (actual === 'int' || actual === 'float')) {
+    return { isCompatible: true, reason: 'numeric_compatible' };
+  }
+  
+  // String type requirements are strict
+  if (expected === 'string' && actual !== 'string') {
+    return { isCompatible: false, reason: 'requires_string' };
+  }
+  
+  // Numeric requirements
+  if ((expected === 'int' || expected === 'float' || expected === 'int/float') && 
+      (actual === 'string' || actual === 'bool')) {
+    return { isCompatible: false, reason: 'requires_numeric' };
+  }
+  
+  // Boolean requirements
+  if (expected === 'bool' && actual !== 'bool') {
+    return { isCompatible: false, reason: 'requires_boolean' };
+  }
+  
+  // Handle unknown function results more gracefully
+  if (actual === 'function_result') {
+    // Don't report violations for unknown function results - could be any type
+    return { isCompatible: true, reason: 'function_result_unknown' };
+  }
+  
+  return { isCompatible: false, reason: 'incompatible_types' };
+}
+
+/**
+ * Core Type Validation Engine - Phase 1 Implementation
+ * Validates INPUT_TYPE_MISMATCH using atomic functions
+ * @param {string} source - Pine Script source code
+ * @returns {Object} - Type validation result following atomic pattern
+ */
+export function validateInputTypes(source) {
+  const violations = [];
+  
+  // Handle null/undefined inputs gracefully
+  if (!source || typeof source !== 'string') {
+    return {
+      success: true,
+      violations: [],
+      metrics: {
+        functionsAnalyzed: 0,
+        typeChecksPerformed: 0
+      }
+    };
+  }
+  
+  const lines = source.split('\n');
+  
+  lines.forEach((line, lineIndex) => {
+    const functionCalls = extractFunctionCalls(line);
+    
+    functionCalls.forEach(funcCall => {
+      const expectedTypes = getExpectedTypes(funcCall.name);
+      
+      if (expectedTypes.params.length === 0) {
+        return; // Skip functions we don't have type info for
+      }
+      
+      funcCall.parameters.forEach((param, paramIndex) => {
+        if (paramIndex < expectedTypes.params.length) {
+          const expected = expectedTypes.params[paramIndex];
+          const actualType = inferParameterTypes(param);
+          const comparison = compareTypes(expected.type, actualType);
+          
+          if (!comparison.isValid) {
+            violations.push({
+              line: lineIndex + 1,
+              column: funcCall.position + 1,
+              severity: 'error',
+              message: `Parameter ${paramIndex + 1} of ${funcCall.name}() expects ${expected.type} but got ${actualType}. (INPUT_TYPE_MISMATCH)`,
+              rule: 'INPUT_TYPE_MISMATCH',
+              category: 'type_validation',
+              functionName: funcCall.name,
+              parameterName: expected.name,
+              expectedType: expected.type,
+              actualType: actualType,
+              reason: comparison.reason
+            });
+          }
+        }
+      });
+    });
+  });
+  
+  return {
+    success: true,
+    violations: violations,
+    metrics: {
+      functionsAnalyzed: lines.reduce((total, line) => total + extractFunctionCalls(line).length, 0),
+      typeChecksPerformed: violations.length + 
+        lines.reduce((total, line) => {
+          return total + extractFunctionCalls(line).reduce((subtotal, func) => {
+            const expected = getExpectedTypes(func.name);
+            return subtotal + Math.min(func.parameters.length, expected.params.length);
+          }, 0);
+        }, 0)
+    }
+  };
+}
+
+/**
+ * Quick Input Type validation following proven atomic pattern
+ * Implements the same pattern as quickValidatePrecision for consistency
+ * @param {string} source - Pine Script source code
+ * @returns {Object} - Type validation result matching test expectations
+ */
+export function quickValidateInputTypes(source) {
+  return validateInputTypes(source);
+}

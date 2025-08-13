@@ -654,6 +654,26 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
           // Fallback: continue without drawing object count validation if parser fails
           console.warn("Drawing object count validation unavailable:", error.message);
         }
+
+        // INPUT_TYPE_MISMATCH validation using atomic type checking
+        try {
+          const { quickValidateInputTypes } = await import("./src/parser/index.js");
+          const inputTypesValidationResult = await quickValidateInputTypes(line);
+          
+          if (inputTypesValidationResult.violations.length > 0) {
+            violations.push(...inputTypesValidationResult.violations.map(violation => ({
+              line: i + 1,
+              column: violation.column,
+              severity: violation.severity,
+              message: violation.message,
+              rule: violation.rule,
+              category: violation.category
+            })));
+          }
+        } catch (error) {
+          // Fallback: continue without type validation if parser fails
+          console.warn("Input type validation unavailable:", error.message);
+        }
       }
       
       // Style guide checks - corrected to camelCase per official Pine Script style guide

@@ -288,6 +288,11 @@ export interface ValidatorAPI {
 export interface IntegrationAPI {
   analyzePineScript(source: string, rules?: any): Promise<AnalysisResult>;
   quickValidateShortTitle(source: string): Promise<AnalysisResult>;
+  quickValidateInputTypes(source: string): Promise<AnalysisResult>;
+  extractFunctionCalls(line: string): Array<{name: string, parameters: string[], position: number}>;
+  inferParameterTypes(paramValue: string): string;
+  getExpectedTypes(functionName: string): {params: Array<{name: string, type: string, required: boolean}>};
+  compareTypes(expectedType: string, actualType: string): {isValid: boolean, reason?: string, expected?: string, actual?: string};
   initializeParser(rules: any): Promise<boolean>;
   getParserStatus(): ParserStatus;
 }

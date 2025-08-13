@@ -198,6 +198,12 @@
       "severity": "error",
       "category": "parameter_validation",
       "documentation": "Controls maximum box objects to prevent performance issues"
+    },
+    "INPUT_TYPE_MISMATCH": {
+      "description": "Function parameter type does not match expected type",
+      "severity": "error",
+      "category": "type_validation",
+      "documentation": "Pine Script requires specific types for function parameters to ensure correct execution"
     }
   },
   "processingInstructions": {

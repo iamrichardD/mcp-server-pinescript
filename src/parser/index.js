@@ -59,6 +59,12 @@ import {
   quickValidateMaxBoxesCount as _quickValidateMaxBoxesCount,
   validateDrawingObjectCounts as _validateDrawingObjectCounts,
   quickValidateDrawingObjectCounts as _quickValidateDrawingObjectCounts,
+  validateInputTypes as _validateInputTypes,
+  quickValidateInputTypes as _quickValidateInputTypes,
+  extractFunctionCalls as _extractFunctionCalls,
+  inferParameterTypes as _inferParameterTypes,
+  getExpectedTypes as _getExpectedTypes,
+  compareTypes as _compareTypes,
 } from './validator.js';
 
 export {
@@ -78,6 +84,12 @@ export {
   _quickValidateMaxBoxesCount as quickValidateMaxBoxesCount,
   _validateDrawingObjectCounts as validateDrawingObjectCounts,
   _quickValidateDrawingObjectCounts as quickValidateDrawingObjectCounts,
+  _validateInputTypes as validateInputTypes,
+  _quickValidateInputTypes as quickValidateInputTypes,
+  _extractFunctionCalls as extractFunctionCalls,
+  _inferParameterTypes as inferParameterTypes,
+  _getExpectedTypes as getExpectedTypes,
+  _compareTypes as compareTypes,
 };
 
 /**
