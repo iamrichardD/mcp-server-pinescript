@@ -13,7 +13,11 @@
       "Bash(git push:*)",
       "Bash(npx vitest run:*)",
       "Bash(find:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git tag:*)",
+      "Bash(cat:*)",
+      "Bash(jq:*)",
+      "Bash(time node:*)"
     ],
     "deny": []
   }
