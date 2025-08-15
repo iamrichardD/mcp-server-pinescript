@@ -8,6 +8,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import fs from 'fs/promises';
 import path from 'path';
+import { validateSyntaxCompatibility } from './src/parser/validator.js';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -292,6 +293,31 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           required: [],
         },
       },
+      {
+        name: 'syntax_compatibility_validation',
+        description: 'Validate Pine Script code for v6 syntax compatibility and migration requirements.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            code: {
+              type: 'string',
+              description: 'Pine Script source code to validate for syntax compatibility',
+            },
+            format: {
+              type: 'string',
+              enum: ['json', 'markdown'],
+              description: 'Output format for validation results',
+              default: 'json',
+            },
+            migration_guide: {
+              type: 'boolean',
+              description: 'Include migration guidance for deprecated functions',
+              default: false,
+            },
+          },
+          required: ['code'],
+        },
+      },
     ],
   };
 });
@@ -305,6 +331,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     
     case 'pinescript_review':
       return await reviewCode(args, args.format || 'json', args.version || 'v6', args.chunk_size || 20, args.severity_filter || 'all');
+    
+    case 'syntax_compatibility_validation':
+      return await validateSyntaxCompatibilityTool(args.code, args.format || 'json', args.migration_guide || false);
     
     default:
       throw new Error(`Unknown tool: ${name}`);
@@ -1146,6 +1175,177 @@ function formatDirectoryAsMarkdown(directoryResult) {
       markdown += '---\n\n';
     }
   }
+  
+  return markdown;
+}
+
+// SYNTAX_COMPATIBILITY_VALIDATION Tool Implementation
+async function validateSyntaxCompatibilityTool(code, format = 'json', migrationGuide = false) {
+  try {
+    const result = validateSyntaxCompatibility(code);
+    
+    if (format === 'markdown') {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: formatSyntaxCompatibilityAsMarkdown(result, migrationGuide),
+          },
+        ],
+      };
+    }
+    
+    // JSON format
+    const response = {
+      success: result.success,
+      compatibility_status: result.hasSyntaxCompatibilityError ? 'issues_found' : 'v6_compatible',
+      violations: result.violations,
+      metrics: result.metrics,
+      analysis: result.details
+    };
+    
+    if (migrationGuide && result.hasSyntaxCompatibilityError) {
+      response.migration_guide = generateMigrationGuide(result);
+    }
+    
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(response, null, 2),
+        },
+      ],
+    };
+    
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Syntax compatibility validation failed: ${error.message}`,
+        },
+      ],
+    };
+  }
+}
+
+function formatSyntaxCompatibilityAsMarkdown(result, migrationGuide = false) {
+  let markdown = '# Pine Script v6 Syntax Compatibility Report\n\n';
+  
+  if (!result.hasSyntaxCompatibilityError) {
+    markdown += '✅ **Status: v6 Compatible**\n\n';
+    markdown += 'Your Pine Script code is compatible with v6 syntax requirements.\n\n';
+  } else {
+    markdown += '⚠️ **Status: Migration Required**\n\n';
+    markdown += `Found ${result.violations.length} compatibility issue(s) that require attention.\n\n`;
+  }
+  
+  // Metrics
+  markdown += '## Analysis Summary\n\n';
+  markdown += `- **Execution Time**: ${result.metrics.executionTime.toFixed(2)}ms\n`;
+  markdown += `- **Deprecated Functions Found**: ${result.metrics.deprecatedFunctionsFound}\n`;
+  markdown += `- **Namespace Violations Found**: ${result.metrics.namespaceViolationsFound}\n`;
+  markdown += `- **Version Compatible**: ${result.metrics.versionCompatible ? 'Yes' : 'No'}\n\n`;
+  
+  if (result.violations.length > 0) {
+    markdown += '## Issues Found\n\n';
+    
+    result.violations.forEach((violation, index) => {
+      markdown += `### ${index + 1}. Line ${violation.line}, Column ${violation.column}\n\n`;
+      markdown += `**Severity**: ${violation.severity}\n\n`;
+      markdown += `**Message**: ${violation.message}\n\n`;
+      
+      if (violation.details) {
+        if (violation.details.deprecatedFunction) {
+          markdown += `**Migration**: Replace \`${violation.details.deprecatedFunction}()\` with \`${violation.details.modernEquivalent}()\`\n\n`;
+        }
+        if (violation.details.namespaceRequired) {
+          markdown += `**Required**: Use \`${violation.details.modernForm}\` instead of \`${violation.details.functionName}()\`\n\n`;
+        }
+        if (violation.details.upgradeRecommended) {
+          markdown += `**Recommendation**: Update @version directive from v${violation.details.currentVersion} to v${violation.details.recommendedVersion}\n\n`;
+        }
+      }
+    });
+  }
+  
+  if (migrationGuide && result.hasSyntaxCompatibilityError) {
+    markdown += generateMigrationGuideMarkdown(result);
+  }
+  
+  return markdown;
+}
+
+function generateMigrationGuide(result) {
+  const guide = {
+    summary: `Migration required for ${result.violations.length} compatibility issues`,
+    deprecated_functions: {},
+    namespace_requirements: {},
+    version_updates: {}
+  };
+  
+  result.violations.forEach(violation => {
+    if (violation.details?.deprecatedFunction) {
+      guide.deprecated_functions[violation.details.deprecatedFunction] = {
+        modernEquivalent: violation.details.modernEquivalent,
+        line: violation.line
+      };
+    }
+    
+    if (violation.details?.namespaceRequired) {
+      guide.namespace_requirements[violation.details.functionName] = {
+        requiredNamespace: violation.details.requiredNamespace,
+        modernForm: violation.details.modernForm,
+        line: violation.line
+      };
+    }
+    
+    if (violation.details?.upgradeRecommended) {
+      guide.version_updates.current = violation.details.currentVersion;
+      guide.version_updates.recommended = violation.details.recommendedVersion;
+      guide.version_updates.line = violation.line;
+    }
+  });
+  
+  return guide;
+}
+
+function generateMigrationGuideMarkdown(result) {
+  let markdown = '## Migration Guide\n\n';
+  
+  const deprecatedFunctions = result.violations.filter(v => v.details?.deprecatedFunction);
+  const namespaceIssues = result.violations.filter(v => v.details?.namespaceRequired);
+  const versionIssues = result.violations.filter(v => v.details?.upgradeRecommended);
+  
+  if (deprecatedFunctions.length > 0) {
+    markdown += '### Deprecated Functions to Replace\n\n';
+    deprecatedFunctions.forEach(v => {
+      markdown += `- Line ${v.line}: Replace \`${v.details.deprecatedFunction}()\` with \`${v.details.modernEquivalent}()\`\n`;
+    });
+    markdown += '\n';
+  }
+  
+  if (namespaceIssues.length > 0) {
+    markdown += '### Namespace Requirements\n\n';
+    namespaceIssues.forEach(v => {
+      markdown += `- Line ${v.line}: Use \`${v.details.modernForm}\` instead of \`${v.details.functionName}()\`\n`;
+    });
+    markdown += '\n';
+  }
+  
+  if (versionIssues.length > 0) {
+    markdown += '### Version Updates\n\n';
+    versionIssues.forEach(v => {
+      markdown += `- Line ${v.line}: Update @version directive from v${v.details.currentVersion} to v${v.details.recommendedVersion}\n`;
+    });
+    markdown += '\n';
+  }
+  
+  markdown += '### Quick Migration Steps\n\n';
+  markdown += '1. Update version directive to `@version=6`\n';
+  markdown += '2. Replace deprecated functions with their modern equivalents\n';
+  markdown += '3. Add required namespaces (ta., request., str., math.)\n';
+  markdown += '4. Test your script in TradingView Pine Script Editor\n\n';
   
   return markdown;
 }

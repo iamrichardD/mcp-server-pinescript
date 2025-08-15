@@ -204,6 +204,12 @@
       "severity": "error",
       "category": "type_validation",
       "documentation": "Pine Script requires specific types for function parameters to ensure correct execution"
+    },
+    "SYNTAX_COMPATIBILITY_VALIDATION": {
+      "description": "Pine Script syntax compatibility issues requiring v6 migration",
+      "severity": "error",
+      "category": "syntax_compatibility",
+      "documentation": "Detects deprecated functions, version compatibility issues, and namespace requirements for Pine Script v6"
     }
   },
   "processingInstructions": {

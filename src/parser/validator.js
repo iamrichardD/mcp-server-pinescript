@@ -1553,3 +1553,258 @@ function createSignatureErrorMessage(functionName, countValidation) {
 export function quickValidateFunctionSignatures(source) {
   return validateFunctionSignatures(source);
 }
+
+/**
+ * PHASE 3: SYNTAX COMPATIBILITY VALIDATION
+ * Implementation of atomic testing pattern for Pine Script syntax compatibility validation.
+ * Detects deprecated functions and enforces v6 syntax requirements.
+ * Following the proven atomic methodology that achieved 100% test pass rate with 8 validation rules.
+ */
+
+/**
+ * Map of deprecated functions to their modern v6 equivalents
+ * Based on Pine Script v6 migration requirements
+ */
+const DEPRECATED_FUNCTIONS = {
+  'security': 'request.security',
+  'rsi': 'ta.rsi',
+  'sma': 'ta.sma',
+  'ema': 'ta.ema',
+  'highest': 'ta.highest',
+  'lowest': 'ta.lowest',
+  'crossover': 'ta.crossover',
+  'crossunder': 'ta.crossunder',
+  'stdev': 'ta.stdev',
+  'correlation': 'ta.correlation',
+  'barssince': 'ta.barssince',
+  'valuewhen': 'ta.valuewhen',
+  'change': 'ta.change',
+  'mom': 'ta.mom',
+  'roc': 'ta.roc',
+  'tsi': 'ta.tsi',
+  'wpr': 'ta.wpr',
+  'rma': 'ta.rma',
+  'wma': 'ta.wma',
+  'vwma': 'ta.vwma',
+  'swma': 'ta.swma',
+  'alma': 'ta.alma',
+  'linreg': 'ta.linreg',
+  'median': 'ta.median',
+  'percentile_linear_interpolation': 'ta.percentile_linear_interpolation',
+  'percentile_nearest_rank': 'ta.percentile_nearest_rank',
+  'mode': 'ta.mode',
+  'range': 'ta.range',
+  'dev': 'ta.dev',
+  'variance': 'ta.variance',
+  'covariance': 'ta.covariance'
+};
+
+/**
+ * ATOMIC FUNCTION 1: Extract function calls from Pine Script code
+ * @param {string} source - Pine Script source code
+ * @returns {Array} - Array of function call objects with name, line, and column
+ */
+export function extractDeprecatedFunctionCalls(source) {
+  const functionCalls = [];
+  const lines = source.split('\n');
+  
+  lines.forEach((line, lineIndex) => {
+    // Skip comments and strings
+    const cleanLine = line.replace(/\/\/.*$/, '').replace(/"[^"]*"/g, '').replace(/'[^']*'/g, '');
+    
+    // Match function calls: functionName( but NOT namespace.functionName(
+    const functionPattern = /(?<!\w\.)(\w+)\s*\(/g;
+    let match;
+    
+    while ((match = functionPattern.exec(cleanLine)) !== null) {
+      const functionName = match[1];
+      if (DEPRECATED_FUNCTIONS[functionName]) {
+        functionCalls.push({
+          name: functionName,
+          line: lineIndex + 1,
+          column: match.index + 1,
+          modernEquivalent: DEPRECATED_FUNCTIONS[functionName]
+        });
+      }
+    }
+  });
+  
+  return functionCalls;
+}
+
+/**
+ * ATOMIC FUNCTION 2: Check version directive compatibility
+ * @param {string} source - Pine Script source code
+ * @returns {Object} - Version directive analysis
+ */
+export function analyzeVersionDirective(source) {
+  const lines = source.split('\n');
+  let versionDirective = null;
+  let versionLine = -1;
+  
+  // Find version directive in first 10 lines
+  for (let i = 0; i < Math.min(lines.length, 10); i++) {
+    const line = lines[i].trim();
+    const versionMatch = line.match(/^\/\/\s*@version\s*=\s*(\d+)/);
+    if (versionMatch) {
+      versionDirective = parseInt(versionMatch[1]);
+      versionLine = i + 1;
+      break;
+    }
+  }
+  
+  return {
+    version: versionDirective,
+    line: versionLine,
+    isV6Compatible: versionDirective === 6 || versionDirective === null, // null assumes latest
+    hasVersionDirective: versionDirective !== null
+  };
+}
+
+/**
+ * ATOMIC FUNCTION 3: Validate namespace requirements for v6
+ * @param {string} source - Pine Script source code
+ * @returns {Array} - Array of namespace violations
+ */
+export function validateNamespaceRequirements(source) {
+  const violations = [];
+  const lines = source.split('\n');
+  
+  // Functions that MUST use namespaces in v6
+  const namespacedFunctions = {
+    'ta': ['sma', 'ema', 'rsi', 'rma', 'wma', 'vwma', 'swma', 'alma', 'highest', 'lowest', 'crossover', 'crossunder', 'stdev', 'correlation', 'barssince', 'valuewhen', 'change', 'mom', 'roc', 'tsi', 'wpr', 'linreg', 'median', 'percentile_linear_interpolation', 'percentile_nearest_rank', 'mode', 'range', 'dev', 'variance', 'covariance'],
+    'request': ['security'],
+    'str': ['tostring', 'tonumber', 'format', 'contains', 'startswith', 'endswith', 'replace', 'replace_all', 'split', 'substring', 'length', 'upper', 'lower'],
+    'math': ['abs', 'acos', 'asin', 'atan', 'atan2', 'ceil', 'cos', 'exp', 'floor', 'log', 'log10', 'max', 'min', 'pow', 'random', 'round', 'sign', 'sin', 'sqrt', 'tan', 'todegrees', 'toradians']
+  };
+  
+  lines.forEach((line, lineIndex) => {
+    // Skip comments and strings
+    const cleanLine = line.replace(/\/\/.*$/, '').replace(/"[^"]*"/g, '').replace(/'[^']*'/g, '');
+    
+    // Check for functions that should use namespaces
+    Object.entries(namespacedFunctions).forEach(([namespace, functions]) => {
+      functions.forEach(func => {
+        // Look for bare function calls (not already namespaced)
+        const barePattern = new RegExp(`\\b${func}\\s*\\(`, 'g');
+        const namespacedPattern = new RegExp(`\\b${namespace}\\.${func}\\s*\\(`, 'g');
+        
+        if (barePattern.test(cleanLine) && !namespacedPattern.test(cleanLine)) {
+          violations.push({
+            functionName: func,
+            requiredNamespace: namespace,
+            line: lineIndex + 1,
+            column: cleanLine.indexOf(func) + 1,
+            modernForm: `${namespace}.${func}`
+          });
+        }
+      });
+    });
+  });
+  
+  return violations;
+}
+
+/**
+ * Core syntax compatibility validation function
+ * Detects deprecated functions, version issues, and namespace violations
+ * @param {string} source - Pine Script source code
+ * @returns {Object} - Comprehensive syntax compatibility validation result
+ */
+export function validateSyntaxCompatibility(source) {
+  const startTime = performance.now();
+  
+  // Phase 1: Extract deprecated function calls
+  const deprecatedCalls = extractDeprecatedFunctionCalls(source);
+  
+  // Phase 2: Analyze version directive
+  const versionAnalysis = analyzeVersionDirective(source);
+  
+  // Phase 3: Validate namespace requirements
+  const namespaceViolations = validateNamespaceRequirements(source);
+  
+  const violations = [];
+  
+  // Create violations for deprecated functions
+  deprecatedCalls.forEach(call => {
+    violations.push({
+      line: call.line,
+      column: call.column,
+      severity: 'error',
+      message: `Function '${call.name}()' is deprecated in Pine Script v6. Use '${call.modernEquivalent}()' instead.`,
+      rule: 'SYNTAX_COMPATIBILITY_VALIDATION',
+      category: 'syntax_compatibility',
+      details: {
+        deprecatedFunction: call.name,
+        modernEquivalent: call.modernEquivalent,
+        migrationRequired: true
+      }
+    });
+  });
+  
+  // Create violations for version compatibility issues
+  if (versionAnalysis.version && versionAnalysis.version < 6) {
+    violations.push({
+      line: versionAnalysis.line,
+      column: 1,
+      severity: 'warning',
+      message: `Pine Script v${versionAnalysis.version} is outdated. Consider upgrading to v6 for latest features and compatibility.`,
+      rule: 'SYNTAX_COMPATIBILITY_VALIDATION',
+      category: 'syntax_compatibility',
+      details: {
+        currentVersion: versionAnalysis.version,
+        recommendedVersion: 6,
+        upgradeRecommended: true
+      }
+    });
+  }
+  
+  // Create violations for namespace requirements
+  namespaceViolations.forEach(violation => {
+    violations.push({
+      line: violation.line,
+      column: violation.column,
+      severity: 'error',
+      message: `Function '${violation.functionName}()' requires '${violation.requiredNamespace}' namespace in v6. Use '${violation.modernForm}()'.`,
+      rule: 'SYNTAX_COMPATIBILITY_VALIDATION',
+      category: 'syntax_compatibility',
+      details: {
+        functionName: violation.functionName,
+        requiredNamespace: violation.requiredNamespace,
+        modernForm: violation.modernForm,
+        namespaceRequired: true
+      }
+    });
+  });
+  
+  const endTime = performance.now();
+  const executionTime = endTime - startTime;
+  
+  return {
+    success: true,
+    hasSyntaxCompatibilityError: violations.length > 0,
+    violations,
+    metrics: {
+      executionTime,
+      deprecatedFunctionsFound: deprecatedCalls.length,
+      namespaceViolationsFound: namespaceViolations.length,
+      versionCompatible: versionAnalysis.isV6Compatible,
+      totalViolations: violations.length
+    },
+    details: {
+      versionAnalysis,
+      deprecatedCalls,
+      namespaceViolations
+    }
+  };
+}
+
+/**
+ * Quick syntax compatibility validation function for atomic testing integration
+ * Implements the same pattern as quickValidateFunctionSignatures for consistency
+ * @param {string} source - Pine Script source code
+ * @returns {Object} - Validation result matching test expectations
+ */
+export function quickValidateSyntaxCompatibility(source) {
+  return validateSyntaxCompatibility(source);
+}
