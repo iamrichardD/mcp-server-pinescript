@@ -227,6 +227,23 @@ class PineScriptHTMLParser {
     }
 
     /**
+     * Save style guide results separately to avoid overwriting language reference
+     */
+    saveStyleGuideResults(outputDir) {
+        if (!fs.existsSync(outputDir)) {
+            fs.mkdirSync(outputDir, { recursive: true });
+        }
+
+        // Save enhanced style rules if available
+        if (this.styleRules.size > 0) {
+            this.saveStyleRules(outputDir);
+        }
+
+        console.log(`✅ Saved style guide data`);
+        console.log(`   🎨 ${this.styleRules.size} style guide sections processed`);
+    }
+
+    /**
      * Categorize variables to provide better metadata
      */
     categorizeVariables() {
@@ -609,7 +626,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
                 console.log('\n🎨 Processing comprehensive style guide...');
                 const styleParser = new PineScriptHTMLParser(styleGuideFile);
                 const styleResults = styleParser.parse();
-                styleParser.saveResults(outputDir);
+                styleParser.saveStyleGuideResults(outputDir);
             }
         }
         
