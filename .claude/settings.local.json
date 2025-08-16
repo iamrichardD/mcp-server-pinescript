@@ -1,6 +1,8 @@
 {
   "permissions": {
     "allow": [
+      "mcp__pinescript-docs__pinescript_reference",
+      "mcp__pinescript-docs__pinescript_review",
       "Bash(node:*)",
       "Bash(grep:*)",
       "WebFetch(domain:www.tradingview.com)",

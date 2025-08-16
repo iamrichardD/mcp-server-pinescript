@@ -5,29 +5,228 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
+  CallToolRequest,
+  ListToolsRequest,
+  Tool,
+  TextContent,
+  CallToolResult,
+  ListToolsResult,
 } from '@modelcontextprotocol/sdk/types.js';
 import fs from 'fs/promises';
 import path from 'path';
+// @ts-ignore - Type definitions for parser modules not available
 import { validateSyntaxCompatibility } from './src/parser/validator.js';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// File system utilities with security safeguards
+// ========================================
+// TYPE DEFINITIONS
+// ========================================
+
+// Pine Script Documentation Types
+interface PineScriptFunction {
+  id: string;
+  name: string;
+  description: string;
+  syntax: string;
+  arguments: Array<{
+    name: string;
+    type: string;
+    description: string;
+  }>;
+  examples: string[];
+  type: string;
+  seeAlso?: Array<{
+    name: string;
+    href: string;
+  }>;
+}
+
+interface PineScriptVariable {
+  id: string;
+  name: string;
+  description: string;
+  type: string;
+  examples?: string[];
+  seeAlso?: Array<{
+    name: string;
+    href: string;
+  }>;
+}
+
+interface LanguageReference {
+  functions: Record<string, PineScriptFunction>;
+  variables: Record<string, PineScriptVariable>;
+  metadata: {
+    total_functions: number;
+    total_variables: number;
+    last_updated: string;
+    coverage: string;
+  };
+}
+
+interface StyleRule {
+  rule: string;
+  severity: 'error' | 'warning' | 'suggestion';
+  category: string;
+  examples?: string[];
+}
+
+interface StyleRulesMetadata {
+  source: string;
+  extraction_method: string;
+  last_updated: string;
+  total_sections: number;
+  coverage_improvement: string;
+  categories: Record<string, number>;
+}
+
+interface StyleRules {
+  [key: string]: StyleRule | StyleRulesMetadata;
+  metadata: StyleRulesMetadata;
+}
+
+interface DocumentationIndex extends Record<string, {
+  title: string;
+  content: string;
+  type: string;
+  tags?: string[];
+  examples?: string[];
+}> {}
+
+// Validation Types
+interface ValidationViolation {
+  line: number;
+  column: number;
+  rule: string;
+  severity: 'error' | 'warning' | 'suggestion';
+  message: string;
+  category: string;
+  suggested_fix?: string;
+}
+
+interface ValidationSummary {
+  total_issues: number;
+  errors: number;
+  warnings: number;
+  suggestions: number;
+  filtered_count: number;
+  severity_filter: string;
+}
+
+interface FileInfo {
+  path: string;
+  relativePath: string;
+  size: number;
+}
+
+interface FileSystemScanOptions {
+  recursive?: boolean;
+  extensions?: string[];
+  maxFiles?: number;
+}
+
+// MCP Tool Arguments Types
+interface PineScriptReferenceArgs {
+  query: string;
+  version?: string;
+  format?: 'json' | 'stream';
+  max_results?: number;
+}
+
+interface PineScriptReviewArgs {
+  source_type?: 'code' | 'file' | 'directory';
+  code?: string;
+  file_path?: string;
+  directory_path?: string;
+  format?: 'json' | 'markdown' | 'stream';
+  version?: string;
+  chunk_size?: number;
+  severity_filter?: 'all' | 'error' | 'warning' | 'suggestion';
+  recursive?: boolean;
+  file_extensions?: string[];
+}
+
+interface SyntaxCompatibilityArgs {
+  code: string;
+  format?: 'json' | 'markdown';
+  migration_guide?: boolean;
+}
+
+// Response Types
+interface SearchResult {
+  title: string;
+  content: string;
+  type: string;
+  examples: string[];
+  relevance_score: number;
+}
+
+interface ReviewResult {
+  summary: ValidationSummary;
+  violations: ValidationViolation[];
+  version: string;
+  reviewed_lines: number;
+  file_path: string;
+}
+
+interface DirectoryReviewResult {
+  directory_path: string;
+  summary: ValidationSummary & {
+    total_files: number;
+    files_with_issues: number;
+  };
+  files: ReviewResult[];
+  version: string;
+  scan_options: {
+    recursive: boolean;
+    file_extensions: string[];
+  };
+}
+
+// Streaming Types
+interface StreamChunk {
+  type: 'metadata' | 'results' | 'violations' | 'files';
+  chunk_index?: number;
+  data: any;
+}
+
+// Performance Metrics
+interface PreloadStats {
+  indexEntries: number;
+  styleRules: number;
+  functionEntries: number;
+  variableEntries: number;
+  totalLanguageItems: number;
+  memoryUsage: number;
+}
+
+interface ValidationStatus {
+  isValid: boolean;
+  indexEntries: number;
+  styleRules: number;
+  memoryUsage: number;
+}
+
+// ========================================
+// FILE SYSTEM UTILITIES
+// ========================================
+
 class FileSystemUtils {
-  static isValidPath(inputPath) {
+  static isValidPath(inputPath: string): boolean {
     // Prevent path traversal attacks
     const normalizedPath = path.normalize(inputPath);
-    return !normalizedPath.includes('..') && path.isAbsolute(normalizedPath) || inputPath.startsWith('./');
+    return !normalizedPath.includes('..') && (path.isAbsolute(normalizedPath) || inputPath.startsWith('./'));
   }
   
-  static hasValidExtension(filePath, allowedExtensions) {
+  static hasValidExtension(filePath: string, allowedExtensions: string[]): boolean {
     const ext = path.extname(filePath).toLowerCase();
     return allowedExtensions.includes(ext);
   }
   
-  static async safeReadFile(filePath) {
+  static async safeReadFile(filePath: string): Promise<string> {
     try {
       if (!this.isValidPath(filePath)) {
         throw new Error(`Invalid file path: ${filePath}`);
@@ -46,11 +245,11 @@ class FileSystemUtils {
       
       return await fs.readFile(filePath, 'utf8');
     } catch (error) {
-      throw new Error(`Failed to read file ${filePath}: ${error.message}`);
+      throw new Error(`Failed to read file ${filePath}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
   
-  static async scanDirectory(dirPath, options = {}) {
+  static async scanDirectory(dirPath: string, options: FileSystemScanOptions = {}): Promise<FileInfo[]> {
     const {
       recursive = true,
       extensions = ['.pine', '.pinescript'],
@@ -61,9 +260,9 @@ class FileSystemUtils {
       throw new Error(`Invalid directory path: ${dirPath}`);
     }
     
-    const files = [];
+    const files: FileInfo[] = [];
     
-    async function scanDir(currentPath, depth = 0) {
+    async function scanDir(currentPath: string, depth = 0): Promise<void> {
       try {
         if (depth > 10) { // Prevent infinite recursion
           return;
@@ -106,7 +305,7 @@ class FileSystemUtils {
           }
         }
       } catch (error) {
-        throw new Error(`Failed to scan directory ${currentPath}: ${error.message}`);
+        throw new Error(`Failed to scan directory ${currentPath}: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
     
@@ -115,13 +314,20 @@ class FileSystemUtils {
   }
 }
 
-// Global variables for preloaded documentation data
-let PRELOADED_INDEX = null;
-let PRELOADED_STYLE_RULES = null;
-let PRELOADED_LANGUAGE_REFERENCE = null;
+// ========================================
+// GLOBAL STATE MANAGEMENT
+// ========================================
 
-// Preload documentation into memory for optimal performance
-async function preloadDocumentation() {
+// Global variables for preloaded documentation data
+let PRELOADED_INDEX: DocumentationIndex | null = null;
+let PRELOADED_STYLE_RULES: StyleRules | null = null;
+let PRELOADED_LANGUAGE_REFERENCE: LanguageReference | null = null;
+
+// ========================================
+// DOCUMENTATION PRELOADING
+// ========================================
+
+async function preloadDocumentation(): Promise<PreloadStats> {
   console.log('📚 Preloading documentation into memory...');
   
   try {
@@ -139,11 +345,15 @@ async function preloadDocumentation() {
     }
     
     // Load all documentation files
-    PRELOADED_INDEX = JSON.parse(await fs.readFile(indexPath, 'utf8'));
-    PRELOADED_STYLE_RULES = JSON.parse(await fs.readFile(rulesPath, 'utf8'));
-    PRELOADED_LANGUAGE_REFERENCE = JSON.parse(await fs.readFile(languageReferencePath, 'utf8'));
+    const indexData = await fs.readFile(indexPath, 'utf8');
+    const rulesData = await fs.readFile(rulesPath, 'utf8');
+    const languageReferenceData = await fs.readFile(languageReferencePath, 'utf8');
     
-    const stats = {
+    PRELOADED_INDEX = JSON.parse(indexData) as DocumentationIndex;
+    PRELOADED_STYLE_RULES = JSON.parse(rulesData) as StyleRules;
+    PRELOADED_LANGUAGE_REFERENCE = JSON.parse(languageReferenceData) as LanguageReference;
+    
+    const stats: PreloadStats = {
       indexEntries: Object.keys(PRELOADED_INDEX).length,
       styleRules: Object.keys(PRELOADED_STYLE_RULES).length,
       functionEntries: Object.keys(PRELOADED_LANGUAGE_REFERENCE.functions).length,
@@ -162,13 +372,12 @@ async function preloadDocumentation() {
     
     return stats;
   } catch (error) {
-    console.error('❌ Failed to preload documentation:', error.message);
+    console.error('❌ Failed to preload documentation:', error instanceof Error ? error.message : String(error));
     throw error;
   }
 }
 
-// Validate preloaded data integrity
-function validatePreloadedData() {
+function validatePreloadedData(): ValidationStatus {
   if (!PRELOADED_INDEX || !PRELOADED_STYLE_RULES) {
     throw new Error('Critical documentation files not preloaded. Server cannot function properly.');
   }
@@ -185,6 +394,10 @@ function validatePreloadedData() {
   };
 }
 
+// ========================================
+// MCP SERVER SETUP
+// ========================================
+
 const server = new Server(
   {
     name: 'mcp-server-pinescript',
@@ -197,150 +410,186 @@ const server = new Server(
   }
 );
 
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
-    tools: [
-      {
-        name: 'pinescript_reference',
-        description: 'Search PineScript documentation with enhanced semantic matching and streaming support for large result sets.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            query: {
-              type: 'string',
-              description: 'Search term or topic with synonym expansion (e.g., "array functions", "style guide naming", "syntax rules")',
-            },
-            version: {
-              type: 'string',
-              description: 'PineScript version (default: v6)',
-              default: 'v6',
-            },
-            format: {
-              type: 'string',
-              enum: ['json', 'stream'],
-              description: 'Output format: json (all results), stream (chunked delivery)',
-              default: 'json',
-            },
-            max_results: {
-              type: 'number',
-              description: 'Maximum results to return (default: 10, max: 100)',
-              default: 10,
-            },
+server.setRequestHandler(ListToolsRequestSchema, async (): Promise<ListToolsResult> => {
+  const tools: Tool[] = [
+    {
+      name: 'pinescript_reference',
+      description: 'Search PineScript documentation with enhanced semantic matching and streaming support for large result sets.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: 'Search term or topic with synonym expansion (e.g., "array functions", "style guide naming", "syntax rules")',
           },
-          required: ['query'],
-        },
-      },
-      {
-        name: 'pinescript_review',
-        description: 'Review PineScript code against style guide and language rules. Supports single files, directories, and streaming for large results via JSON chunks.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            source_type: {
-              type: 'string',
-              enum: ['code', 'file', 'directory'],
-              description: 'Source type: code (string input), file (single file path), directory (scan for .pine files)',
-              default: 'code',
-            },
-            code: {
-              type: 'string',
-              description: 'PineScript code to review (required when source_type=code)',
-            },
-            file_path: {
-              type: 'string',
-              description: 'Path to PineScript file to review (required when source_type=file)',
-            },
-            directory_path: {
-              type: 'string',
-              description: 'Path to directory containing PineScript files (required when source_type=directory)',
-            },
-            format: {
-              type: 'string',
-              enum: ['json', 'markdown', 'stream'],
-              description: 'Output format: json (single response), markdown (formatted), stream (chunked JSON for large files/directories)',
-              default: 'json',
-            },
-            version: {
-              type: 'string',
-              description: 'PineScript version (default: v6)',
-              default: 'v6',
-            },
-            chunk_size: {
-              type: 'number',
-              description: 'For stream format: violations per chunk (default: 20, max: 100)',
-              default: 20,
-            },
-            severity_filter: {
-              type: 'string',
-              enum: ['all', 'error', 'warning', 'suggestion'],
-              description: 'Filter violations by severity (default: all)',
-              default: 'all',
-            },
-            recursive: {
-              type: 'boolean',
-              description: 'For directory source: scan subdirectories recursively (default: true)',
-              default: true,
-            },
-            file_extensions: {
-              type: 'array',
-              items: {
-                type: 'string'
-              },
-              description: 'File extensions to scan for (default: [".pine", ".pinescript"])',
-              default: ['.pine', '.pinescript'],
-            },
+          version: {
+            type: 'string',
+            description: 'PineScript version (default: v6)',
+            default: 'v6',
           },
-          required: [],
-        },
-      },
-      {
-        name: 'syntax_compatibility_validation',
-        description: 'Validate Pine Script code for v6 syntax compatibility and migration requirements.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            code: {
-              type: 'string',
-              description: 'Pine Script source code to validate for syntax compatibility',
-            },
-            format: {
-              type: 'string',
-              enum: ['json', 'markdown'],
-              description: 'Output format for validation results',
-              default: 'json',
-            },
-            migration_guide: {
-              type: 'boolean',
-              description: 'Include migration guidance for deprecated functions',
-              default: false,
-            },
+          format: {
+            type: 'string',
+            enum: ['json', 'stream'],
+            description: 'Output format: json (all results), stream (chunked delivery)',
+            default: 'json',
           },
-          required: ['code'],
+          max_results: {
+            type: 'number',
+            description: 'Maximum results to return (default: 10, max: 100)',
+            default: 10,
+          },
         },
+        required: ['query'],
       },
-    ],
-  };
+    },
+    {
+      name: 'pinescript_review',
+      description: 'Review PineScript code against style guide and language rules. Supports single files, directories, and streaming for large results via JSON chunks.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          source_type: {
+            type: 'string',
+            enum: ['code', 'file', 'directory'],
+            description: 'Source type: code (string input), file (single file path), directory (scan for .pine files)',
+            default: 'code',
+          },
+          code: {
+            type: 'string',
+            description: 'PineScript code to review (required when source_type=code)',
+          },
+          file_path: {
+            type: 'string',
+            description: 'Path to PineScript file to review (required when source_type=file)',
+          },
+          directory_path: {
+            type: 'string',
+            description: 'Path to directory containing PineScript files (required when source_type=directory)',
+          },
+          format: {
+            type: 'string',
+            enum: ['json', 'markdown', 'stream'],
+            description: 'Output format: json (single response), markdown (formatted), stream (chunked JSON for large files/directories)',
+            default: 'json',
+          },
+          version: {
+            type: 'string',
+            description: 'PineScript version (default: v6)',
+            default: 'v6',
+          },
+          chunk_size: {
+            type: 'number',
+            description: 'For stream format: violations per chunk (default: 20, max: 100)',
+            default: 20,
+          },
+          severity_filter: {
+            type: 'string',
+            enum: ['all', 'error', 'warning', 'suggestion'],
+            description: 'Filter violations by severity (default: all)',
+            default: 'all',
+          },
+          recursive: {
+            type: 'boolean',
+            description: 'For directory source: scan subdirectories recursively (default: true)',
+            default: true,
+          },
+          file_extensions: {
+            type: 'array',
+            items: {
+              type: 'string'
+            },
+            description: 'File extensions to scan for (default: [".pine", ".pinescript"])',
+            default: ['.pine', '.pinescript'],
+          },
+        },
+        required: [],
+      },
+    },
+    {
+      name: 'syntax_compatibility_validation',
+      description: 'Validate Pine Script code for v6 syntax compatibility and migration requirements.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          code: {
+            type: 'string',
+            description: 'Pine Script source code to validate for syntax compatibility',
+          },
+          format: {
+            type: 'string',
+            enum: ['json', 'markdown'],
+            description: 'Output format for validation results',
+            default: 'json',
+          },
+          migration_guide: {
+            type: 'boolean',
+            description: 'Include migration guidance for deprecated functions',
+            default: false,
+          },
+        },
+        required: ['code'],
+      },
+    },
+  ];
+  
+  return { tools };
 });
 
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
+server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest): Promise<CallToolResult> => {
   const { name, arguments: args } = request.params;
 
   switch (name) {
-    case 'pinescript_reference':
-      return await searchReference(args.query, args.version || 'v6', args.format || 'json', args.max_results || 10);
+    case 'pinescript_reference': {
+      const refArgs = args as any;
+      if (!refArgs || typeof refArgs.query !== 'string') {
+        throw new Error('query parameter is required for pinescript_reference');
+      }
+      return await searchReference(
+        refArgs.query,
+        refArgs.version || 'v6',
+        refArgs.format || 'json',
+        refArgs.max_results || 10
+      );
+    }
     
-    case 'pinescript_review':
-      return await reviewCode(args, args.format || 'json', args.version || 'v6', args.chunk_size || 20, args.severity_filter || 'all');
+    case 'pinescript_review': {
+      const reviewArgs = args as any;
+      return await reviewCode(
+        reviewArgs,
+        reviewArgs?.format || 'json',
+        reviewArgs?.version || 'v6',
+        reviewArgs?.chunk_size || 20,
+        reviewArgs?.severity_filter || 'all'
+      );
+    }
     
-    case 'syntax_compatibility_validation':
-      return await validateSyntaxCompatibilityTool(args.code, args.format || 'json', args.migration_guide || false);
+    case 'syntax_compatibility_validation': {
+      const syntaxArgs = args as any;
+      if (!syntaxArgs || typeof syntaxArgs.code !== 'string') {
+        throw new Error('code parameter is required for syntax_compatibility_validation');
+      }
+      return await validateSyntaxCompatibilityTool(
+        syntaxArgs.code,
+        syntaxArgs.format || 'json',
+        syntaxArgs.migration_guide || false
+      );
+    }
     
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
 });
 
-async function searchReference(query, version, format = 'json', maxResults = 10) {
+// ========================================
+// SEARCH FUNCTIONALITY
+// ========================================
+
+async function searchReference(
+  query: string,
+  version: string,
+  format: 'json' | 'stream' = 'json',
+  maxResults = 10
+): Promise<CallToolResult> {
   try {
     // Use preloaded documentation index for optimal performance
     if (!PRELOADED_INDEX) {
@@ -350,7 +599,7 @@ async function searchReference(query, version, format = 'json', maxResults = 10)
     const index = PRELOADED_INDEX;
     
     // Enhanced search with synonyms and semantic matching
-    const synonyms = {
+    const synonyms: Record<string, string[]> = {
       'syntax': ['language', 'grammar', 'rules', 'structure', 'format'],
       'variable': ['var', 'identifier', 'declaration', 'varip'],
       'function': ['func', 'method', 'call', 'procedure'],
@@ -375,7 +624,7 @@ async function searchReference(query, version, format = 'json', maxResults = 10)
       }
     });
     
-    const scored = [];
+    const scored: Array<SearchResult & { score: number; key: string }> = [];
     
     for (const [key, data] of Object.entries(index)) {
       let score = 0;
@@ -406,6 +655,7 @@ async function searchReference(query, version, format = 'json', maxResults = 10)
           content: data.content,
           type: data.type,
           examples: data.examples || [],
+          relevance_score: score,
           key
         });
       }
@@ -461,7 +711,7 @@ async function searchReference(query, version, format = 'json', maxResults = 10)
       content: [
         {
           type: 'text',
-          text: `Documentation not yet available. Run 'npm run update-docs' to download and process PineScript documentation. Error: ${error.message}`,
+          text: `Documentation not yet available. Run 'npm run update-docs' to download and process PineScript documentation. Error: ${error instanceof Error ? error.message : String(error)}`,
         },
       ],
     };
@@ -469,10 +719,16 @@ async function searchReference(query, version, format = 'json', maxResults = 10)
 }
 
 // Helper function for streaming search results
-async function streamSearchResults(scored, query, version, maxResults, searchTerms) {
+async function streamSearchResults(
+  scored: Array<SearchResult & { score: number; key: string }>,
+  query: string,
+  version: string,
+  maxResults: number,
+  searchTerms: string[]
+): Promise<CallToolResult> {
   const chunkSize = 5; // Results per chunk
   const totalResults = Math.min(scored.length, maxResults);
-  const chunks = [];
+  const chunks: StreamChunk[] = [];
   
   // Create metadata chunk
   chunks.push({
@@ -518,7 +774,17 @@ async function streamSearchResults(scored, query, version, maxResults, searchTer
   };
 }
 
-async function reviewCode(args, format, version, chunkSize = 20, severityFilter = 'all') {
+// ========================================
+// CODE REVIEW FUNCTIONALITY
+// ========================================
+
+async function reviewCode(
+  args: PineScriptReviewArgs,
+  format: string,
+  version: string,
+  chunkSize = 20,
+  severityFilter = 'all'
+): Promise<CallToolResult> {
   try {
     // Use preloaded style guide rules for optimal performance
     if (!PRELOADED_STYLE_RULES || !PRELOADED_LANGUAGE_REFERENCE) {
@@ -547,6 +813,9 @@ async function reviewCode(args, format, version, chunkSize = 20, severityFilter 
     
     // Handle different source types
     if (source_type === 'directory') {
+      if (!directory_path) {
+        throw new Error('directory_path parameter is required when source_type is "directory"');
+      }
       return await reviewDirectory(directory_path, {
         recursive,
         file_extensions,
@@ -558,31 +827,41 @@ async function reviewCode(args, format, version, chunkSize = 20, severityFilter 
     }
     
     if (source_type === 'file') {
+      if (!file_path) {
+        throw new Error('file_path parameter is required when source_type is "file"');
+      }
       const fileContent = await FileSystemUtils.safeReadFile(file_path);
       return await reviewSingleCode(fileContent, format, version, chunkSize, severityFilter, file_path);
     }
     
     // Default: source_type === 'code'
-    return await reviewSingleCode(code, format, version, chunkSize, severityFilter);
+    return await reviewSingleCode(code!, format, version, chunkSize, severityFilter);
     
   } catch (error) {
     return {
       content: [
         {
           type: 'text',
-          text: `Code review failed: ${error.message}`,
+          text: `Code review failed: ${error instanceof Error ? error.message : String(error)}`,
         },
       ],
     };
   }
 }
 
-async function reviewSingleCode(code, format, version, chunkSize = 20, severityFilter = 'all', filePath = null) {
+async function reviewSingleCode(
+  code: string,
+  format: string,
+  version: string,
+  chunkSize = 20,
+  severityFilter = 'all',
+  filePath: string | null = null
+): Promise<CallToolResult> {
   try {
-    const styleGuide = PRELOADED_STYLE_RULES;
-    const functions = PRELOADED_LANGUAGE_REFERENCE.functions;
+    const styleGuide = PRELOADED_STYLE_RULES!;
+    const functions = PRELOADED_LANGUAGE_REFERENCE!.functions;
     
-    const violations = [];
+    const violations: ValidationViolation[] = [];
     const lines = code.split('\n');
     
     // Check for version declaration
@@ -599,8 +878,8 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
     }
     
     // Helper function to collect complete multi-line function declarations
-    function collectCompleteFunction(lines, startIndex) {
-      const startLine = lines[startIndex].trim();
+    function collectCompleteFunction(lines: string[], startIndex: number): { text: string; endLine: number } {
+      const startLine = lines[startIndex]!.trim();
       
       // If the line already contains complete function (ends with ')'), return single line
       if (startLine.includes('(') && startLine.endsWith(')')) {
@@ -614,12 +893,12 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
       let stringChar = '';
       
       for (let i = startIndex; i < lines.length; i++) {
-        const line = lines[i].trim();
+        const line = lines[i]!.trim();
         functionText += (i > startIndex ? ' ' : '') + line;
         
         // Track parentheses balance accounting for string literals
         for (let j = 0; j < line.length; j++) {
-          const char = line[j];
+          const char = line[j]!;
           
           if (inString) {
             if (char === stringChar && line[j-1] !== '\\') {
@@ -651,7 +930,7 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
     // Check for indicator/strategy declaration
     let hasDeclaration = false;
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
+      const line = lines[i]!.trim();
       
       if (line.includes('indicator(') || line.includes('strategy(')) {
         hasDeclaration = true;
@@ -661,14 +940,15 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
         
         // SHORT_TITLE_TOO_LONG validation using AST parser
         try {
+          // @ts-ignore - Type definitions for parser modules not available
           const { quickValidateShortTitle } = await import('./src/parser/index.js');
           const validationResult = await quickValidateShortTitle(completeFunctionText);
           
           if (validationResult.hasShortTitleError) {
-            violations.push(...validationResult.violations.map(violation => ({
+            violations.push(...validationResult.violations.map((violation: any) => ({
               line: i + 1,
               column: violation.column,
-              severity: violation.severity,
+              severity: violation.severity as 'error' | 'warning' | 'suggestion',
               message: violation.message,
               rule: violation.rule,
               category: violation.category
@@ -676,18 +956,20 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
           }
         } catch (error) {
           // Fallback: continue without advanced validation if parser fails
-          console.warn('Advanced validation unavailable:', error.message);
+          console.warn('Advanced validation unavailable:', error instanceof Error ? error.message : String(error));
         }
+        
         // INVALID_PRECISION validation using same AST parser
         try {
+          // @ts-ignore - Type definitions for parser modules not available
           const { quickValidatePrecision } = await import("./src/parser/index.js");
           const precisionValidationResult = await quickValidatePrecision(completeFunctionText);
           
           if (precisionValidationResult.hasPrecisionError) {
-            violations.push(...precisionValidationResult.violations.map(violation => ({
+            violations.push(...precisionValidationResult.violations.map((violation: any) => ({
               line: i + 1,
               column: violation.column,
-              severity: violation.severity,
+              severity: violation.severity as 'error' | 'warning' | 'suggestion',
               message: violation.message,
               rule: violation.rule,
               category: violation.category
@@ -695,18 +977,20 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
           }
         } catch (error) {
           // Fallback: continue without precision validation if parser fails
-          console.warn("Precision validation unavailable:", error.message);
+          console.warn("Precision validation unavailable:", error instanceof Error ? error.message : String(error));
         }
+        
         // INVALID_MAX_BARS_BACK validation using same AST parser
         try {
+          // @ts-ignore - Type definitions for parser modules not available
           const { quickValidateMaxBarsBack } = await import("./src/parser/index.js");
           const maxBarsBackValidationResult = await quickValidateMaxBarsBack(completeFunctionText);
           
           if (maxBarsBackValidationResult.hasMaxBarsBackError) {
-            violations.push(...maxBarsBackValidationResult.violations.map(violation => ({
+            violations.push(...maxBarsBackValidationResult.violations.map((violation: any) => ({
               line: i + 1,
               column: violation.column,
-              severity: violation.severity,
+              severity: violation.severity as 'error' | 'warning' | 'suggestion',
               message: violation.message,
               rule: violation.rule,
               category: violation.category
@@ -714,19 +998,20 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
           }
         } catch (error) {
           // Fallback: continue without max_bars_back validation if parser fails
-          console.warn("Max bars back validation unavailable:", error.message);
+          console.warn("Max bars back validation unavailable:", error instanceof Error ? error.message : String(error));
         }
         
         // INVALID_DRAWING_OBJECT_COUNTS validation using batch AST parser
         try {
+          // @ts-ignore - Type definitions for parser modules not available
           const { quickValidateDrawingObjectCounts } = await import("./src/parser/index.js");
           const drawingObjectCountsValidationResult = await quickValidateDrawingObjectCounts(completeFunctionText);
           
           if (drawingObjectCountsValidationResult.hasDrawingObjectCountError) {
-            violations.push(...drawingObjectCountsValidationResult.violations.map(violation => ({
+            violations.push(...drawingObjectCountsValidationResult.violations.map((violation: any) => ({
               line: i + 1,
               column: violation.column,
-              severity: violation.severity,
+              severity: violation.severity as 'error' | 'warning' | 'suggestion',
               message: violation.message,
               rule: violation.rule,
               category: violation.category
@@ -734,19 +1019,20 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
           }
         } catch (error) {
           // Fallback: continue without drawing object count validation if parser fails
-          console.warn("Drawing object count validation unavailable:", error.message);
+          console.warn("Drawing object count validation unavailable:", error instanceof Error ? error.message : String(error));
         }
 
         // INPUT_TYPE_MISMATCH validation using atomic type checking
         try {
+          // @ts-ignore - Type definitions for parser modules not available
           const { quickValidateInputTypes } = await import("./src/parser/index.js");
           const inputTypesValidationResult = await quickValidateInputTypes(completeFunctionText);
           
           if (inputTypesValidationResult.violations.length > 0) {
-            violations.push(...inputTypesValidationResult.violations.map(violation => ({
+            violations.push(...inputTypesValidationResult.violations.map((violation: any) => ({
               line: i + 1,
               column: violation.column,
-              severity: violation.severity,
+              severity: violation.severity as 'error' | 'warning' | 'suggestion',
               message: violation.message,
               rule: violation.rule,
               category: violation.category
@@ -754,7 +1040,7 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
           }
         } catch (error) {
           // Fallback: continue without type validation if parser fails
-          console.warn("Input type validation unavailable:", error.message);
+          console.warn("Input type validation unavailable:", error instanceof Error ? error.message : String(error));
         }
         
         // Skip processed lines to maintain performance
@@ -765,7 +1051,7 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
       if (line.includes('=') && !line.startsWith('//')) {
         const varMatch = line.match(/(\w+)\s*=/);
         if (varMatch) {
-          const varName = varMatch[1];
+          const varName = varMatch[1]!;
           // Check camelCase naming (corrected from snake_case)
           if (!/^[a-z][a-zA-Z0-9]*$/.test(varName) && !['ta', 'math', 'array', 'str'].includes(varName)) {
             violations.push({
@@ -823,14 +1109,15 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
     
     // FUNCTION_SIGNATURE_VALIDATION - validate all function calls across entire script
     try {
+      // @ts-ignore - Type definitions for parser modules not available
       const { quickValidateFunctionSignatures } = await import("./src/parser/index.js");
       const functionSignatureValidationResult = await quickValidateFunctionSignatures(code);
       
       if (functionSignatureValidationResult.violations.length > 0) {
-        violations.push(...functionSignatureValidationResult.violations.map(violation => ({
+        violations.push(...functionSignatureValidationResult.violations.map((violation: any) => ({
           line: violation.line,
           column: violation.column,
-          severity: violation.severity,
+          severity: violation.severity as 'error' | 'warning' | 'suggestion',
           message: violation.message,
           rule: violation.rule,
           category: violation.category
@@ -838,7 +1125,7 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
       }
     } catch (error) {
       // Fallback: continue without function signature validation if parser fails
-      console.warn("Function signature validation unavailable:", error.message);
+      console.warn("Function signature validation unavailable:", error instanceof Error ? error.message : String(error));
     }
     
     if (!hasDeclaration) {
@@ -859,7 +1146,7 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
       filteredViolations = violations.filter(v => v.severity === severityFilter);
     }
     
-    const summary = {
+    const summary: ValidationSummary = {
       total_issues: violations.length,
       errors: violations.filter(v => v.severity === 'error').length,
       warnings: violations.filter(v => v.severity === 'warning').length,
@@ -868,7 +1155,7 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
       severity_filter: severityFilter,
     };
     
-    const result = {
+    const result: ReviewResult = {
       summary,
       violations: filteredViolations,
       version,
@@ -907,7 +1194,7 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
       content: [
         {
           type: 'text',
-          text: `Style guide rules not yet available. Run 'npm run update-docs' to download and process PineScript documentation. Error: ${error.message}`,
+          text: `Style guide rules not yet available. Run 'npm run update-docs' to download and process PineScript documentation. Error: ${error instanceof Error ? error.message : String(error)}`,
         },
       ],
     };
@@ -915,7 +1202,14 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
 }
 
 // Directory review function with streaming support
-async function reviewDirectory(directoryPath, options = {}) {
+async function reviewDirectory(directoryPath: string, options: {
+  recursive?: boolean;
+  file_extensions?: string[];
+  format?: string;
+  version?: string;
+  chunkSize?: number;
+  severityFilter?: string;
+} = {}): Promise<CallToolResult> {
   const {
     recursive = true,
     file_extensions = ['.pine', '.pinescript'],
@@ -954,7 +1248,7 @@ async function reviewDirectory(directoryPath, options = {}) {
     }
     
     // Process files and collect results
-    const fileResults = [];
+    const fileResults: (ReviewResult & { file_size?: number })[] = [];
     let totalViolations = 0;
     let aggregatedSummary = {
       total_files: files.length,
@@ -962,7 +1256,9 @@ async function reviewDirectory(directoryPath, options = {}) {
       errors: 0,
       warnings: 0,
       suggestions: 0,
-      files_with_issues: 0
+      files_with_issues: 0,
+      filtered_count: 0,
+      severity_filter: severityFilter
     };
     
     for (const file of files) {
@@ -971,13 +1267,14 @@ async function reviewDirectory(directoryPath, options = {}) {
         const result = await reviewSingleCode(fileContent, 'json', version, chunkSize, severityFilter, file.relativePath);
         
         // Parse the JSON result to extract violations
-        const resultJson = JSON.parse(result.content[0].text);
+        const resultJson = JSON.parse((result.content[0] as TextContent).text) as ReviewResult;
         
         // Add to aggregated summary
         aggregatedSummary.total_issues += resultJson.summary.total_issues;
         aggregatedSummary.errors += resultJson.summary.errors;
         aggregatedSummary.warnings += resultJson.summary.warnings;
         aggregatedSummary.suggestions += resultJson.summary.suggestions;
+        aggregatedSummary.filtered_count += resultJson.summary.filtered_count;
         
         if (resultJson.summary.total_issues > 0) {
           aggregatedSummary.files_with_issues++;
@@ -985,9 +1282,9 @@ async function reviewDirectory(directoryPath, options = {}) {
         
         // Store file result for streaming
         fileResults.push({
+          ...resultJson,
           file_path: file.relativePath,
-          file_size: file.size,
-          ...resultJson
+          file_size: file.size
         });
         
         totalViolations += resultJson.violations.length;
@@ -1000,14 +1297,16 @@ async function reviewDirectory(directoryPath, options = {}) {
             total_issues: 1,
             errors: 1,
             warnings: 0,
-            suggestions: 0
+            suggestions: 0,
+            filtered_count: 1,
+            severity_filter: 'all'
           },
           violations: [{
             line: 1,
             column: 1,
             rule: 'file_access_error',
-            severity: 'error',
-            message: `Failed to process file: ${fileError.message}`,
+            severity: 'error' as const,
+            message: `Failed to process file: ${fileError instanceof Error ? fileError.message : String(fileError)}`,
             category: 'system',
             suggested_fix: 'Check file permissions and encoding'
           }],
@@ -1019,11 +1318,12 @@ async function reviewDirectory(directoryPath, options = {}) {
         aggregatedSummary.total_issues++;
         aggregatedSummary.errors++;
         aggregatedSummary.files_with_issues++;
+        aggregatedSummary.filtered_count++;
         totalViolations++;
       }
     }
     
-    const directoryResult = {
+    const directoryResult: DirectoryReviewResult = {
       directory_path: directoryPath,
       summary: aggregatedSummary,
       files: fileResults,
@@ -1065,7 +1365,7 @@ async function reviewDirectory(directoryPath, options = {}) {
       content: [
         {
           type: 'text',
-          text: `Directory review failed: ${error.message}`,
+          text: `Directory review failed: ${error instanceof Error ? error.message : String(error)}`,
         },
       ],
     };
@@ -1073,8 +1373,8 @@ async function reviewDirectory(directoryPath, options = {}) {
 }
 
 // Helper function for streaming directory review results
-async function streamDirectoryReview(directoryResult, chunkSize) {
-  const chunks = [];
+async function streamDirectoryReview(directoryResult: DirectoryReviewResult, chunkSize: number): Promise<CallToolResult> {
+  const chunks: StreamChunk[] = [];
   const files = directoryResult.files;
   
   // Create metadata chunk
@@ -1117,8 +1417,8 @@ async function streamDirectoryReview(directoryResult, chunkSize) {
 }
 
 // Helper function for streaming code review results
-async function streamCodeReview(result, chunkSize) {
-  const chunks = [];
+async function streamCodeReview(result: ReviewResult, chunkSize: number): Promise<CallToolResult> {
+  const chunks: StreamChunk[] = [];
   const totalViolations = result.violations.length;
   
   // Create metadata chunk
@@ -1158,7 +1458,7 @@ async function streamCodeReview(result, chunkSize) {
   };
 }
 
-function formatAsMarkdown(result) {
+function formatAsMarkdown(result: ReviewResult): string {
   let markdown = '# PineScript Code Review Results\n\n';
   
   markdown += '## Summary\n';
@@ -1188,13 +1488,15 @@ function formatAsMarkdown(result) {
     
     markdown += `${icon} **Line ${violation.line}:** ${violation.message}\n`;
     markdown += `- Rule: \`${violation.rule}\` (${violation.category})\n`;
-    markdown += `- Suggested fix: ${violation.suggested_fix}\n\n`;
+    if (violation.suggested_fix) {
+      markdown += `- Suggested fix: ${violation.suggested_fix}\n\n`;
+    }
   }
   
   return markdown;
 }
 
-function formatDirectoryAsMarkdown(directoryResult) {
+function formatDirectoryAsMarkdown(directoryResult: DirectoryReviewResult): string {
   let markdown = `# PineScript Directory Review Results\n\n`;
   markdown += `**Directory:** \`${directoryResult.directory_path}\`\n\n`;
   
@@ -1225,7 +1527,9 @@ function formatDirectoryAsMarkdown(directoryResult) {
         
         markdown += `${icon} **Line ${violation.line}:** ${violation.message}\n`;
         markdown += `- Rule: \`${violation.rule}\` (${violation.category})\n`;
-        markdown += `- Suggested fix: ${violation.suggested_fix}\n\n`;
+        if (violation.suggested_fix) {
+          markdown += `- Suggested fix: ${violation.suggested_fix}\n\n`;
+        }
       }
       
       markdown += '---\n\n';
@@ -1235,8 +1539,15 @@ function formatDirectoryAsMarkdown(directoryResult) {
   return markdown;
 }
 
-// SYNTAX_COMPATIBILITY_VALIDATION Tool Implementation
-async function validateSyntaxCompatibilityTool(code, format = 'json', migrationGuide = false) {
+// ========================================
+// SYNTAX COMPATIBILITY VALIDATION
+// ========================================
+
+async function validateSyntaxCompatibilityTool(
+  code: string,
+  format = 'json',
+  migrationGuide = false
+): Promise<CallToolResult> {
   try {
     const result = validateSyntaxCompatibility(code);
     
@@ -1261,7 +1572,7 @@ async function validateSyntaxCompatibilityTool(code, format = 'json', migrationG
     };
     
     if (migrationGuide && result.hasSyntaxCompatibilityError) {
-      response.migration_guide = generateMigrationGuide(result);
+      (response as any).migration_guide = generateMigrationGuide(result);
     }
     
     return {
@@ -1278,14 +1589,14 @@ async function validateSyntaxCompatibilityTool(code, format = 'json', migrationG
       content: [
         {
           type: 'text',
-          text: `Syntax compatibility validation failed: ${error.message}`,
+          text: `Syntax compatibility validation failed: ${error instanceof Error ? error.message : String(error)}`,
         },
       ],
     };
   }
 }
 
-function formatSyntaxCompatibilityAsMarkdown(result, migrationGuide = false) {
+function formatSyntaxCompatibilityAsMarkdown(result: any, migrationGuide = false): string {
   let markdown = '# Pine Script v6 Syntax Compatibility Report\n\n';
   
   if (!result.hasSyntaxCompatibilityError) {
@@ -1306,7 +1617,7 @@ function formatSyntaxCompatibilityAsMarkdown(result, migrationGuide = false) {
   if (result.violations.length > 0) {
     markdown += '## Issues Found\n\n';
     
-    result.violations.forEach((violation, index) => {
+    result.violations.forEach((violation: any, index: number) => {
       markdown += `### ${index + 1}. Line ${violation.line}, Column ${violation.column}\n\n`;
       markdown += `**Severity**: ${violation.severity}\n\n`;
       markdown += `**Message**: ${violation.message}\n\n`;
@@ -1332,15 +1643,15 @@ function formatSyntaxCompatibilityAsMarkdown(result, migrationGuide = false) {
   return markdown;
 }
 
-function generateMigrationGuide(result) {
+function generateMigrationGuide(result: any): any {
   const guide = {
     summary: `Migration required for ${result.violations.length} compatibility issues`,
-    deprecated_functions: {},
-    namespace_requirements: {},
-    version_updates: {}
+    deprecated_functions: {} as Record<string, any>,
+    namespace_requirements: {} as Record<string, any>,
+    version_updates: {} as Record<string, any>
   };
   
-  result.violations.forEach(violation => {
+  result.violations.forEach((violation: any) => {
     if (violation.details?.deprecatedFunction) {
       guide.deprecated_functions[violation.details.deprecatedFunction] = {
         modernEquivalent: violation.details.modernEquivalent,
@@ -1366,16 +1677,16 @@ function generateMigrationGuide(result) {
   return guide;
 }
 
-function generateMigrationGuideMarkdown(result) {
+function generateMigrationGuideMarkdown(result: any): string {
   let markdown = '## Migration Guide\n\n';
   
-  const deprecatedFunctions = result.violations.filter(v => v.details?.deprecatedFunction);
-  const namespaceIssues = result.violations.filter(v => v.details?.namespaceRequired);
-  const versionIssues = result.violations.filter(v => v.details?.upgradeRecommended);
+  const deprecatedFunctions = result.violations.filter((v: any) => v.details?.deprecatedFunction);
+  const namespaceIssues = result.violations.filter((v: any) => v.details?.namespaceRequired);
+  const versionIssues = result.violations.filter((v: any) => v.details?.upgradeRecommended);
   
   if (deprecatedFunctions.length > 0) {
     markdown += '### Deprecated Functions to Replace\n\n';
-    deprecatedFunctions.forEach(v => {
+    deprecatedFunctions.forEach((v: any) => {
       markdown += `- Line ${v.line}: Replace \`${v.details.deprecatedFunction}()\` with \`${v.details.modernEquivalent}()\`\n`;
     });
     markdown += '\n';
@@ -1383,7 +1694,7 @@ function generateMigrationGuideMarkdown(result) {
   
   if (namespaceIssues.length > 0) {
     markdown += '### Namespace Requirements\n\n';
-    namespaceIssues.forEach(v => {
+    namespaceIssues.forEach((v: any) => {
       markdown += `- Line ${v.line}: Use \`${v.details.modernForm}\` instead of \`${v.details.functionName}()\`\n`;
     });
     markdown += '\n';
@@ -1391,7 +1702,7 @@ function generateMigrationGuideMarkdown(result) {
   
   if (versionIssues.length > 0) {
     markdown += '### Version Updates\n\n';
-    versionIssues.forEach(v => {
+    versionIssues.forEach((v: any) => {
       markdown += `- Line ${v.line}: Update @version directive from v${v.details.currentVersion} to v${v.details.recommendedVersion}\n`;
     });
     markdown += '\n';
@@ -1406,7 +1717,11 @@ function generateMigrationGuideMarkdown(result) {
   return markdown;
 }
 
-async function main() {
+// ========================================
+// MAIN SERVER STARTUP
+// ========================================
+
+async function main(): Promise<void> {
   console.log('🚀 Starting PineScript MCP Server...');
   
   try {
@@ -1425,7 +1740,7 @@ async function main() {
     console.log('📈 Performance optimized: ~70-90% faster response times expected');
     
   } catch (error) {
-    console.error('❌ Server startup failed:', error.message);
+    console.error('❌ Server startup failed:', error instanceof Error ? error.message : String(error));
     console.error('💡 Ensure docs/processed/ directory exists with documentation files');
     process.exit(1);
   }

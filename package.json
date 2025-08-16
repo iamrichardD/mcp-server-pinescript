@@ -1,18 +1,24 @@
 {
   "name": "mcp-server-pinescript",
-  "version": "2.0.0",
+  "version": "3.1.0",
   "description": "AI-optimized MCP server for PineScript documentation and code review",
-  "main": "index.js",
+  "main": "index.ts",
   "type": "module",
   "scripts": {
-    "start": "node index.js",
-    "dev": "node --watch index.js",
+    "start": "node --loader ts-node/esm index.ts",
+    "dev": "node --loader ts-node/esm --watch index.ts",
+    "start:js": "node index.js",
+    "dev:js": "node --watch index.js",
     "update-docs": "node scripts/update-docs.js",
     "test": "vitest",
     "test:run": "vitest run",
     "test:parser": "vitest run tests/parser/",
     "test:performance": "vitest run tests/parser/performance.test.js",
-    "test:short-title": "vitest run tests/parser/short-title-validation.test.js"
+    "test:short-title": "vitest run tests/parser/short-title-validation.test.js",
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "start:ts": "node --loader ts-node/esm index.ts",
+    "dev:ts": "node --loader ts-node/esm --watch index.ts"
   },
   "keywords": [
     "mcp",
@@ -42,6 +48,9 @@
     "CHANGELOG.md"
   ],
   "devDependencies": {
+    "@types/node": "^24.3.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   }
 }
