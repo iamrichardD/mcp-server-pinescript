@@ -598,6 +598,56 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
       });
     }
     
+    // Helper function to collect complete multi-line function declarations
+    function collectCompleteFunction(lines, startIndex) {
+      const startLine = lines[startIndex].trim();
+      
+      // If the line already contains complete function (ends with ')'), return single line
+      if (startLine.includes('(') && startLine.endsWith(')')) {
+        return { text: startLine, endLine: startIndex };
+      }
+      
+      // Multi-line function - track parentheses balance
+      let parenthesesCount = 0;
+      let functionText = '';
+      let inString = false;
+      let stringChar = '';
+      
+      for (let i = startIndex; i < lines.length; i++) {
+        const line = lines[i].trim();
+        functionText += (i > startIndex ? ' ' : '') + line;
+        
+        // Track parentheses balance accounting for string literals
+        for (let j = 0; j < line.length; j++) {
+          const char = line[j];
+          
+          if (inString) {
+            if (char === stringChar && line[j-1] !== '\\') {
+              inString = false;
+              stringChar = '';
+            }
+          } else {
+            if (char === '"' || char === "'") {
+              inString = true;
+              stringChar = char;
+            } else if (char === '(') {
+              parenthesesCount++;
+            } else if (char === ')') {
+              parenthesesCount--;
+            }
+          }
+        }
+        
+        // Function complete when parentheses balanced
+        if (parenthesesCount === 0 && functionText.includes('(')) {
+          return { text: functionText, endLine: i };
+        }
+      }
+      
+      // Fallback: return single line if no complete function found
+      return { text: startLine, endLine: startIndex };
+    }
+
     // Check for indicator/strategy declaration
     let hasDeclaration = false;
     for (let i = 0; i < lines.length; i++) {
@@ -606,10 +656,13 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
       if (line.includes('indicator(') || line.includes('strategy(')) {
         hasDeclaration = true;
         
+        // Collect complete function (handles multi-line declarations)
+        const { text: completeFunctionText, endLine } = collectCompleteFunction(lines, i);
+        
         // SHORT_TITLE_TOO_LONG validation using AST parser
         try {
           const { quickValidateShortTitle } = await import('./src/parser/index.js');
-          const validationResult = await quickValidateShortTitle(line);
+          const validationResult = await quickValidateShortTitle(completeFunctionText);
           
           if (validationResult.hasShortTitleError) {
             violations.push(...validationResult.violations.map(violation => ({
@@ -628,7 +681,7 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
         // INVALID_PRECISION validation using same AST parser
         try {
           const { quickValidatePrecision } = await import("./src/parser/index.js");
-          const precisionValidationResult = await quickValidatePrecision(line);
+          const precisionValidationResult = await quickValidatePrecision(completeFunctionText);
           
           if (precisionValidationResult.hasPrecisionError) {
             violations.push(...precisionValidationResult.violations.map(violation => ({
@@ -647,7 +700,7 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
         // INVALID_MAX_BARS_BACK validation using same AST parser
         try {
           const { quickValidateMaxBarsBack } = await import("./src/parser/index.js");
-          const maxBarsBackValidationResult = await quickValidateMaxBarsBack(line);
+          const maxBarsBackValidationResult = await quickValidateMaxBarsBack(completeFunctionText);
           
           if (maxBarsBackValidationResult.hasMaxBarsBackError) {
             violations.push(...maxBarsBackValidationResult.violations.map(violation => ({
@@ -667,7 +720,7 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
         // INVALID_DRAWING_OBJECT_COUNTS validation using batch AST parser
         try {
           const { quickValidateDrawingObjectCounts } = await import("./src/parser/index.js");
-          const drawingObjectCountsValidationResult = await quickValidateDrawingObjectCounts(line);
+          const drawingObjectCountsValidationResult = await quickValidateDrawingObjectCounts(completeFunctionText);
           
           if (drawingObjectCountsValidationResult.hasDrawingObjectCountError) {
             violations.push(...drawingObjectCountsValidationResult.violations.map(violation => ({
@@ -687,7 +740,7 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
         // INPUT_TYPE_MISMATCH validation using atomic type checking
         try {
           const { quickValidateInputTypes } = await import("./src/parser/index.js");
-          const inputTypesValidationResult = await quickValidateInputTypes(line);
+          const inputTypesValidationResult = await quickValidateInputTypes(completeFunctionText);
           
           if (inputTypesValidationResult.violations.length > 0) {
             violations.push(...inputTypesValidationResult.violations.map(violation => ({
@@ -703,6 +756,9 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
           // Fallback: continue without type validation if parser fails
           console.warn("Input type validation unavailable:", error.message);
         }
+        
+        // Skip processed lines to maintain performance
+        i = endLine;
       }
       
       // Style guide checks - corrected to camelCase per official Pine Script style guide
