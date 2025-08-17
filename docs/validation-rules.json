@@ -308,6 +308,37 @@
           },
           "documentation": "Detects incorrect syntax for accessing historical values of user-defined type fields. Pine Script v6 requires parentheses around the object access before field access."
         }
+      },
+      "invalidLineContinuation": {
+        "validation_constraints": {
+          "errorCode": "INVALID_LINE_CONTINUATION",
+          "errorMessage": "Syntax error at input 'end of line without line continuation'. Ternary operators (?) must be properly formatted without line breaks at the condition operator.",
+          "severity": "error",
+          "category": "syntax_validation",
+          "patterns": {
+            "ternaryLineContinuation": "([a-zA-Z_][a-zA-Z0-9_]*\\s*=\\s*[^?\\n]*?)\\?\\s*$",
+            "multiLineTernary": "([a-zA-Z_][a-zA-Z0-9_]*\\s*=\\s*[^?\\n]*?)\\?\\s*\\n\\s*\\(",
+            "assignmentLineBreak": "([a-zA-Z_][a-zA-Z0-9_]*\\s*=\\s*[^?\\n]*?)\\?\\s*\\n",
+            "conditionalOperatorEOL": "\\?\\s*$",
+            "ternaryWithNewlineAfterQuestion": "\\?\\s*\\n\\s*\\("
+          },
+          "correctSyntax": "variable = condition ? (nestedCondition ? value1 : value2) : value3",
+          "examples": {
+            "incorrect": [
+              "slowEma = useAdaptiveRibbon ?\n    (highVolRegime ? slowEma55 : slowEma34) : slowEmaBase",
+              "result = condition ?\n    value1 : value2",
+              "color = bullish ?\n    color.green : color.red",
+              "macdLine = useDynamic ?\n    (highVol ? macdHigh : macdNorm) : macdDefault"
+            ],
+            "correct": [
+              "slowEma = useAdaptiveRibbon ? (highVolRegime ? slowEma55 : slowEma34) : slowEmaBase",
+              "result = condition ? value1 : value2",
+              "color = bullish ? color.green : color.red",
+              "macdLine = useDynamic ? (highVol ? macdHigh : macdNorm) : macdDefault"
+            ]
+          },
+          "documentation": "Detects improper line continuation in ternary operators. Pine Script v6 requires ternary operators to be written without line breaks at the ? operator. Multi-line ternary expressions should keep the ? on the same line as the condition."
+        }
       }
     }
   },
@@ -417,6 +448,29 @@
         ]
       },
       "suggestedFix": "Use correct syntax: (object[historyIndex]).field instead of object.field[historyIndex]"
+    },
+    "INVALID_LINE_CONTINUATION": {
+      "description": "Improper line continuation in ternary operators",
+      "severity": "error",
+      "category": "syntax_validation",
+      "documentation": "Pine Script v6 requires ternary operators to be written without line breaks at the ? operator. This error occurs when a line ends with a ? character followed by a newline, causing 'end of line without line continuation' compilation errors.",
+      "examples": {
+        "problematic": [
+          "slowEma = useAdaptiveRibbon ?\n    (highVolRegime ? slowEma55 : slowEma34) : slowEmaBase",
+          "result = condition ?\n    value1 : value2",
+          "color = bullish ?\n    color.green : color.red"
+        ],
+        "correct": [
+          "slowEma = useAdaptiveRibbon ? (highVolRegime ? slowEma55 : slowEma34) : slowEmaBase",
+          "result = condition ? value1 : value2", 
+          "color = bullish ? color.green : color.red"
+        ]
+      },
+      "suggestedFix": "Keep ternary operators on a single line or use proper line continuation without breaking at the ? character",
+      "relatedErrors": [
+        "Syntax error at input 'end of line without line continuation'",
+        "Compilation error at line N:M"
+      ]
     }
   },
   "processingInstructions": {

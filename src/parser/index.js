@@ -70,7 +70,11 @@ import {
   validateParameterCount as _validateParameterCount,
   validateParameterTypes as _validateParameterTypes,
   validateBuiltinNamespace as _validateBuiltinNamespace,
+  validateSeriesTypeWhereSimpleExpected as _validateSeriesTypeWhereSimpleExpected,
+  quickValidateSeriesTypeWhereSimpleExpected as _quickValidateSeriesTypeWhereSimpleExpected,
   quickValidateBuiltinNamespace as _quickValidateBuiltinNamespace,
+  validateLineContinuation as _validateLineContinuation,
+  quickValidateLineContinuation as _quickValidateLineContinuation,
 } from './validator.js';
 
 export {
@@ -99,9 +103,13 @@ export {
   _quickValidateFunctionSignatures as quickValidateFunctionSignatures,
   _getExpectedSignature as getExpectedSignature,
   _validateParameterCount as validateParameterCount,
+  _validateSeriesTypeWhereSimpleExpected as validateSeriesTypeWhereSimpleExpected,
+  _quickValidateSeriesTypeWhereSimpleExpected as quickValidateSeriesTypeWhereSimpleExpected,
   _validateParameterTypes as validateParameterTypes,
   _validateBuiltinNamespace as validateBuiltinNamespace,
   _quickValidateBuiltinNamespace as quickValidateBuiltinNamespace,
+  _validateLineContinuation as validateLineContinuation,
+  _quickValidateLineContinuation as quickValidateLineContinuation,
 };
 
 /**
@@ -352,3 +360,57 @@ export class PerformanceMonitor {
 
 // Export singleton performance monitor
 export const performanceMonitor = new PerformanceMonitor();
+
+/**
+ * Create a Pine Script parser instance for testing
+ * Provides a unified API for validation testing
+ * 
+ * @returns {Promise<Object>} Parser instance with validateCode method
+ */
+export async function createPineScriptParser() {
+  return {
+    async validateCode(source) {
+      const violations = [];
+      
+      // Run all validation functions
+      try {
+        // Line continuation validation
+        const lineContinuationResult = _quickValidateLineContinuation(source);
+        if (lineContinuationResult.violations) {
+          violations.push(...lineContinuationResult.violations);
+        }
+        
+        // Series type validation
+        const seriesTypeResult = _quickValidateSeriesTypeWhereSimpleExpected(source);
+        if (seriesTypeResult.violations) {
+          violations.push(...seriesTypeResult.violations);
+        }
+        
+        // Builtin namespace validation
+        const namespaceResult = _quickValidateBuiltinNamespace(source);
+        if (namespaceResult.violations) {
+          violations.push(...namespaceResult.violations);
+        }
+        
+        // Short title validation
+        const shortTitleResult = _validateShortTitle(source);
+        if (shortTitleResult.violations) {
+          violations.push(...shortTitleResult.violations);
+        }
+        
+        return {
+          success: true,
+          violations,
+          errors: []
+        };
+        
+      } catch (error) {
+        return {
+          success: false,
+          violations: [],
+          errors: [error.message]
+        };
+      }
+    }
+  };
+}

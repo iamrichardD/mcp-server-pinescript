@@ -1748,3 +1748,376 @@ export function quickValidateBuiltinNamespace(source) {
     };
   }
 }
+
+/**
+ * SERIES_TYPE_WHERE_SIMPLE_EXPECTED ENHANCED VALIDATION
+ * Comprehensive detection of series/simple type conversion errors
+ * 
+ * Detects:
+ * 1. Multi-parameter functions where ALL UDT fields need detection
+ * 2. int() conversion errors where dynamic series values cannot be converted to simple types
+ * 3. Function parameter position mapping for accurate error reporting
+ * 
+ * Performance Target: <5ms validation time for 50+ function calls
+ * Error Format: TradingView compliance
+ */
+
+/**
+ * Enhanced UDT field and series/simple type mismatch detection
+ * Addresses limitations in current validation patterns
+ * 
+ * @param {string} source - Pine Script source code
+ * @returns {Object} Validation result with violations array
+ */
+export function validateSeriesTypeWhereSimpleExpected(source) {
+  const violations = [];
+  const lines = source.split('\n');
+  
+  // Enhanced patterns for comprehensive detection
+  const patterns = {
+    // Pattern 1: Multi-parameter functions with ALL UDT field detection
+    // Captures: ta.macd(close, market.dynamicFast, market.dynamicSlow, market.dynamicSignal)
+    // Enhancement: Detects ALL three UDT fields with their parameter positions
+    taFunctionWithUDTFields: {
+      regex: /(ta\.(ema|sma|rma|wma|vwma|atr|rsi|stoch|bb|macd))\s*\(\s*([^)]+)\)/gs, // Added 's' flag for multiline
+      requiresSimpleParams: {
+        'ta.ema': [1], // length parameter
+        'ta.sma': [1], // length parameter  
+        'ta.rma': [1], // length parameter
+        'ta.wma': [1], // length parameter
+        'ta.vwma': [1], // length parameter
+        'ta.atr': [0], // length parameter
+        'ta.rsi': [1], // length parameter
+        'ta.stoch': [3, 4, 5], // %k (pos 3), %k_smoothing (pos 4), %d_smoothing (pos 5) - first 3 are high, low, close
+        'ta.bb': [1, 2], // length, mult parameters  
+        'ta.macd': [1, 2, 3] // fast_length, slow_length, signal_length parameters
+      }
+    },
+    
+    // Pattern 2: int() conversion error detection
+    // Captures: int(market.adaptiveSlowLength) where adaptiveSlowLength is dynamic series
+    // Enhancement: Detect series-to-simple conversion attempts including nested cases
+    intConversionWithUDTField: {
+      regex: /int\s*\(\s*([^)]+)\s*\)/gs,
+      description: "Impossible int() conversion of dynamic UDT field"
+    },
+    
+    // Pattern 3: Built-in math functions requiring simple types
+    // Enhancement: Expand beyond ta.* functions to comprehensive coverage
+    mathFunctionsWithUDTFields: {
+      regex: /(math\.(abs|acos|asin|atan|ceil|cos|exp|floor|log|log10|max|min|pow|round|sign|sin|sqrt|tan))\s*\(\s*([^)]+)\)/gs,
+      requiresSimpleParams: {} // Most math functions accept series, but some contexts require simple
+    },
+    
+    // Pattern 4: Strategy/indicator functions with type constraints
+    strategyFunctionsWithUDTFields: {
+      regex: /(strategy\.(entry|exit|order|close|close_all))\s*\(\s*([^)]+)\)/gs,
+      requiresSimpleParams: {
+        'strategy.entry': [2], // qty parameter when using fixed quantities
+        'strategy.exit': [2],  // qty parameter when using fixed quantities
+        'strategy.order': [2]  // qty parameter when using fixed quantities
+      }
+    }
+  };
+  
+  // Helper function to find line and column from string position
+  function getLineAndColumn(source, position) {
+    const beforePosition = source.substring(0, position);
+    const lineNumber = (beforePosition.match(/\n/g) || []).length + 1;
+    const lastNewlineIndex = beforePosition.lastIndexOf('\n');
+    const column = position - lastNewlineIndex;
+    return { line: lineNumber, column };
+  }
+  
+  // Process entire source to handle multi-line function calls
+  
+  // Pattern 1: Enhanced ta.* function validation with ALL UDT field detection
+  const taMatches = [...source.matchAll(patterns.taFunctionWithUDTFields.regex)];
+  taMatches.forEach(match => {
+    const functionName = match[1]; // e.g., "ta.macd"
+    const parametersStr = match[3]; // All parameters as string
+    const functionStartPos = match.index;
+    const { line: lineNumber, column: functionStartCol } = getLineAndColumn(source, functionStartPos);
+    
+    // Parse individual parameters
+    const parameters = parseParameterString(parametersStr);
+    const simpleParamIndices = patterns.taFunctionWithUDTFields.requiresSimpleParams[functionName] || [];
+    
+    simpleParamIndices.forEach(paramIndex => {
+      if (paramIndex < parameters.length) {
+        const param = parameters[paramIndex];
+        const udtFieldMatch = param.value.match(/([a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*)/);
+        
+        if (udtFieldMatch) {
+          const udtField = udtFieldMatch[1];
+          const paramCol = functionStartCol + parametersStr.indexOf(param.value);
+          
+          violations.push({
+            line: lineNumber,
+            column: paramCol,
+            severity: 'error',
+            message: `Cannot call "${functionName}" with argument "${param.name || `parameter ${paramIndex + 1}`}"="${udtField}". An argument of "series int" type was used but a "simple int" is expected.`,
+            rule: 'SERIES_TYPE_WHERE_SIMPLE_EXPECTED',
+            category: 'type_validation',
+            details: {
+              functionName: functionName,
+              parameterName: param.name || `parameter ${paramIndex + 1}`,
+              parameterValue: udtField,
+              parameterIndex: paramIndex,
+              expectedType: 'simple int',
+              actualType: 'series int',
+              suggestion: `Use conditional logic with multiple calculations using fixed simple parameters, then select the appropriate result based on conditions.`
+            }
+          });
+        }
+      }
+    });
+  });
+  
+  // Pattern 2: int() conversion error detection
+  const intMatches = [...source.matchAll(patterns.intConversionWithUDTField.regex)];
+  intMatches.forEach(match => {
+    const intParameter = match[1];
+    const intCallPos = match.index;
+    const { line: lineNumber, column: intCallCol } = getLineAndColumn(source, intCallPos);
+    
+    // Find all UDT fields within the int() parameter
+    const udtFieldMatches = [...intParameter.matchAll(/([a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*)/g)];
+    
+    udtFieldMatches.forEach(udtMatch => {
+      const udtField = udtMatch[1];
+      
+      violations.push({
+        line: lineNumber,
+        column: intCallCol,
+        severity: 'error',
+        message: `Cannot convert dynamic series value "${udtField}" to simple type using int(). Dynamic UDT fields remain series and cannot be converted to simple types.`,
+        rule: 'SERIES_TYPE_WHERE_SIMPLE_EXPECTED',
+        category: 'type_validation',
+        details: {
+          functionName: 'int',
+          parameterName: 'value',
+          parameterValue: udtField,
+          parameterIndex: 0,
+          expectedType: 'simple type',
+          actualType: 'series int',
+          suggestion: `CANNOT convert dynamic series to simple types. Use conditional logic with multiple calculations using fixed simple parameters.`
+        }
+      });
+    });
+  });
+  
+  // Pattern 3: Strategy function validation
+  const strategyMatches = [...source.matchAll(patterns.strategyFunctionsWithUDTFields.regex)];
+  strategyMatches.forEach(match => {
+    const functionName = match[1];
+    const parametersStr = match[3];
+    const functionStartPos = match.index;
+    const { line: lineNumber, column: functionStartCol } = getLineAndColumn(source, functionStartPos);
+    
+    const parameters = parseParameterString(parametersStr);
+    const simpleParamIndices = patterns.strategyFunctionsWithUDTFields.requiresSimpleParams[functionName] || [];
+    
+    simpleParamIndices.forEach(paramIndex => {
+      if (paramIndex < parameters.length) {
+        const param = parameters[paramIndex];
+        const udtFieldMatch = param.value.match(/([a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*)/);
+        
+        if (udtFieldMatch) {
+          const udtField = udtFieldMatch[1];
+          const paramCol = functionStartCol + parametersStr.indexOf(param.value);
+          
+          violations.push({
+            line: lineNumber,
+            column: paramCol,
+            severity: 'error',
+            message: `Cannot call "${functionName}" with argument "${param.name || `parameter ${paramIndex + 1}`}"="${udtField}". An argument of "series int" type was used but a "simple int" is expected.`,
+            rule: 'SERIES_TYPE_WHERE_SIMPLE_EXPECTED',
+            category: 'type_validation',
+            details: {
+              functionName: functionName,
+              parameterName: param.name || `parameter ${paramIndex + 1}`,
+              parameterValue: udtField,
+              parameterIndex: paramIndex,
+              expectedType: 'simple int',
+              actualType: 'series int',
+              suggestion: `Use fixed simple values for ${functionName} parameters.`
+            }
+          });
+        }
+      }
+    });
+  });
+  
+  
+  return {
+    violations,
+    warnings: []
+  };
+}
+
+/**
+ * Parse parameter string into structured parameter objects
+ * Handles both positional and named parameters
+ * 
+ * @param {string} parametersStr - Parameters string from function call
+ * @returns {Array} Array of parameter objects with name, value, and position
+ */
+function parseParameterString(parametersStr) {
+  const parameters = [];
+  const paramParts = parametersStr.split(',').map(p => p.trim());
+  
+  paramParts.forEach((part, index) => {
+    // Check if it's a named parameter (name=value)
+    const namedMatch = part.match(/^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.+)$/);
+    if (namedMatch) {
+      parameters.push({
+        name: namedMatch[1],
+        value: namedMatch[2].trim(),
+        position: index,
+        isNamed: true
+      });
+    } else {
+      parameters.push({
+        name: null,
+        value: part.trim(),
+        position: index,
+        isNamed: false
+      });
+    }
+  });
+  
+  return parameters;
+}
+
+/**
+ * Quick validation wrapper for SERIES_TYPE_WHERE_SIMPLE_EXPECTED
+ * Optimized for integration with index.js validation flow
+ * Performance target: <5ms for 50+ function calls
+ * 
+ * @param {string} source - Pine Script source code
+ * @returns {ValidationResult} - Quick validation result
+ */
+export function quickValidateSeriesTypeWhereSimpleExpected(source) {
+  const startTime = performance.now();
+  
+  try {
+    const result = validateSeriesTypeWhereSimpleExpected(source);
+    const endTime = performance.now();
+    
+    return {
+      success: true,
+      hasSeriesTypeError: result.violations.length > 0,
+      violations: result.violations,
+      metrics: {
+        validationTimeMs: endTime - startTime,
+        violationsFound: result.violations.length
+      }
+    };
+    
+  } catch (error) {
+    const endTime = performance.now();
+    
+    return {
+      success: false,
+      hasSeriesTypeError: false,
+      violations: [],
+      error: error.message,
+      metrics: {
+        validationTimeMs: endTime - startTime
+      }
+    };
+  }
+}
+
+/**
+ * INVALID_LINE_CONTINUATION Validation
+ * Detects improper line continuation in ternary operators
+ * 
+ * Validates that ternary operators (? :) do not have line breaks at the ? operator,
+ * which causes "end of line without line continuation" compilation errors in Pine Script v6.
+ * 
+ * @param {string} source - Pine Script source code
+ * @returns {Object} Validation result with violations array
+ */
+export function validateLineContinuation(source) {
+  const violations = [];
+  const lines = source.split('\n');
+  
+  lines.forEach((line, lineIndex) => {
+    // Look for lines ending with ? (ternary line continuation error)
+    // Pattern: variable = condition ? (end of line or comment)
+    const ternaryLineContinuationPattern = /^[^?]*\?\s*(\/\/.*)?$/;
+    
+    if (ternaryLineContinuationPattern.test(line.trim())) {
+      // Make sure this is actually an assignment with a ternary operator
+      const assignmentPattern = /([a-zA-Z_][a-zA-Z0-9_]*\s*=\s*[^?]*)\?\s*(\/\/.*)?$/;
+      const match = line.match(assignmentPattern);
+      
+      if (match) {
+        const questionMarkPos = line.lastIndexOf('?');
+        
+        violations.push({
+          line: lineIndex + 1,
+          column: questionMarkPos + 1,
+          severity: 'error',
+          message: "Syntax error at input 'end of line without line continuation'. ternary operators must be properly formatted without line breaks at the condition operator.",
+          errorCode: 'INVALID_LINE_CONTINUATION',
+          rule: 'INVALID_LINE_CONTINUATION',
+          category: 'syntax_validation',
+          suggestedFix: 'Keep ternary operators on a single line or use proper line continuation without breaking at the ? character',
+          details: {
+            errorPattern: 'ternary_line_continuation',
+            problematicCode: line.trim(),
+            suggestion: 'Keep ternary operators on a single line or use proper line continuation without breaking at the ? character',
+            fixExample: `${match[1]}? value1 : value2`
+          }
+        });
+      }
+    }
+  });
+  
+  return {
+    violations,
+    warnings: []
+  };
+}
+
+/**
+ * Quick validation wrapper for INVALID_LINE_CONTINUATION
+ * Optimized for integration with index.js validation flow
+ * 
+ * @param {string} source - Pine Script source code
+ * @returns {ValidationResult} - Quick validation result
+ */
+export function quickValidateLineContinuation(source) {
+  const startTime = performance.now();
+  
+  try {
+    const result = validateLineContinuation(source);
+    const endTime = performance.now();
+    
+    return {
+      success: true,
+      hasLineContinuationError: result.violations.length > 0,
+      violations: result.violations,
+      metrics: {
+        validationTimeMs: endTime - startTime,
+        violationsFound: result.violations.length
+      }
+    };
+    
+  } catch (error) {
+    const endTime = performance.now();
+    
+    return {
+      success: false,
+      hasLineContinuationError: false,
+      violations: [],
+      error: error.message,
+      metrics: {
+        validationTimeMs: endTime - startTime
+      }
+    };
+  }
+}
