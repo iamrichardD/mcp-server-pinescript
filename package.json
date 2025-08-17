@@ -34,7 +34,9 @@
     "release:minor": "node scripts/release-workflow.js minor",
     "release:major": "node scripts/release-workflow.js major",
     "release:dry-run": "node scripts/release-workflow.js dry-run",
-    "release:status": "node scripts/release-workflow.js status"
+    "release:status": "node scripts/release-workflow.js status",
+    "release:validate": "node scripts/release-monitor.js validate",
+    "release:monitor": "node scripts/release-monitor.js monitor"
   },
   "keywords": [
     "mcp",
