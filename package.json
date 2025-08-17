@@ -29,7 +29,12 @@
     "publish:validate": "node scripts/publish-automation.js validate",
     "publish:dry-run": "node scripts/publish-automation.js dry-run",
     "publish:live": "node scripts/publish-automation.js publish",
-    "prepublishOnly": "npm run publish:validate"
+    "prepublishOnly": "npm run publish:validate",
+    "release:patch": "node scripts/release-workflow.js patch",
+    "release:minor": "node scripts/release-workflow.js minor",
+    "release:major": "node scripts/release-workflow.js major",
+    "release:dry-run": "node scripts/release-workflow.js dry-run",
+    "release:status": "node scripts/release-workflow.js status"
   },
   "keywords": [
     "mcp",
