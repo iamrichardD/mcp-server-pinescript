@@ -194,14 +194,73 @@
                 {"name": "slowlen", "type": "simple int", "position": 2},
                 {"name": "siglen", "type": "simple int", "position": 3}
               ]
+            },
+            "ta.sma": {
+              "parameters": [
+                {"name": "source", "type": "series", "position": 0},
+                {"name": "length", "type": "simple int", "position": 1}
+              ]
+            },
+            "ta.rma": {
+              "parameters": [
+                {"name": "source", "type": "series", "position": 0},
+                {"name": "length", "type": "simple int", "position": 1}
+              ]
+            },
+            "ta.wma": {
+              "parameters": [
+                {"name": "source", "type": "series", "position": 0},
+                {"name": "length", "type": "simple int", "position": 1}
+              ]
+            },
+            "ta.vwma": {
+              "parameters": [
+                {"name": "source", "type": "series", "position": 0},
+                {"name": "length", "type": "simple int", "position": 1}
+              ]
+            },
+            "ta.atr": {
+              "parameters": [
+                {"name": "length", "type": "simple int", "position": 0}
+              ]
+            },
+            "ta.rsi": {
+              "parameters": [
+                {"name": "source", "type": "series", "position": 0},
+                {"name": "length", "type": "simple int", "position": 1}
+              ]
+            },
+            "ta.stoch": {
+              "parameters": [
+                {"name": "source", "type": "series", "position": 0},
+                {"name": "high", "type": "series", "position": 1},
+                {"name": "low", "type": "series", "position": 2},
+                {"name": "length", "type": "simple int", "position": 3}
+              ]
+            },
+            "ta.bb": {
+              "parameters": [
+                {"name": "source", "type": "series", "position": 0},
+                {"name": "length", "type": "simple int", "position": 1},
+                {"name": "mult", "type": "simple float", "position": 2}
+              ]
+            },
+            "int": {
+              "parameters": [
+                {"name": "value", "type": "simple", "position": 0}
+              ]
             }
           },
           "errorCode": "SERIES_TYPE_WHERE_SIMPLE_EXPECTED",
-          "errorMessage": "Cannot call \"{functionName}\" with argument \"{paramName}\"={paramValue}. An argument of \"series int\" type was used but a \"simple int\" is expected.",
+          "errorMessage": "Cannot call \"{functionName}\" with argument \"{paramName}\"=\"{paramValue}\". An argument of \"series int\" type was used but a \"simple int\" is expected.",
           "severity": "error",
           "category": "type_validation",
-          "pattern": "(?:ta\\.ema|ta\\.macd)\\s*\\([^)]*\\b([a-zA-Z_][a-zA-Z0-9_.]*\\.[a-zA-Z_][a-zA-Z0-9_]*)\\b[^)]*\\)",
-          "documentation": "Detects when user-defined type fields (which become series) are passed to functions expecting simple types"
+          "patterns": {
+            "udtFieldInFunction": "(?:ta\\.(?:ema|macd|sma|rma|wma|vwma|atr|rsi|stoch|bb)|int)\\s*\\([^)]*\\b([a-zA-Z_][a-zA-Z0-9_]*\\.[a-zA-Z_][a-zA-Z0-9_]*)\\b[^)]*\\)",
+            "intCallWithUDTField": "int\\s*\\(\\s*([a-zA-Z_][a-zA-Z0-9_]*\\.[a-zA-Z_][a-zA-Z0-9_]*)\\s*\\)",
+            "macdWithUDTFields": "ta\\.macd\\s*\\([^,]+,\\s*([a-zA-Z_][a-zA-Z0-9_]*\\.[a-zA-Z_][a-zA-Z0-9_]*)[^,]*,\\s*([a-zA-Z_][a-zA-Z0-9_]*\\.[a-zA-Z_][a-zA-Z0-9_]*)[^,]*,\\s*([a-zA-Z_][a-zA-Z0-9_]*\\.[a-zA-Z_][a-zA-Z0-9_]*)"
+          },
+          "documentation": "Detects when user-defined type fields (which become series) are passed to functions expecting simple types. Common with ta.ema, ta.macd length parameters and int() conversions."
         }
       }
     },
@@ -230,9 +289,24 @@
           "errorMessage": "Cannot use the history-referencing operator on fields of user-defined types. Reference the history of the object first by enclosing it in parentheses, and then request the field, e.g. \"(object[1]).field\" instead of \"object.field[1]\".",
           "severity": "error",
           "category": "syntax_validation",
-          "pattern": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\.[a-zA-Z_][a-zA-Z0-9_]*\\[\\d+\\]",
-          "correctPattern": "([a-zA-Z_][a-zA-Z0-9_]*[\\d+])\\.[a-zA-Z_][a-zA-Z0-9_]*",
-          "documentation": "Detects incorrect syntax for accessing historical values of user-defined type fields"
+          "patterns": {
+            "udtFieldHistoryReference": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)\\[(\\d+)\\]",
+            "booleanUDTHistory": "\\b(not\\s+)?([a-zA-Z_][a-zA-Z0-9_]*)\\.([a-zA-Z_][a-zA-Z0-9_]*)\\[(\\d+)\\]"
+          },
+          "correctSyntax": "({objectName}[{historyIndex}]).{fieldName}",
+          "examples": {
+            "incorrect": [
+              "positionState.trailingActive[1]",
+              "market.volatilityRegime[2]",
+              "state.performanceStatus[1]"
+            ],
+            "correct": [
+              "(positionState[1]).trailingActive",
+              "(market[2]).volatilityRegime", 
+              "(state[1]).performanceStatus"
+            ]
+          },
+          "documentation": "Detects incorrect syntax for accessing historical values of user-defined type fields. Pine Script v6 requires parentheses around the object access before field access."
         }
       }
     }
@@ -303,8 +377,20 @@
       "description": "Function parameter expects simple type but received series type",
       "severity": "error",
       "category": "type_validation",
-      "documentation": "Pine Script functions may require 'simple' type parameters that are constant at compile time, but received 'series' type that can change per bar. Common with ta.ema, ta.macd length parameters when using user-defined type fields.",
-      "suggestedFix": "Use input() or declare parameter as 'simple' type, or extract to a constant value outside the function call"
+      "documentation": "Pine Script functions may require 'simple' type parameters that are constant at compile time, but received 'series' type that can change per bar. CRITICAL: You cannot convert dynamic series values to simple types. If UDT fields are updated dynamically (e.g., in conditional blocks), they remain series and cannot be converted to simple types using int().",
+      "examples": {
+        "problematic": [
+          "ta.ema(close, market.adaptiveSlowLength)",  
+          "ta.macd(close, market.dynamicFast, market.dynamicSlow, market.dynamicSignal)",
+          "int(market.adaptiveSlowLength) // INVALID if adaptiveSlowLength is dynamic"
+        ],
+        "solutions": [
+          "// Use conditional with fixed simple values:\n// ema34 = ta.ema(close, 34)\n// ema55 = ta.ema(close, 55)\n// result = volatileRegime ? ema55 : ema34",
+          "// Calculate multiple MACD sets with fixed parameters:\n// [fast, sig, hist] = ta.macd(close, 5, 13, 3)\n// [norm, sigN, histN] = ta.macd(close, 8, 21, 5)\n// result = highVol ? fast : norm",
+          "// Use input.int() for truly simple values or conditional selection"
+        ]
+      },
+      "suggestedFix": "CANNOT convert dynamic series to simple types. Use conditional logic with multiple calculations using fixed simple parameters, then select the appropriate result based on conditions."
     },
     "UNKNOWN_FUNCTION_PARAMETER": {
       "description": "Function called with unknown or incorrect parameter name",
@@ -317,8 +403,20 @@
       "description": "Incorrect syntax for accessing history of user-defined type fields",
       "severity": "error",
       "category": "syntax_validation", 
-      "documentation": "Pine Script v6 requires specific syntax for accessing historical values of user-defined type fields: use (object[1]).field instead of object.field[1]",
-      "suggestedFix": "Use correct syntax: (object[1]).field instead of object.field[1]"
+      "documentation": "Pine Script v6 requires specific syntax for accessing historical values of user-defined type fields: use (object[1]).field instead of object.field[1]. This error commonly occurs when trying to reference previous values of UDT fields.",
+      "examples": {
+        "problematic": [
+          "positionState.trailingActive[1]",
+          "not positionState.trailingActive[1]",
+          "market.volatilityRegime[2]"
+        ],
+        "correct": [
+          "(positionState[1]).trailingActive",
+          "not (positionState[1]).trailingActive",
+          "(market[2]).volatilityRegime"
+        ]
+      },
+      "suggestedFix": "Use correct syntax: (object[historyIndex]).field instead of object.field[historyIndex]"
     }
   },
   "processingInstructions": {
