@@ -25,7 +25,11 @@
     "version:check": "node scripts/version-manager.js check",
     "version:validate": "node scripts/version-manager.js validate",
     "prerelease": "npm run version:validate",
-    "release:prepare": "npm run version:validate && npm run build"
+    "release:prepare": "npm run version:validate && npm run build",
+    "publish:validate": "node scripts/publish-automation.js validate",
+    "publish:dry-run": "node scripts/publish-automation.js dry-run",
+    "publish:live": "node scripts/publish-automation.js publish",
+    "prepublishOnly": "npm run publish:validate"
   },
   "keywords": [
     "mcp",
