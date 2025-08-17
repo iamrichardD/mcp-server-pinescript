@@ -18,7 +18,14 @@
     "build": "tsc",
     "type-check": "tsc --noEmit",
     "start:ts": "node --loader ts-node/esm index.ts",
-    "dev:ts": "node --loader ts-node/esm --watch index.ts"
+    "dev:ts": "node --loader ts-node/esm --watch index.ts",
+    "version:patch": "node scripts/version-manager.js bump patch",
+    "version:minor": "node scripts/version-manager.js bump minor",
+    "version:major": "node scripts/version-manager.js bump major",
+    "version:check": "node scripts/version-manager.js check",
+    "version:validate": "node scripts/version-manager.js validate",
+    "prerelease": "npm run version:validate",
+    "release:prepare": "npm run version:validate && npm run build"
   },
   "keywords": [
     "mcp",
