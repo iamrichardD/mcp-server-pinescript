@@ -176,6 +176,65 @@
           "documentation": "Pine Script reserves certain namespace identifiers for built-in functions and cannot be used as variable names"
         }
       }
+    },
+    "typeCompatibility": {
+      "seriesWhereSimpleExpected": {
+        "validation_constraints": {
+          "functions": {
+            "ta.ema": {
+              "parameters": [
+                {"name": "source", "type": "series", "position": 0},
+                {"name": "length", "type": "simple int", "position": 1}
+              ]
+            },
+            "ta.macd": {
+              "parameters": [
+                {"name": "source", "type": "series", "position": 0},
+                {"name": "fastlen", "type": "simple int", "position": 1},
+                {"name": "slowlen", "type": "simple int", "position": 2},
+                {"name": "siglen", "type": "simple int", "position": 3}
+              ]
+            }
+          },
+          "errorCode": "SERIES_TYPE_WHERE_SIMPLE_EXPECTED",
+          "errorMessage": "Cannot call \"{functionName}\" with argument \"{paramName}\"={paramValue}. An argument of \"series int\" type was used but a \"simple int\" is expected.",
+          "severity": "error",
+          "category": "type_validation",
+          "pattern": "(?:ta\\.ema|ta\\.macd)\\s*\\([^)]*\\b([a-zA-Z_][a-zA-Z0-9_.]*\\.[a-zA-Z_][a-zA-Z0-9_]*)\\b[^)]*\\)",
+          "documentation": "Detects when user-defined type fields (which become series) are passed to functions expecting simple types"
+        }
+      }
+    },
+    "parameterValidation": {
+      "unknownFunctionParameter": {
+        "validation_constraints": {
+          "functions": {
+            "strategy.entry": {
+              "validParameters": ["id", "direction", "qty", "limit", "stop", "oca_name", "comment", "when", "alert_message"],
+              "invalidPatterns": ["qty_percent"]
+            }
+          },
+          "errorCode": "UNKNOWN_FUNCTION_PARAMETER",
+          "errorMessage": "The \"{functionName}\" function does not have an argument with the name \"{paramName}\"",
+          "severity": "error", 
+          "category": "parameter_validation",
+          "pattern": "strategy\\.entry\\s*\\([^)]*\\bqty_percent\\s*=",
+          "documentation": "Detects incorrect parameter names in function calls"
+        }
+      }
+    },
+    "syntaxValidation": {
+      "invalidUDTHistoryReference": {
+        "validation_constraints": {
+          "errorCode": "INVALID_UDT_HISTORY_REFERENCE",
+          "errorMessage": "Cannot use the history-referencing operator on fields of user-defined types. Reference the history of the object first by enclosing it in parentheses, and then request the field, e.g. \"(object[1]).field\" instead of \"object.field[1]\".",
+          "severity": "error",
+          "category": "syntax_validation",
+          "pattern": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\.[a-zA-Z_][a-zA-Z0-9_]*\\[\\d+\\]",
+          "correctPattern": "([a-zA-Z_][a-zA-Z0-9_]*[\\d+])\\.[a-zA-Z_][a-zA-Z0-9_]*",
+          "documentation": "Detects incorrect syntax for accessing historical values of user-defined type fields"
+        }
+      }
     }
   },
   "errorCodeDefinitions": {
@@ -239,6 +298,27 @@
       "category": "naming_validation",
       "documentation": "Pine Script reserves certain namespace identifiers for built-in functions and constants. These cannot be used as variable names. Examples: position.*, strategy.*, ta.*, math.*, etc.",
       "suggestedFix": "Rename the variable to avoid conflicts with built-in namespaces (e.g., 'position' → 'positionState', 'strategy' → 'strategyName')"
+    },
+    "SERIES_TYPE_WHERE_SIMPLE_EXPECTED": {
+      "description": "Function parameter expects simple type but received series type",
+      "severity": "error",
+      "category": "type_validation",
+      "documentation": "Pine Script functions may require 'simple' type parameters that are constant at compile time, but received 'series' type that can change per bar. Common with ta.ema, ta.macd length parameters when using user-defined type fields.",
+      "suggestedFix": "Use input() or declare parameter as 'simple' type, or extract to a constant value outside the function call"
+    },
+    "UNKNOWN_FUNCTION_PARAMETER": {
+      "description": "Function called with unknown or incorrect parameter name",
+      "severity": "error", 
+      "category": "parameter_validation",
+      "documentation": "Function called with a parameter name that doesn't exist in the function signature. Check Pine Script reference for correct parameter names.",
+      "suggestedFix": "Check function signature and use correct parameter name (e.g., 'qty_percent' → 'qty' for strategy.entry)"
+    },
+    "INVALID_UDT_HISTORY_REFERENCE": {
+      "description": "Incorrect syntax for accessing history of user-defined type fields",
+      "severity": "error",
+      "category": "syntax_validation", 
+      "documentation": "Pine Script v6 requires specific syntax for accessing historical values of user-defined type fields: use (object[1]).field instead of object.field[1]",
+      "suggestedFix": "Use correct syntax: (object[1]).field instead of object.field[1]"
     }
   },
   "processingInstructions": {
