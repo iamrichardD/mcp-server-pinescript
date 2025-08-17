@@ -717,6 +717,26 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
           console.warn("Max bars back validation unavailable:", error.message);
         }
         
+        // INVALID_OBJECT_NAME_BUILTIN validation using regex-based namespace detection
+        try {
+          const { quickValidateBuiltinNamespace } = await import('./src/parser/index.js');
+          const namespaceValidationResult = await quickValidateBuiltinNamespace(completeFunctionText);
+          
+          if (namespaceValidationResult.hasNamespaceError) {
+            violations.push(...namespaceValidationResult.violations.map(violation => ({
+              line: i + 1,
+              column: violation.location?.column || 1,
+              severity: violation.severity,
+              message: violation.message,
+              rule: violation.rule,
+              category: violation.category
+            })));
+          }
+        } catch (error) {
+          // Fallback: continue without namespace validation if parser fails
+          console.warn('Namespace validation unavailable:', error.message);
+        }
+        
         // INVALID_DRAWING_OBJECT_COUNTS validation using batch AST parser
         try {
           const { quickValidateDrawingObjectCounts } = await import("./src/parser/index.js");

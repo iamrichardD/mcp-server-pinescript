@@ -63,13 +63,14 @@ import {
   quickValidateInputTypes as _quickValidateInputTypes,
   extractFunctionCalls as _extractFunctionCalls,
   inferParameterTypes as _inferParameterTypes,
-  getExpectedTypes as _getExpectedTypes,
   compareTypes as _compareTypes,
   validateFunctionSignatures as _validateFunctionSignatures,
   quickValidateFunctionSignatures as _quickValidateFunctionSignatures,
   getExpectedSignature as _getExpectedSignature,
   validateParameterCount as _validateParameterCount,
   validateParameterTypes as _validateParameterTypes,
+  validateBuiltinNamespace as _validateBuiltinNamespace,
+  quickValidateBuiltinNamespace as _quickValidateBuiltinNamespace,
 } from './validator.js';
 
 export {
@@ -93,13 +94,14 @@ export {
   _quickValidateInputTypes as quickValidateInputTypes,
   _extractFunctionCalls as extractFunctionCalls,
   _inferParameterTypes as inferParameterTypes,
-  _getExpectedTypes as getExpectedTypes,
   _compareTypes as compareTypes,
   _validateFunctionSignatures as validateFunctionSignatures,
   _quickValidateFunctionSignatures as quickValidateFunctionSignatures,
   _getExpectedSignature as getExpectedSignature,
   _validateParameterCount as validateParameterCount,
   _validateParameterTypes as validateParameterTypes,
+  _validateBuiltinNamespace as validateBuiltinNamespace,
+  _quickValidateBuiltinNamespace as quickValidateBuiltinNamespace,
 };
 
 /**

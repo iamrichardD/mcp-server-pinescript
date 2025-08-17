@@ -156,6 +156,28 @@
       }
     }
   },
+  "globalValidationRules": {
+    "variableNaming": {
+      "builtinNamespaceConflict": {
+        "validation_constraints": {
+          "reservedNamespaces": [
+            "position", "strategy", "ta", "math", "array", "matrix", "color", 
+            "alert", "time", "str", "table", "label", "line", "box", "polyline",
+            "plot", "hline", "input", "barstate", "session", "syminfo", 
+            "location", "shape", "size", "scale", "extend", "xloc", "yloc",
+            "order", "bool", "int", "float", "string"
+          ],
+          "errorCode": "INVALID_OBJECT_NAME_BUILTIN",
+          "errorMessage": "Invalid object name: {variableName}. Namespaces of built-ins cannot be used.",
+          "severity": "error",
+          "category": "naming_validation",
+          "source": "Pine Script v6 reserved namespace validation",
+          "pattern": "^[\\s]*(?:var[\\s]+[\\w<>\\.]+[\\s]+|)({reservedNamespace})[\\s]*=",
+          "documentation": "Pine Script reserves certain namespace identifiers for built-in functions and cannot be used as variable names"
+        }
+      }
+    }
+  },
   "errorCodeDefinitions": {
     "SHORT_TITLE_TOO_LONG": {
       "description": "Function shorttitle parameter exceeds 10 character limit",
@@ -210,6 +232,13 @@
       "severity": "error",
       "category": "syntax_compatibility",
       "documentation": "Detects deprecated functions, version compatibility issues, and namespace requirements for Pine Script v6"
+    },
+    "INVALID_OBJECT_NAME_BUILTIN": {
+      "description": "Variable name conflicts with Pine Script built-in namespace",
+      "severity": "error",
+      "category": "naming_validation",
+      "documentation": "Pine Script reserves certain namespace identifiers for built-in functions and constants. These cannot be used as variable names. Examples: position.*, strategy.*, ta.*, math.*, etc.",
+      "suggestedFix": "Rename the variable to avoid conflicts with built-in namespaces (e.g., 'position' → 'positionState', 'strategy' → 'strategyName')"
     }
   },
   "processingInstructions": {
