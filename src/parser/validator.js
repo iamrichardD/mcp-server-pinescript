@@ -79,22 +79,41 @@ export async function validatePineScriptParameters(source, rules = null) {
   // Phase 2: Run individual validators in parallel for performance
   const validationPromises = [];
   
+  // Helper function to check if a rule exists in the nested structure
+  function hasValidationRule(errorCode) {
+    if (rulesToUse.functionValidationRules) {
+      for (const funcRule of Object.values(rulesToUse.functionValidationRules)) {
+        if (funcRule.argumentConstraints) {
+          for (const argConstraint of Object.values(funcRule.argumentConstraints)) {
+            if (argConstraint.validation_constraints && 
+                argConstraint.validation_constraints.errorCode === errorCode) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+    return false;
+  }
+  
   // Short title validation (highest priority)
-  if (rulesToUse.SHORT_TITLE_TOO_LONG) {
+  if (hasValidationRule('SHORT_TITLE_TOO_LONG')) {
     validationPromises.push(validateShortTitle(source));
   }
   
   // Parameter constraint validations
-  if (rulesToUse.INVALID_PRECISION) {
+  if (hasValidationRule('INVALID_PRECISION')) {
     validationPromises.push(quickValidatePrecision(source));
   }
   
-  if (rulesToUse.INVALID_MAX_BARS_BACK) {
+  if (hasValidationRule('INVALID_MAX_BARS_BACK')) {
     validationPromises.push(quickValidateMaxBarsBack(source));
   }
   
   // Drawing object validations
-  if (rulesToUse.TOO_MANY_DRAWING_OBJECTS) {
+  if (hasValidationRule('INVALID_MAX_LINES_COUNT') || 
+      hasValidationRule('INVALID_MAX_LABELS_COUNT') || 
+      hasValidationRule('INVALID_MAX_BOXES_COUNT')) {
     validationPromises.push(quickValidateDrawingObjectCounts(source));
   }
   
@@ -160,7 +179,7 @@ export function validateParameters(functionCalls, validationRules) {
         message: `Function '${name}()' expects ${expectedParamCount} parameters, got ${actualParamCount}`,
         rule: 'PARAMETER_COUNT_MISMATCH',
         category: 'parameter_validation',
-        details: {
+        metadata: {
           functionName: name,
           expectedCount: expectedParamCount,
           actualCount: actualParamCount,
@@ -184,7 +203,7 @@ export function validateParameters(functionCalls, validationRules) {
               message: `Parameter ${index + 1} of '${name}()' expects type '${expectedParam.type}', got '${actualType}'`,
               rule: 'PARAMETER_TYPE_MISMATCH',
               category: 'parameter_validation',
-              details: {
+              metadata: {
                 functionName: name,
                 parameterIndex: index,
                 parameterName: expectedParam.name,
@@ -280,12 +299,44 @@ export function validateShortTitle(source) {
   const lines = source.split('\n');
   
   lines.forEach((line, lineIndex) => {
-    // Regex pattern to match strategy() and indicator() calls with shorttitle parameter
-    const strategyRegex = /(?:strategy|indicator)\s*\(\s*[^,]*,\s*shorttitle\s*=\s*["']([^"']*)["']/g;
+    // Pattern 1: Named parameter - shorttitle="value"
+    const namedRegex = /(?:strategy|indicator)\s*\(\s*[^,]*,\s*shorttitle\s*=\s*["']([^"']*)["']/g;
     
     let match;
-    while ((match = strategyRegex.exec(line)) !== null) {
+    while ((match = namedRegex.exec(line)) !== null) {
       const shortTitle = match[1];
+      const shortTitleLength = shortTitle.length;
+      const functionName = line.includes('strategy') ? 'strategy' : 'indicator';
+      
+      if (shortTitleLength > 10) {
+        const column = line.indexOf(match[0]) + 1;
+        
+        violations.push({
+          line: lineIndex + 1,
+          column: column,
+          severity: 'error',
+          message: `SHORT_TITLE_TOO_LONG: Title "${shortTitle}" is too long (${shortTitleLength} characters). Must be 10 characters or less.`,
+          rule: 'SHORT_TITLE_TOO_LONG',
+          category: 'parameter_validation',
+          metadata: {
+            actualValue: shortTitle,
+            actualLength: shortTitleLength,
+            functionName: functionName,
+            parameterName: 'shorttitle',
+            maxLength: 10,
+            shortTitle: shortTitle,
+            suggestion: shortTitle.substring(0, 10)
+          }
+        });
+      }
+    }
+    
+    // Pattern 2: Positional parameter - strategy("title", "shorttitle") or indicator("title", "shorttitle")
+    const positionalRegex = /(strategy|indicator)\s*\(\s*["']([^"']*)["']\s*,\s*["']([^"']*)["']/g;
+    
+    while ((match = positionalRegex.exec(line)) !== null) {
+      const functionName = match[1];
+      const shortTitle = match[3]; // Second parameter is shorttitle
       const shortTitleLength = shortTitle.length;
       
       if (shortTitleLength > 10) {
@@ -295,11 +346,14 @@ export function validateShortTitle(source) {
           line: lineIndex + 1,
           column: column,
           severity: 'error',
-          message: `Short title "${shortTitle}" exceeds 10 character limit (${shortTitleLength} characters)`,
+          message: `SHORT_TITLE_TOO_LONG: Title "${shortTitle}" is too long (${shortTitleLength} characters). Must be 10 characters or less.`,
           rule: 'SHORT_TITLE_TOO_LONG',
           category: 'parameter_validation',
-          details: {
+          metadata: {
+            actualValue: shortTitle,
             actualLength: shortTitleLength,
+            functionName: functionName,
+            parameterName: 'shorttitle',
             maxLength: 10,
             shortTitle: shortTitle,
             suggestion: shortTitle.substring(0, 10)
@@ -310,8 +364,18 @@ export function validateShortTitle(source) {
   });
   
   return {
-    violations,
-    warnings: []
+    success: true,
+    hasShortTitleError: violations.length > 0,
+    violations: violations.map(v => ({
+      ...v,
+      metadata: {
+        ...v.metadata,
+        actualValue: v.metadata.actualValue,
+        actualLength: v.metadata.actualLength,
+        functionName: v.metadata.functionName,
+        parameterName: v.metadata.parameterName
+      }
+    }))
   };
 }
 
@@ -327,27 +391,104 @@ export function validatePrecision(source) {
   const lines = source.split('\n');
   
   lines.forEach((line, lineIndex) => {
+    // Skip commented lines
+    if (line.trim().startsWith('//')) {
+      return;
+    }
+    
     // Match strategy() or indicator() calls with precision parameter
-    const precisionRegex = /(?:strategy|indicator)\s*\([^)]*precision\s*=\s*(\d+)/g;
+    // Updated regex to capture any value (including non-numeric)
+    const precisionRegex = /(strategy|indicator)\s*\([^)]*precision\s*=\s*([^,)]+)/g;
     
     let match;
     while ((match = precisionRegex.exec(line)) !== null) {
-      const precision = parseInt(match[1]);
+      const functionName = match[1]; // Extract function name (strategy or indicator)
+      const precisionValue = match[2].trim();
+      const column = line.indexOf(match[0]) + match[0].indexOf(match[2]) + 1;
       
-      if (precision < 0 || precision > 8) {
-        const column = line.indexOf(match[0]) + match[0].indexOf(match[1]) + 1;
-        
+      // Check if it's a quoted string (non-numeric)
+      if ((precisionValue.startsWith('"') && precisionValue.endsWith('"')) ||
+          (precisionValue.startsWith("'") && precisionValue.endsWith("'"))) {
         violations.push({
           line: lineIndex + 1,
           column: column,
           severity: 'error',
-          message: `Invalid precision value: ${precision}. Must be between 0 and 8.`,
+          message: `INVALID_PRECISION: precision must be an integer between 0 and 8`,
           rule: 'INVALID_PRECISION',
           category: 'parameter_validation',
-          details: {
+          metadata: {
+            actualValue: precisionValue,
+            minValue: 0,
+            maxValue: 8,
+            functionName: functionName,
+            parameterName: 'precision',
+            suggestion: 'Use an integer value between 0 and 8'
+          }
+        });
+        return;
+      }
+      
+      // Try to parse as number
+      const numericValue = parseFloat(precisionValue);
+      
+      // Check if it's not a valid number
+      if (isNaN(numericValue)) {
+        violations.push({
+          line: lineIndex + 1,
+          column: column,
+          severity: 'error',
+          message: `INVALID_PRECISION: precision must be an integer between 0 and 8`,
+          rule: 'INVALID_PRECISION',
+          category: 'parameter_validation',
+          metadata: {
+            actualValue: precisionValue,
+            minValue: 0,
+            maxValue: 8,
+            functionName: functionName,
+            parameterName: 'precision',
+            suggestion: 'Use an integer value between 0 and 8'
+          }
+        });
+        return;
+      }
+      
+      // Check if it's not an integer (has decimal places)
+      if (!Number.isInteger(numericValue)) {
+        violations.push({
+          line: lineIndex + 1,
+          column: column,
+          severity: 'error',
+          message: `INVALID_PRECISION: precision must be an integer between 0 and 8`,
+          rule: 'INVALID_PRECISION',
+          category: 'parameter_validation',
+          metadata: {
+            actualValue: numericValue,
+            minValue: 0,
+            maxValue: 8,
+            functionName: functionName,
+            parameterName: 'precision',
+            suggestion: Math.floor(numericValue)
+          }
+        });
+        return;
+      }
+      
+      // Finally check the range (convert to integer)
+      const precision = parseInt(precisionValue);
+      if (precision < 0 || precision > 8) {
+        violations.push({
+          line: lineIndex + 1,
+          column: column,
+          severity: 'error',
+          message: `INVALID_PRECISION: precision must be between 0 and 8`,
+          rule: 'INVALID_PRECISION',
+          category: 'parameter_validation',
+          metadata: {
             actualValue: precision,
             minValue: 0,
             maxValue: 8,
+            functionName: functionName,
+            parameterName: 'precision',
             suggestion: Math.max(0, Math.min(8, precision))
           }
         });
@@ -368,15 +509,30 @@ export function validatePrecision(source) {
  */
 export async function quickValidatePrecision(source) {
   const startTime = performance.now();
-  const result = validatePrecision(source);
-  const endTime = performance.now();
   
-  return {
-    ...result,
-    metrics: {
-      validationTimeMs: endTime - startTime
-    }
-  };
+  try {
+    const result = validatePrecision(source);
+    const endTime = performance.now();
+    
+    return {
+      success: true,
+      hasPrecisionError: result.violations.length > 0,
+      violations: result.violations,
+      warnings: result.warnings,
+      metrics: { validationTimeMs: endTime - startTime }
+    };
+  } catch (error) {
+    const endTime = performance.now();
+    
+    return {
+      success: false,
+      hasPrecisionError: false,
+      violations: [],
+      warnings: [],
+      error: error.message,
+      metrics: { validationTimeMs: endTime - startTime }
+    };
+  }
 }
 
 /**
@@ -388,28 +544,64 @@ export function validateMaxBarsBack(source) {
   const lines = source.split('\n');
   
   lines.forEach((line, lineIndex) => {
+    // Skip commented lines
+    if (line.trim().startsWith('//')) {
+      return;
+    }
+    
     // Match max_bars_back parameter in strategy() or indicator() calls
-    const maxBarsBackRegex = /(?:strategy|indicator)\s*\([^)]*max_bars_back\s*=\s*(\d+)/g;
+    // Updated regex to capture any numeric value (including floats)
+    const maxBarsBackRegex = /(strategy|indicator)\s*\([^)]*max_bars_back\s*=\s*([+-]?\d*\.?\d+)/g;
     
     let match;
     while ((match = maxBarsBackRegex.exec(line)) !== null) {
-      const maxBarsBack = parseInt(match[1]);
+      const functionName = match[1]; // Extract function name (strategy or indicator)
+      const valueString = match[2];
+      const numericValue = parseFloat(valueString);
+      const isInteger = Number.isInteger(numericValue);
       
-      // Validate reasonable range (example constraint)
-      if (maxBarsBack < 1 || maxBarsBack > 5000) {
-        const column = line.indexOf(match[0]) + match[0].indexOf(match[1]) + 1;
+      // Check if it's not an integer
+      if (!isInteger) {
+        const column = line.indexOf(match[0]) + match[0].indexOf(match[2]) + 1;
         
         violations.push({
           line: lineIndex + 1,
           column: column,
-          severity: 'warning',
-          message: `max_bars_back value ${maxBarsBack} may cause performance issues. Consider using a value between 1 and 5000.`,
+          severity: 'error',
+          message: `INVALID_MAX_BARS_BACK: max_bars_back must be an integer`,
           rule: 'INVALID_MAX_BARS_BACK',
           category: 'parameter_validation',
-          details: {
+          metadata: {
+            actualValue: numericValue,
+            minValue: 1,
+            maxValue: 5000,
+            functionName: functionName,
+            parameterName: 'max_bars_back',
+            suggestion: Math.floor(numericValue)
+          }
+        });
+        continue;
+      }
+      
+      const maxBarsBack = parseInt(valueString);
+      
+      // Validate reasonable range (example constraint)
+      if (maxBarsBack < 1 || maxBarsBack > 5000) {
+        const column = line.indexOf(match[0]) + match[0].indexOf(match[2]) + 1;
+        
+        violations.push({
+          line: lineIndex + 1,
+          column: column,
+          severity: 'error',
+          message: `INVALID_MAX_BARS_BACK: max_bars_back must be between 1 and 5000`,
+          rule: 'INVALID_MAX_BARS_BACK',
+          category: 'parameter_validation',
+          metadata: {
             actualValue: maxBarsBack,
-            recommendedMin: 1,
-            recommendedMax: 5000,
+            minValue: 1,
+            maxValue: 5000,
+            functionName: functionName,
+            parameterName: 'max_bars_back',
             suggestion: Math.max(1, Math.min(5000, maxBarsBack))
           }
         });
@@ -428,15 +620,30 @@ export function validateMaxBarsBack(source) {
  */
 export async function quickValidateMaxBarsBack(source) {
   const startTime = performance.now();
-  const result = validateMaxBarsBack(source);
-  const endTime = performance.now();
   
-  return {
-    ...result,
-    metrics: {
-      validationTimeMs: endTime - startTime
-    }
-  };
+  try {
+    const result = validateMaxBarsBack(source);
+    const endTime = performance.now();
+    
+    return {
+      success: true,
+      hasMaxBarsBackError: result.violations.length > 0,
+      violations: result.violations,
+      warnings: result.warnings,
+      metrics: { validationTimeMs: endTime - startTime }
+    };
+  } catch (error) {
+    const endTime = performance.now();
+    
+    return {
+      success: false,
+      hasMaxBarsBackError: false,
+      violations: [],
+      warnings: [],
+      error: error.message,
+      metrics: { validationTimeMs: endTime - startTime }
+    };
+  }
 }
 
 /**
@@ -452,28 +659,31 @@ export function validateMaxLinesCount(source) {
   const lines = source.split('\n');
   
   lines.forEach((line, lineIndex) => {
-    const maxLinesRegex = /(?:strategy|indicator)\s*\([^)]*max_lines_count\s*=\s*(\d+)/g;
+    const maxLinesRegex = /(strategy|indicator)\s*\([^)]*max_lines_count\s*=\s*(-?\d+)/g;
     
     let match;
     while ((match = maxLinesRegex.exec(line)) !== null) {
-      const maxLines = parseInt(match[1]);
+      const functionName = match[1];
+      const maxLines = parseInt(match[2]);
       
       if (maxLines < 1 || maxLines > 500) {
-        const column = line.indexOf(match[0]) + match[0].indexOf(match[1]) + 1;
+        const column = line.indexOf(match[0]) + match[0].indexOf(match[2]) + 1;
         
         violations.push({
           line: lineIndex + 1,
           column: column,
           severity: 'error',
-          message: `max_lines_count value ${maxLines} is invalid. Must be between 1 and 500.`,
-          rule: 'TOO_MANY_DRAWING_OBJECTS',
+          message: `INVALID_MAX_LINES_COUNT: max_lines_count value ${maxLines} is invalid. Must be between 1 and 500.`,
+          rule: 'INVALID_MAX_LINES_COUNT',
           category: 'drawing_objects_validation',
-          details: {
+          metadata: {
             objectType: 'lines',
             actualValue: maxLines,
             minValue: 1,
             maxValue: 500,
-            suggestion: Math.max(1, Math.min(500, maxLines))
+            suggestion: Math.max(1, Math.min(500, maxLines)),
+            functionName: functionName,
+            parameterName: 'max_lines_count'
           }
         });
       }
@@ -485,13 +695,30 @@ export function validateMaxLinesCount(source) {
 
 export async function quickValidateMaxLinesCount(source) {
   const startTime = performance.now();
-  const result = validateMaxLinesCount(source);
-  const endTime = performance.now();
   
-  return {
-    ...result,
-    metrics: { validationTimeMs: endTime - startTime }
-  };
+  try {
+    const result = validateMaxLinesCount(source);
+    const endTime = performance.now();
+    
+    return {
+      success: true,
+      hasMaxLinesCountError: result.violations.length > 0,
+      violations: result.violations,
+      warnings: result.warnings,
+      metrics: { validationTimeMs: endTime - startTime }
+    };
+  } catch (error) {
+    const endTime = performance.now();
+    
+    return {
+      success: false,
+      hasMaxLinesCountError: false,
+      violations: [],
+      warnings: [],
+      error: error.message,
+      metrics: { validationTimeMs: endTime - startTime }
+    };
+  }
 }
 
 /**
@@ -502,11 +729,11 @@ export function validateMaxLabelsCount(source) {
   const lines = source.split('\n');
   
   lines.forEach((line, lineIndex) => {
-    const maxLabelsRegex = /(?:strategy|indicator)\s*\([^)]*max_labels_count\s*=\s*(\d+)/g;
+    const maxLabelsRegex = /(strategy|indicator)\s*\([^)]*max_labels_count\s*=\s*(-?\d+)/g;
     
     let match;
     while ((match = maxLabelsRegex.exec(line)) !== null) {
-      const maxLabels = parseInt(match[1]);
+      const functionName = match[1]; const maxLabels = parseInt(match[2]);
       
       if (maxLabels < 1 || maxLabels > 500) {
         const column = line.indexOf(match[0]) + match[0].indexOf(match[1]) + 1;
@@ -516,14 +743,16 @@ export function validateMaxLabelsCount(source) {
           column: column,
           severity: 'error',
           message: `max_labels_count value ${maxLabels} is invalid. Must be between 1 and 500.`,
-          rule: 'TOO_MANY_DRAWING_OBJECTS',
+          rule: 'INVALID_MAX_LABELS_COUNT',
           category: 'drawing_objects_validation',
-          details: {
+          metadata: {
             objectType: 'labels',
             actualValue: maxLabels,
             minValue: 1,
             maxValue: 500,
-            suggestion: Math.max(1, Math.min(500, maxLabels))
+            suggestion: Math.max(1, Math.min(500, maxLabels)),
+            functionName: functionName,
+            parameterName: 'max_labels_count'
           }
         });
       }
@@ -535,13 +764,30 @@ export function validateMaxLabelsCount(source) {
 
 export async function quickValidateMaxLabelsCount(source) {
   const startTime = performance.now();
-  const result = validateMaxLabelsCount(source);
-  const endTime = performance.now();
   
-  return {
-    ...result,
-    metrics: { validationTimeMs: endTime - startTime }
-  };
+  try {
+    const result = validateMaxLabelsCount(source);
+    const endTime = performance.now();
+    
+    return {
+      success: true,
+      hasMaxLabelsCountError: result.violations.length > 0,
+      violations: result.violations,
+      warnings: result.warnings,
+      metrics: { validationTimeMs: endTime - startTime }
+    };
+  } catch (error) {
+    const endTime = performance.now();
+    
+    return {
+      success: false,
+      hasMaxLabelsCountError: false,
+      violations: [],
+      warnings: [],
+      error: error.message,
+      metrics: { validationTimeMs: endTime - startTime }
+    };
+  }
 }
 
 /**
@@ -552,11 +798,11 @@ export function validateMaxBoxesCount(source) {
   const lines = source.split('\n');
   
   lines.forEach((line, lineIndex) => {
-    const maxBoxesRegex = /(?:strategy|indicator)\s*\([^)]*max_boxes_count\s*=\s*(\d+)/g;
+    const maxBoxesRegex = /(strategy|indicator)\s*\([^)]*max_boxes_count\s*=\s*(-?\d+)/g;
     
     let match;
     while ((match = maxBoxesRegex.exec(line)) !== null) {
-      const maxBoxes = parseInt(match[1]);
+      const functionName = match[1]; const maxBoxes = parseInt(match[2]);
       
       if (maxBoxes < 1 || maxBoxes > 500) {
         const column = line.indexOf(match[0]) + match[0].indexOf(match[1]) + 1;
@@ -566,14 +812,16 @@ export function validateMaxBoxesCount(source) {
           column: column,
           severity: 'error',
           message: `max_boxes_count value ${maxBoxes} is invalid. Must be between 1 and 500.`,
-          rule: 'TOO_MANY_DRAWING_OBJECTS',
+          rule: 'INVALID_MAX_BOXES_COUNT',
           category: 'drawing_objects_validation',
-          details: {
+          metadata: {
             objectType: 'boxes',
             actualValue: maxBoxes,
             minValue: 1,
             maxValue: 500,
-            suggestion: Math.max(1, Math.min(500, maxBoxes))
+            suggestion: Math.max(1, Math.min(500, maxBoxes)),
+            functionName: functionName,
+            parameterName: 'max_boxes_count'
           }
         });
       }
@@ -585,13 +833,30 @@ export function validateMaxBoxesCount(source) {
 
 export async function quickValidateMaxBoxesCount(source) {
   const startTime = performance.now();
-  const result = validateMaxBoxesCount(source);
-  const endTime = performance.now();
   
-  return {
-    ...result,
-    metrics: { validationTimeMs: endTime - startTime }
-  };
+  try {
+    const result = validateMaxBoxesCount(source);
+    const endTime = performance.now();
+    
+    return {
+      success: true,
+      hasMaxBoxesCountError: result.violations.length > 0,
+      violations: result.violations,
+      warnings: result.warnings,
+      metrics: { validationTimeMs: endTime - startTime }
+    };
+  } catch (error) {
+    const endTime = performance.now();
+    
+    return {
+      success: false,
+      hasMaxBoxesCountError: false,
+      violations: [],
+      warnings: [],
+      error: error.message,
+      metrics: { validationTimeMs: endTime - startTime }
+    };
+  }
 }
 
 /**
@@ -628,7 +893,7 @@ export function validateDrawingObjectCounts(source) {
             message: `${rule.param} value ${value} is invalid. Must be between ${rule.min} and ${rule.max}.`,
             rule: 'TOO_MANY_DRAWING_OBJECTS',
             category: 'drawing_objects_validation',
-            details: {
+            metadata: {
               objectType: rule.type,
               parameter: rule.param,
               actualValue: value,
@@ -647,13 +912,49 @@ export function validateDrawingObjectCounts(source) {
 
 export async function quickValidateDrawingObjectCounts(source) {
   const startTime = performance.now();
-  const result = validateDrawingObjectCounts(source);
-  const endTime = performance.now();
   
-  return {
-    ...result,
-    metrics: { validationTimeMs: endTime - startTime }
-  };
+  try {
+    // Run all individual validators in parallel for better performance
+    const [linesResult, labelsResult, boxesResult] = await Promise.all([
+      quickValidateMaxLinesCount(source),
+      quickValidateMaxLabelsCount(source),
+      quickValidateMaxBoxesCount(source)
+    ]);
+    
+    // Combine all violations
+    const allViolations = [
+      ...linesResult.violations,
+      ...labelsResult.violations,  
+      ...boxesResult.violations
+    ];
+    
+    const endTime = performance.now();
+    
+    return {
+      success: true,
+      hasDrawingObjectCountError: allViolations.length > 0,
+      hasMaxLinesCountError: linesResult.hasMaxLinesCountError,
+      hasMaxLabelsCountError: labelsResult.hasMaxLabelsCountError,
+      hasMaxBoxesCountError: boxesResult.hasMaxBoxesCountError,
+      violations: allViolations,
+      warnings: [],
+      metrics: { validationTimeMs: endTime - startTime }
+    };
+  } catch (error) {
+    const endTime = performance.now();
+    
+    return {
+      success: false,
+      hasDrawingObjectCountError: false,
+      hasMaxLinesCountError: false,
+      hasMaxLabelsCountError: false,
+      hasMaxBoxesCountError: false,
+      violations: [],
+      warnings: [],
+      error: error.message,
+      metrics: { validationTimeMs: endTime - startTime }
+    };
+  }
 }
 
 /**
@@ -799,87 +1100,52 @@ function compareInputTypes(expectedType, actualType) {
  */
 export function validateInputTypes(source) {
   const violations = [];
-  const inputCalls = extractInputFunctions(source);
+  const functionCalls = extractFunctionCalls(source);
   
-  inputCalls.forEach(inputCall => {
-    const { parameters, line, column } = inputCall;
+  functionCalls.forEach(functionCall => {
+    const { name, parameters, line, column } = functionCall;
+    const expectedSignature = getExpectedTypes(name);
     
-    // Skip validation if we don't have enough information
-    if (!parameters.defval) {
+    // Skip validation for unknown functions
+    if (!expectedSignature.params || expectedSignature.params.length === 0) {
       return;
     }
     
-    const inferredType = inferInputType(parameters.defval);
-    
-    // If explicit type is specified, validate against inferred type
-    if (parameters.type) {
-      const explicitType = parameters.type.replace(/["']/g, '');
-      const typeComparison = compareInputTypes(explicitType, inferredType);
-      
-      if (!typeComparison.compatible) {
-        violations.push({
-          line: line,
-          column: column,
-          severity: 'error',
-          message: `Input type mismatch: ${typeComparison.message}`,
-          rule: 'INPUT_TYPE_MISMATCH',
-          category: 'input_validation',
-          details: {
-            expectedType: explicitType,
-            inferredType: inferredType,
-            defaultValue: parameters.defval,
-            suggestion: `Change type to '${inferredType}' or adjust default value`
-          }
-        });
-      }
-    }
-    
-    // Validate range constraints for numeric types
-    if ((inferredType === 'int' || inferredType === 'float') && 
-        (parameters.minval || parameters.maxval)) {
-      
-      const defaultValue = parseFloat(parameters.defval);
-      
-      if (parameters.minval) {
-        const minValue = parseFloat(parameters.minval);
-        if (defaultValue < minValue) {
+    // Validate each parameter type
+    parameters.forEach((paramValue, index) => {
+      if (index < expectedSignature.params.length) {
+        const expectedParam = expectedSignature.params[index];
+        const actualType = inferParameterTypes(paramValue);
+        const typeComparison = compareTypes(expectedParam.type, actualType);
+        
+        if (!typeComparison.compatible) {
           violations.push({
             line: line,
             column: column,
             severity: 'error',
-            message: `Default value ${defaultValue} is below minimum value ${minValue}`,
+            message: `INPUT_TYPE_MISMATCH: Parameter ${index + 1} of '${name}()' expects ${expectedParam.type}, got ${actualType}`,
             rule: 'INPUT_TYPE_MISMATCH',
-            category: 'input_validation',
-            details: {
-              type: 'range_violation',
-              defaultValue: defaultValue,
-              minValue: minValue,
-              suggestion: `Set default value to at least ${minValue}`
+            category: 'type_validation',
+            functionName: name,
+            parameterIndex: index,
+            parameterName: expectedParam.name,
+            expectedType: expectedParam.type,
+            actualType: actualType,
+            actualValue: paramValue,
+            reason: typeComparison.reason || 'type_incompatible',
+            metadata: {
+              functionName: name,
+              parameterIndex: index,
+              parameterName: expectedParam.name,
+              expectedType: expectedParam.type,
+              actualType: actualType,
+              actualValue: paramValue,
+              suggestion: `Expected ${expectedParam.type}, but got ${actualType}`
             }
           });
         }
       }
-      
-      if (parameters.maxval) {
-        const maxValue = parseFloat(parameters.maxval);
-        if (defaultValue > maxValue) {
-          violations.push({
-            line: line,
-            column: column,
-            severity: 'error',
-            message: `Default value ${defaultValue} exceeds maximum value ${maxValue}`,
-            rule: 'INPUT_TYPE_MISMATCH',
-            category: 'input_validation',
-            details: {
-              type: 'range_violation',
-              defaultValue: defaultValue,
-              maxValue: maxValue,
-              suggestion: `Set default value to at most ${maxValue}`
-            }
-          });
-        }
-      }
-    }
+    });
   });
   
   return { violations, warnings: [] };
@@ -887,13 +1153,48 @@ export function validateInputTypes(source) {
 
 export async function quickValidateInputTypes(source) {
   const startTime = performance.now();
-  const result = validateInputTypes(source);
-  const endTime = performance.now();
   
-  return {
-    ...result,
-    metrics: { validationTimeMs: endTime - startTime }
-  };
+  try {
+    const result = validateInputTypes(source);
+    const functionCalls = extractFunctionCalls(source);
+    const endTime = performance.now();
+    
+    // Calculate type checks performed
+    let typeChecksPerformed = 0;
+    functionCalls.forEach(functionCall => {
+      const expectedSignature = getExpectedTypes(functionCall.name);
+      if (expectedSignature.params && expectedSignature.params.length > 0) {
+        typeChecksPerformed += Math.min(functionCall.parameters.length, expectedSignature.params.length);
+      }
+    });
+    
+    return {
+      success: true,
+      hasInputTypesError: result.violations.length > 0,
+      violations: result.violations,
+      warnings: result.warnings,
+      metrics: { 
+        validationTimeMs: endTime - startTime,
+        functionsAnalyzed: functionCalls.length,
+        typeChecksPerformed: typeChecksPerformed
+      }
+    };
+  } catch (error) {
+    const endTime = performance.now();
+    
+    return {
+      success: false,
+      hasInputTypesError: false,
+      violations: [],
+      warnings: [],
+      error: error.message,
+      metrics: { 
+        validationTimeMs: endTime - startTime,
+        functionsAnalyzed: 0,
+        typeChecksPerformed: 0
+      }
+    };
+  }
 }
 
 /**
@@ -931,13 +1232,13 @@ export function extractFunctionCalls(source) {
         }
       }
       
-      if (paramEnd > paramStart) {
+      if (paramEnd >= paramStart) {
         const paramString = line.substring(paramStart, paramEnd);
         const parameters = parseParameters(paramString);
         
         functionCalls.push({
           name: functionName,
-          parameters: parameters,
+          parameters: parameters.map(p => p.value),
           line: lineIndex + 1,
           column: startPos + 1,
           source: line.trim()
@@ -988,36 +1289,98 @@ function parseParameters(paramString) {
  * Infer parameter types from values
  */
 export function inferParameterTypes(parameters) {
-  return parameters.map(param => {
-    const value = param.value;
+  // Handle single string parameter (test interface)
+  if (typeof parameters === "string") {
+    const value = parameters;
     
+    // Guard against null/undefined values
+    if (!value) {
+      return "unknown";
+    }
+
     // String literals
     if ((value.startsWith('"') && value.endsWith('"')) ||
         (value.startsWith("'") && value.endsWith("'"))) {
-      return { ...param, inferredType: 'string' };
+      return "string";
     }
     
     // Boolean literals
-    if (value === 'true' || value === 'false') {
-      return { ...param, inferredType: 'bool' };
+    if (value === "true" || value === "false") {
+      return "bool";
     }
     
     // Numeric literals
     if (/^-?\d+$/.test(value)) {
-      return { ...param, inferredType: 'int' };
+      return "int";
     }
     
     if (/^-?\d*\.\d+$/.test(value)) {
-      return { ...param, inferredType: 'float' };
+      return "float";
+    }
+    
+    // Pine Script series variables
+    if (['close', 'open', 'high', 'low', 'volume'].includes(value)) {
+      return 'series float';
+    }
+    
+    // Function calls - basic parsing for return type
+    if (value.includes('ta.')) {
+      return 'series float'; // Most ta.* functions return series
+    }
+    
+    if (value.includes('math.')) {
+      return 'float'; // Most math.* functions return float
+    }
+    
+    // Unknown function calls
+    if (value.includes('(') && value.includes(')')) {
+      return 'function_result'; // Function calls return generic function result
     }
     
     // Color constants
-    if (value.startsWith('color.') || value.startsWith('#')) {
-      return { ...param, inferredType: 'color' };
+    if (value.startsWith("color.") || value.startsWith("#")) {
+      return "color";
     }
     
     // Default to series or identifier
-    return { ...param, inferredType: 'identifier' };
+    return "identifier";
+  }
+  
+  // Handle array of parameter objects (existing internal interface)
+  return parameters.map(param => {
+    const value = param.value;
+    
+    // Guard against null/undefined values
+    if (!value) {
+      return { ...param, inferredType: "unknown" };
+    }
+
+    if ((value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))) {
+      return { ...param, inferredType: "string" };
+    }
+    
+    // Boolean literals
+    if (value === "true" || value === "false") {
+      return { ...param, inferredType: "bool" };
+    }
+    
+    // Numeric literals
+    if (/^-?\d+$/.test(value)) {
+      return { ...param, inferredType: "int" };
+    }
+    
+    if (/^-?\d*\.\d+$/.test(value)) {
+      return { ...param, inferredType: "float" };
+    }
+    
+    // Color constants
+    if (value.startsWith("color.") || value.startsWith("#")) {
+      return { ...param, inferredType: "color" };
+    }
+    
+    // Default to series or identifier
+    return { ...param, inferredType: "identifier" };
   });
 }
 
@@ -1042,7 +1405,7 @@ export function getExpectedSignature(functionName) {
     'ta.sma': {
       name: 'ta.sma',
       parameters: [
-        { name: 'source', type: 'series', required: true },
+        { name: 'source', type: 'series int/float', required: true },
         { name: 'length', type: 'int', required: true }
       ]
     },
@@ -1055,15 +1418,65 @@ export function getExpectedSignature(functionName) {
         { name: 'linewidth', type: 'int', required: false }
       ]
     }
+    ,
+    'alert': {
+      name: 'alert',
+      parameters: [
+        { name: 'message', type: 'string', required: true },
+        { name: 'freq', type: 'string', required: false }
+      ]
+    }
   };
   
-  return signatures[functionName] || null;
+  return signatures[functionName] || { name: functionName, parameters: [] };
 }
 
 /**
  * Compare actual types with expected types
  */
-export function compareTypes(actualType, expectedType) {
+export function compareTypes(expectedType, actualType) {
+  // Handle exact matches first
+  if (actualType === expectedType) {
+    return { isValid: true, compatible: true, exact: true };
+  }
+  
+  // Pine Script type compatibility rules
+  const compatibilityMap = {
+    'series float': ['float', 'int', 'series int', 'identifier'],
+    'series int': ['int', 'identifier'], 
+    'float': ['int', 'identifier'],
+    'string': ['identifier'],
+    'bool': ['identifier'],
+    'int': ['identifier']
+  };
+  
+  const compatibleTypes = compatibilityMap[expectedType] || [];
+  
+  if (compatibleTypes.includes(actualType)) {
+    return { isValid: true, compatible: true, exact: false, reason: 'compatible_type' };
+  }
+  
+  // Handle compound types (e.g., 'series int/float', 'series float')
+  if (expectedType === 'series int/float') {
+    if (['series int', 'series float', 'series', 'int', 'float', 'identifier'].includes(actualType)) {
+      return { isValid: true, compatible: true, exact: false, reason: 'series_accepts_simple' };
+    }
+  }
+  
+  // Handle int/float compatibility
+  if (expectedType === 'int/float') {
+    if (['int', 'float'].includes(actualType)) {
+      return { isValid: true, compatible: true, exact: false, reason: 'numeric_compatible' };
+    }
+  }
+  
+  if (expectedType === 'simple int') {
+    if (['int', 'simple int', 'identifier'].includes(actualType)) {
+      return { isValid: true, compatible: true, exact: false };
+    }
+  }
+  
+  // Original type hierarchy for basic types
   const typeHierarchy = {
     'int': ['float', 'series'],
     'float': ['series'],
@@ -1074,15 +1487,18 @@ export function compareTypes(actualType, expectedType) {
     'identifier': ['int', 'float', 'bool', 'string', 'color', 'series']
   };
   
-  if (actualType === expectedType) {
-    return { compatible: true, exact: true };
-  }
-  
   if (typeHierarchy[actualType] && typeHierarchy[actualType].includes(expectedType)) {
-    return { compatible: true, exact: false };
+    return { isValid: true, compatible: true, exact: false };
   }
   
-  return { compatible: false, exact: false };
+  return { 
+    isValid: false, 
+    compatible: false, 
+    exact: false, 
+    reason: 'type_mismatch',
+    expected: expectedType,
+    actual: actualType 
+  };
 }
 
 /**
@@ -1112,7 +1528,7 @@ export function validateFunctionSignatures(source) {
         message: `Function '${functionCall.name}()' requires at least ${requiredParams.length} parameters, got ${typedParameters.length}`,
         rule: 'FUNCTION_SIGNATURE_VALIDATION',
         category: 'function_signature',
-        details: {
+        metadata: {
           functionName: functionCall.name,
           expectedMinParams: requiredParams.length,
           actualParams: typedParameters.length,
@@ -1125,7 +1541,7 @@ export function validateFunctionSignatures(source) {
     typedParameters.forEach((param, index) => {
       if (index < expectedSig.parameters.length) {
         const expectedParam = expectedSig.parameters[index];
-        const typeComparison = compareTypes(param.inferredType, expectedParam.type);
+        const typeComparison = compareTypes(expectedParam.type, param.inferredType);
         
         if (!typeComparison.compatible) {
           violations.push({
@@ -1135,7 +1551,7 @@ export function validateFunctionSignatures(source) {
             message: `Parameter ${index + 1} of '${functionCall.name}()' expects ${expectedParam.type}, got ${param.inferredType}`,
             rule: 'FUNCTION_SIGNATURE_VALIDATION',
             category: 'function_signature',
-            details: {
+            metadata: {
               functionName: functionCall.name,
               parameterIndex: index,
               parameterName: expectedParam.name,
@@ -1154,66 +1570,163 @@ export function validateFunctionSignatures(source) {
 
 export async function quickValidateFunctionSignatures(source) {
   const startTime = performance.now();
-  const result = validateFunctionSignatures(source);
-  const endTime = performance.now();
   
-  return {
-    ...result,
-    metrics: { validationTimeMs: endTime - startTime }
-  };
+  try {
+    const violations = [];
+    const functionCalls = extractFunctionCalls(source);
+    const functionsAnalyzed = functionCalls.length;
+    const signatureChecksPerformed = functionCalls.length;
+    
+    functionCalls.forEach(functionCall => {
+      const { name, parameters, line, column } = functionCall;
+      const expectedSignature = getExpectedSignature(name);
+      
+      // Skip unknown functions (they return empty signature)
+      if (!expectedSignature.parameters || expectedSignature.parameters.length === 0) {
+        return;
+      }
+      
+      // Validate parameter count using atomic function
+      const countResult = validateParameterCount(expectedSignature, parameters);
+      if (!countResult.isValid) {
+        const violation = {
+          line: line,
+          column: column,
+          severity: 'error',
+          rule: 'FUNCTION_SIGNATURE_VALIDATION',
+          category: 'function_signature',
+          functionName: name,
+          reason: countResult.reason,
+          expectedParams: countResult.expected,
+          actualParams: countResult.actual,
+          message: `FUNCTION_SIGNATURE_VALIDATION: Function '${name}()' ${countResult.reason} (expected ${countResult.expected}, got ${countResult.actual})`
+        };
+        
+        // Add extra details for specific violation types
+        if (countResult.reason === 'too_many_parameters') {
+          violation.extraParams = parameters.slice(countResult.expected);
+        } else if (countResult.reason === 'missing_required_parameters') {
+          violation.missingParams = expectedSignature.parameters
+            .filter(p => p.required)
+            .slice(countResult.actual)
+            .map(p => p.name);
+        }
+        
+        violations.push(violation);
+        return; // Skip type validation if count is wrong
+      }
+      
+      // Validate parameter types using atomic function
+      const typedParams = parameters.map(param => ({
+        value: param,
+        type: inferParameterTypes(param)
+      }));
+      
+      const typeResult = validateParameterTypes(expectedSignature, typedParams);
+      if (!typeResult.isValid) {
+        typeResult.violations.forEach((typeViolation, index) => {
+          violations.push({
+            line: line,
+            column: column,
+            severity: 'error',
+            rule: 'FUNCTION_SIGNATURE_VALIDATION',
+            category: 'function_signature',
+            functionName: name,
+            reason: 'parameter_type_mismatch',
+            parameterName: typeViolation.parameter,
+            expectedType: typeViolation.expectedType,
+            actualType: typeViolation.actualType,
+            message: `FUNCTION_SIGNATURE_VALIDATION: Parameter '${typeViolation.parameter}' of '${name}()' expects ${typeViolation.expectedType}, got ${typeViolation.actualType}`
+          });
+        });
+      }
+    });
+    
+    const endTime = performance.now();
+    
+    return {
+      success: true,
+      hasFunctionSignaturesError: violations.length > 0,
+      violations: violations,
+      warnings: [],
+      metrics: { 
+        validationTimeMs: endTime - startTime,
+        functionsAnalyzed: functionsAnalyzed,
+        signatureChecksPerformed: signatureChecksPerformed
+      }
+    };
+    
+  } catch (error) {
+    const endTime = performance.now();
+    
+    return {
+      success: false,
+      hasFunctionSignaturesError: false,
+      violations: [],
+      warnings: [],
+      error: error.message,
+      metrics: { validationTimeMs: endTime - startTime }
+    };
+  }
 }
 
 /**
  * Helper functions for modular testing
  */
-export function validateParameterCount(functionCall, expectedSignature) {
+export function validateParameterCount(expectedSignature, actualParams) {
+  // Guard against null/undefined expectedSignature or parameters
+  if (!expectedSignature || !expectedSignature.parameters) {
+    return { isValid: true }; // Skip validation for unknown functions
+  }
+
   const requiredParams = expectedSignature.parameters.filter(p => p.required);
-  const actualParamCount = functionCall.parameters.length;
+  const actualParamCount = actualParams.length;
   
   if (actualParamCount < requiredParams.length) {
     return {
-      valid: false,
-      error: `Function '${functionCall.name}()' requires at least ${requiredParams.length} parameters, got ${actualParamCount}`,
-      expectedMin: requiredParams.length,
+      isValid: false,
+      reason: "missing_required_parameters",
+      expected: requiredParams.length,
       actual: actualParamCount
     };
   }
   
   if (actualParamCount > expectedSignature.parameters.length) {
     return {
-      valid: false,
-      error: `Function '${functionCall.name}()' accepts at most ${expectedSignature.parameters.length} parameters, got ${actualParamCount}`,
-      expectedMax: expectedSignature.parameters.length,
+      isValid: false,
+      reason: "too_many_parameters",
+      expected: expectedSignature.parameters.length,
       actual: actualParamCount
     };
   }
   
-  return { valid: true };
+  return { isValid: true };
 }
 
-export function validateParameterTypes(functionCall, expectedSignature) {
+export function validateParameterTypes(expectedSignature, actualParams) {
   const violations = [];
-  const typedParameters = inferParameterTypes(functionCall.parameters);
-  
-  typedParameters.forEach((param, index) => {
+  // Guard against null/undefined expectedSignature or parameters
+  if (!expectedSignature || !expectedSignature.parameters) {
+    return { isValid: true, violations: [] }; // Skip validation for unknown functions
+  }
+
+  actualParams.forEach((param, index) => {
     if (index < expectedSignature.parameters.length) {
       const expectedParam = expectedSignature.parameters[index];
-      const typeComparison = compareTypes(param.inferredType, expectedParam.type);
+      const typeComparison = compareTypes(expectedParam.type, param.type);
       
       if (!typeComparison.compatible) {
         violations.push({
-          parameterIndex: index,
-          parameterName: expectedParam.name,
+          parameter: expectedParam.name,
           expectedType: expectedParam.type,
-          actualType: param.inferredType,
-          actualValue: param.value,
-          error: `Parameter ${index + 1} expects ${expectedParam.type}, got ${param.inferredType}`
+          actualType: param.type,
+          actualValue: param.value
         });
       }
     }
   });
   
-  return { valid: violations.length === 0, violations };
+  return { isValid: violations.length === 0, violations };
 }
 
 /**
@@ -1326,7 +1839,7 @@ export function validateParameterRanges(source) {
         message: `Parameter '${parameterName}' in ${functionName}() is below minimum value. Got ${value}, minimum is ${constraint.min}`,
         rule: 'PARAMETER_RANGE_VALIDATION',
         category: 'parameter_validation',
-        details: {
+        metadata: {
           functionName: functionName,
           parameterName: parameterName,
           actualValue: value,
@@ -1345,7 +1858,7 @@ export function validateParameterRanges(source) {
         message: `Parameter '${parameterName}' in ${functionName}() exceeds maximum value. Got ${value}, maximum is ${constraint.max}`,
         rule: 'PARAMETER_RANGE_VALIDATION',
         category: 'parameter_validation',
-        details: {
+        metadata: {
           functionName: functionName,
           parameterName: parameterName,
           actualValue: value,
@@ -1365,7 +1878,7 @@ export function validateParameterRanges(source) {
         message: `Parameter '${parameterName}' in ${functionName}() has invalid value. Got ${value}, expected one of: ${constraint.values.join(', ')}`,
         rule: 'PARAMETER_RANGE_VALIDATION',
         category: 'parameter_validation',
-        details: {
+        metadata: {
           functionName: functionName,
           parameterName: parameterName,
           actualValue: value,
@@ -1399,7 +1912,7 @@ export async function quickValidateParameterRanges(source) {
 /**
  * Extract deprecated function calls that need migration to v6
  */
-function extractDeprecatedFunctionCalls(source) {
+export function extractDeprecatedFunctionCalls(source) {
   const deprecatedFunctions = {
     'iff': 'Deprecated in v6. Use conditional operator ?: instead',
     'na': 'Use na constant instead of na() function',
@@ -1408,28 +1921,45 @@ function extractDeprecatedFunctionCalls(source) {
     'study': 'Replaced with indicator() in v6',
     'color.new': 'Use color.rgb() or color constants in v6',
     'input.resolution': 'Use input.timeframe() in v6',
-    'input.symbol': 'Use input.symbol() with updated parameters in v6'
+    'input.symbol': 'Use input.symbol() with updated parameters in v6',
+    'tostring': 'Replaced with str.tostring() in v6',
+    'rsi': 'Replaced with ta.rsi() in v6',
+    'sma': 'Replaced with ta.sma() in v6',
+    'ema': 'Replaced with ta.ema() in v6',
+    'crossover': 'Replaced with ta.crossover() in v6',
+    'crossunder': 'Replaced with ta.crossunder() in v6'
   };
   
   const deprecatedCalls = [];
   const lines = source.split('\n');
   
   lines.forEach((line, lineIndex) => {
+    // Skip comment lines
+    if (line.trim().startsWith('//')) {
+      return;
+    }
+    
     Object.keys(deprecatedFunctions).forEach(deprecatedFunc => {
-      const pattern = new RegExp(`\\b${deprecatedFunc}\\s*\\(`, 'g');
+      // Use negative lookbehind to ensure function is not preceded by namespace
+      const pattern = new RegExp(`(?<!(?:ta|math|str|array|matrix|color|request)\\.)\\b${deprecatedFunc}\\s*\\(`, 'g');
       let match;
       
       while ((match = pattern.exec(line)) !== null) {
         const column = match.index + 1;
         
-        deprecatedCalls.push({
-          name: deprecatedFunc,
-          line: lineIndex + 1,
-          column: column,
-          message: deprecatedFunctions[deprecatedFunc],
-          modernEquivalent: getModernEquivalent(deprecatedFunc),
-          source: line.trim()
-        });
+        // Check if the match is inside a string literal
+        const beforeMatch = line.substring(0, match.index);
+        const quoteCount = (beforeMatch.match(/"/g) || []).length;
+        const isInsideString = quoteCount % 2 === 1;
+        
+        if (!isInsideString) {
+          deprecatedCalls.push({
+            name: deprecatedFunc,
+            line: lineIndex + 1,
+            column: column,
+            modernEquivalent: getModernEquivalent(deprecatedFunc)
+          });
+        }
       }
     });
   });
@@ -1449,7 +1979,14 @@ function getModernEquivalent(deprecatedFunction) {
     'study': 'indicator',
     'color.new': 'color.rgb',
     'input.resolution': 'input.timeframe',
-    'input.symbol': 'input.symbol'
+    'input.symbol': 'input.symbol',
+    'tostring': 'str.tostring'
+    ,
+    'rsi': 'ta.rsi',
+    'sma': 'ta.sma',
+    'ema': 'ta.ema',
+    'crossover': 'ta.crossover',
+    'crossunder': 'ta.crossunder'
   };
   
   return equivalents[deprecatedFunction] || 'unknown';
@@ -1458,8 +1995,9 @@ function getModernEquivalent(deprecatedFunction) {
 /**
  * Analyze version directive compatibility
  */
-function analyzeVersionDirective(source) {
-  const versionPattern = /\/\/@version\s*=\s*(\d+)/;
+export function analyzeVersionDirective(source) {
+  // Updated pattern to handle spaces: // @version = 6 or //@version=6
+  const versionPattern = /\/\/\s*@version\s*=\s*(\d+)/;
   const lines = source.split('\n');
   
   for (let i = 0; i < lines.length; i++) {
@@ -1470,7 +2008,7 @@ function analyzeVersionDirective(source) {
         version: version,
         line: i + 1,
         isV6Compatible: version >= 6,
-        source: lines[i].trim()
+        hasVersionDirective: true
       };
     }
   }
@@ -1478,28 +2016,24 @@ function analyzeVersionDirective(source) {
   // No version directive found
   return {
     version: null,
-    line: 0,
-    isV6Compatible: false,
-    source: null,
-    warning: 'No version directive found. Add //@version=6 for v6 compatibility'
+    line: -1,
+    isV6Compatible: true, // Missing directive assumes latest (v6 compatible)
+    hasVersionDirective: false
   };
 }
 
 /**
  * Validate namespace requirements for v6 functions
  */
-function validateNamespaceRequirements(source) {
+export function validateNamespaceRequirements(source) {
   const namespacedFunctions = {
-    'sma': { namespace: 'ta', modernForm: 'ta.sma' },
-    'ema': { namespace: 'ta', modernForm: 'ta.ema' },
-    'rsi': { namespace: 'ta', modernForm: 'ta.rsi' },
+    // Note: Functions that are in deprecated list (sma, ema, rsi, security, tostring, crossover, crossunder) 
+    // are handled by deprecated function detection, not namespace requirements
     'macd': { namespace: 'ta', modernForm: 'ta.macd' },
     'stoch': { namespace: 'ta', modernForm: 'ta.stoch' },
     'atr': { namespace: 'ta', modernForm: 'ta.atr' },
     'highest': { namespace: 'ta', modernForm: 'ta.highest' },
     'lowest': { namespace: 'ta', modernForm: 'ta.lowest' },
-    'crossover': { namespace: 'ta', modernForm: 'ta.crossover' },
-    'crossunder': { namespace: 'ta', modernForm: 'ta.crossunder' },
     'abs': { namespace: 'math', modernForm: 'math.abs' },
     'floor': { namespace: 'math', modernForm: 'math.floor' },
     'ceil': { namespace: 'math', modernForm: 'math.ceil' },
@@ -1516,7 +2050,8 @@ function validateNamespaceRequirements(source) {
   lines.forEach((line, lineIndex) => {
     Object.keys(namespacedFunctions).forEach(funcName => {
       // Look for function calls without proper namespace
-      const pattern = new RegExp(`\\b(?!(?:ta|math|str|array|matrix|color)\\.)${funcName}\\s*\\(`, 'g');
+      // Use negative lookbehind to ensure function is not preceded by namespace
+      const pattern = new RegExp(`(?<!(?:ta|math|str|array|matrix|color|request)\\.)\\b${funcName}\\s*\\(`, 'g');
       let match;
       
       while ((match = pattern.exec(line)) !== null) {
@@ -1528,8 +2063,7 @@ function validateNamespaceRequirements(source) {
           line: lineIndex + 1,
           column: column,
           requiredNamespace: functionInfo.namespace,
-          modernForm: functionInfo.modernForm,
-          source: line.trim()
+          modernForm: functionInfo.modernForm
         });
       }
     });
@@ -1567,7 +2101,7 @@ export function validateSyntaxCompatibility(source) {
       message: `Function '${call.name}()' is deprecated in Pine Script v6. Use '${call.modernEquivalent}()' instead.`,
       rule: 'SYNTAX_COMPATIBILITY_VALIDATION',
       category: 'syntax_compatibility',
-      details: {
+      metadata: {
         deprecatedFunction: call.name,
         modernEquivalent: call.modernEquivalent,
         migrationRequired: true
@@ -1584,7 +2118,7 @@ export function validateSyntaxCompatibility(source) {
       message: `Pine Script v${versionAnalysis.version} is outdated. Consider upgrading to v6 for latest features and compatibility.`,
       rule: 'SYNTAX_COMPATIBILITY_VALIDATION',
       category: 'syntax_compatibility',
-      details: {
+      metadata: {
         currentVersion: versionAnalysis.version,
         recommendedVersion: 6,
         upgradeRecommended: true
@@ -1601,7 +2135,7 @@ export function validateSyntaxCompatibility(source) {
       message: `Function '${violation.functionName}()' requires '${violation.requiredNamespace}' namespace in v6. Use '${violation.modernForm}()'.`,
       rule: 'SYNTAX_COMPATIBILITY_VALIDATION',
       category: 'syntax_compatibility',
-      details: {
+      metadata: {
         functionName: violation.functionName,
         requiredNamespace: violation.requiredNamespace,
         modernForm: violation.modernForm,
@@ -1619,8 +2153,8 @@ export function validateSyntaxCompatibility(source) {
     violations,
     metrics: {
       executionTime,
-      deprecatedFunctionsFound: deprecatedCalls.length,
-      namespaceViolationsFound: namespaceViolations.length,
+      deprecatedFunctionsFound: violations.filter(v => v.metadata?.deprecatedFunction).length,
+      namespaceViolationsFound: violations.filter(v => v.metadata?.namespaceRequired).length,
       versionCompatible: versionAnalysis.isV6Compatible,
       totalViolations: violations.length
     },
@@ -1859,7 +2393,7 @@ export function validateSeriesTypeWhereSimpleExpected(source) {
             message: `Cannot call "${functionName}" with argument "${param.name || `parameter ${paramIndex + 1}`}"="${udtField}". An argument of "series int" type was used but a "simple int" is expected.`,
             rule: 'SERIES_TYPE_WHERE_SIMPLE_EXPECTED',
             category: 'type_validation',
-            details: {
+            metadata: {
               functionName: functionName,
               parameterName: param.name || `parameter ${paramIndex + 1}`,
               parameterValue: udtField,
@@ -1894,7 +2428,7 @@ export function validateSeriesTypeWhereSimpleExpected(source) {
         message: `Cannot convert dynamic series value "${udtField}" to simple type using int(). Dynamic UDT fields remain series and cannot be converted to simple types.`,
         rule: 'SERIES_TYPE_WHERE_SIMPLE_EXPECTED',
         category: 'type_validation',
-        details: {
+        metadata: {
           functionName: 'int',
           parameterName: 'value',
           parameterValue: udtField,
@@ -1934,7 +2468,7 @@ export function validateSeriesTypeWhereSimpleExpected(source) {
             message: `Cannot call "${functionName}" with argument "${param.name || `parameter ${paramIndex + 1}`}"="${udtField}". An argument of "series int" type was used but a "simple int" is expected.`,
             rule: 'SERIES_TYPE_WHERE_SIMPLE_EXPECTED',
             category: 'type_validation',
-            details: {
+            metadata: {
               functionName: functionName,
               parameterName: param.name || `parameter ${paramIndex + 1}`,
               parameterValue: udtField,
@@ -2066,7 +2600,7 @@ export function validateLineContinuation(source) {
           rule: 'INVALID_LINE_CONTINUATION',
           category: 'syntax_validation',
           suggestedFix: 'Keep ternary operators on a single line or use proper line continuation without breaking at the ? character',
-          details: {
+          metadata: {
             errorPattern: 'ternary_line_continuation',
             problematicCode: line.trim(),
             suggestion: 'Keep ternary operators on a single line or use proper line continuation without breaking at the ? character',
@@ -2121,3 +2655,35 @@ export function quickValidateLineContinuation(source) {
     };
   }
 }
+
+/**
+ * Get expected parameter types for Pine Script functions
+ * @param {string} functionName - The name of the function
+ * @returns {Object} Type definitions with params array
+ */
+export function getExpectedTypes(functionName) {
+  // Pine Script function type definitions
+  const functionTypes = {
+    'ta.sma': {
+      params: [
+        { name: 'source', type: 'series int/float' },
+        { name: 'length', type: 'series int' }
+      ]
+    },
+    'str.contains': {
+      params: [
+        { name: 'source', type: 'string' },
+        { name: 'substring', type: 'string' }
+      ]
+    },
+    'math.max': {
+      params: [
+        { name: 'val1', type: 'int/float' },
+        { name: 'val2', type: 'int/float' }
+      ]
+    }
+  };
+  
+  return functionTypes[functionName] || { params: [] };
+}
+

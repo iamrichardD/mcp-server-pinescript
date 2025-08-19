@@ -342,7 +342,7 @@ The `package.json` includes a `files` field to control what gets included when u
     "docs/processed/",
     "README.md",
     "USER-GUIDE.md",
-    "AI-INTEGRATION.md",
+    ".project/AI-INTEGRATION.md",
     "MAINTAINER.md"
   ]
 }
@@ -371,7 +371,7 @@ scripts/update-docs.js
 # Keep these important files (explicit inclusion)
 # index.js - main server file
 # docs/processed/ - processed documentation data
-# README.md, USER-GUIDE.md, AI-INTEGRATION.md, MAINTAINER.md - documentation
+# README.md, USER-GUIDE.md, .project/AI-INTEGRATION.md, MAINTAINER.md - documentation
 ```
 
 ### GitHub Installation Issues

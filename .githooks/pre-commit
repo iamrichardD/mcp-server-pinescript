@@ -1,0 +1,104 @@
+#!/bin/sh
+#
+# Pre-commit hook for mcp-server-pinescript
+# 
+# This hook performs the following operations in sequence:
+# 1. TypeScript compilation (npm run build)
+# 2. Test suite execution (npm test)  
+# 3. Code linting (npm run lint - optional)
+# 4. Semantic version bump based on session type
+#
+# The hook can be bypassed using: git commit --no-verify
+#
+# Exit codes:
+# 0 - Success, commit proceeds
+# 1 - Build failed
+# 2 - Tests failed
+# 3 - Version bump failed
+
+# Redirect output to stderr for git hook convention
+exec 1>&2
+
+echo "🔍 Pre-commit validation starting..."
+
+# Step 1: TypeScript compilation
+echo "🔧 Step 1: TypeScript compilation..."
+if ! npm run build; then
+    echo "❌ TypeScript compilation failed!"
+    echo "   Fix compilation errors before committing."
+    exit 1
+fi
+echo "✅ TypeScript compilation successful"
+
+# Step 2: Test suite execution
+echo "🧪 Step 2: Running test suite..."
+if ! npm test; then
+    echo "❌ Tests failed!"
+    echo "   All tests must pass before committing."
+    exit 2
+fi
+echo "✅ All tests passed"
+
+# Step 3: Code linting (optional - doesn't block commit)
+echo "🎨 Step 3: Code linting..."
+if npm run lint 2>/dev/null; then
+    echo "✅ Linting passed"
+else
+    echo "⚠️  Linting issues detected (non-blocking)"
+fi
+
+# Step 4: Semantic version bump
+echo "🔢 Step 4: Version management..."
+
+# Check if session type is defined
+SESSION_TYPE_FILE=".session-type"
+if [ -f "$SESSION_TYPE_FILE" ]; then
+    SESSION_TYPE=$(cat "$SESSION_TYPE_FILE")
+    echo "📋 Session type: $SESSION_TYPE"
+else
+    # Default to patch if no session type is specified
+    SESSION_TYPE="patch"
+    echo "📋 No session type specified, defaulting to: $SESSION_TYPE"
+fi
+
+# Validate session type
+case "$SESSION_TYPE" in
+    patch|minor|major)
+        echo "🚀 Performing $SESSION_TYPE version bump..."
+        if ! npm version "$SESSION_TYPE" --no-git-tag-version; then
+            echo "❌ Version bump failed!"
+            echo "   npm version $SESSION_TYPE command failed."
+            exit 3
+        fi
+        NEW_VERSION=$(node -p "require('./package.json').version")
+        echo "✅ Version bumped to: $NEW_VERSION"
+        
+        # Step 5: Update CHANGELOG.md
+        echo "📝 Step 5: Updating CHANGELOG.md..."
+        COMMIT_MSG=$(git log --staged --pretty=%B | head -1 2>/dev/null || echo "Version bump to $NEW_VERSION")
+        if ./scripts/update-changelog.sh "$NEW_VERSION" "$SESSION_TYPE" "$COMMIT_MSG"; then
+            echo "✅ CHANGELOG.md updated"
+            # Stage the updated changelog
+            git add CHANGELOG.md
+        else
+            echo "⚠️  CHANGELOG.md update failed (non-blocking)"
+        fi
+        
+        # Stage the updated package.json
+        git add package.json
+        ;;
+    *)
+        echo "❌ Invalid session type: $SESSION_TYPE"
+        echo "   Valid types: patch, minor, major"
+        echo "   Set session type: echo 'patch' > .session-type"
+        exit 3
+        ;;
+esac
+
+echo "🎉 Pre-commit validation completed successfully!"
+echo "📦 Ready to commit with version: $NEW_VERSION"
+
+# Clean up session type file after successful commit
+rm -f "$SESSION_TYPE_FILE"
+
+exit 0

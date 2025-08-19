@@ -1,6 +1,6 @@
 {
   "name": "mcp-server-pinescript",
-  "version": "3.2.1",
+  "version": "3.3.0",
   "description": "AI-optimized MCP server for PineScript documentation and code review",
   "main": "index.ts",
   "type": "module",
@@ -62,7 +62,7 @@
     "docs/processed/",
     "README.md",
     "USER-GUIDE.md",
-    "AI-INTEGRATION.md",
+    ".project/AI-INTEGRATION.md",
     "MAINTAINER.md",
     "CHANGELOG.md"
   ],

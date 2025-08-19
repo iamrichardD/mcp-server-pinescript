@@ -153,18 +153,11 @@ describe('SYNTAX_COMPATIBILITY_VALIDATION', () => {
     });
     
     describe('validateNamespaceRequirements', () => {
-      it('should detect missing ta namespace for sma', () => {
+      it('should not detect sma as namespace requirement (handled as deprecated)', () => {
         const source = 'sma(close, 20)';
         const result = validateNamespaceRequirements(source);
         
-        expect(result).toHaveLength(1);
-        expect(result[0]).toEqual({
-          functionName: 'sma',
-          requiredNamespace: 'ta',
-          line: 1,
-          column: 1,
-          modernForm: 'ta.sma'
-        });
+        expect(result).toHaveLength(0); // sma is handled as deprecated function
       });
       
       it('should not flag correctly namespaced functions', () => {
@@ -174,32 +167,18 @@ describe('SYNTAX_COMPATIBILITY_VALIDATION', () => {
         expect(result).toHaveLength(0);
       });
       
-      it('should detect missing request namespace for security', () => {
+      it('should not detect security as namespace requirement (handled as deprecated)', () => {
         const source = 'security(syminfo.tickerid, "1D", close)';
         const result = validateNamespaceRequirements(source);
         
-        expect(result).toHaveLength(1);
-        expect(result[0]).toEqual({
-          functionName: 'security',
-          requiredNamespace: 'request',
-          line: 1,
-          column: 1,
-          modernForm: 'request.security'
-        });
+        expect(result).toHaveLength(0); // security is handled as deprecated function
       });
       
-      it('should detect missing str namespace for tostring', () => {
+      it('should not detect tostring as namespace requirement (handled as deprecated)', () => {
         const source = 'tostring(value)';
         const result = validateNamespaceRequirements(source);
         
-        expect(result).toHaveLength(1);
-        expect(result[0]).toEqual({
-          functionName: 'tostring',
-          requiredNamespace: 'str',
-          line: 1,
-          column: 1,
-          modernForm: 'str.tostring'
-        });
+        expect(result).toHaveLength(0); // tostring is handled as deprecated function
       });
       
       it('should detect missing math namespace for abs', () => {
@@ -226,9 +205,9 @@ describe('SYNTAX_COMPATIBILITY_VALIDATION', () => {
       
       expect(result.success).toBe(true);
       expect(result.hasSyntaxCompatibilityError).toBe(true);
-      expect(result.violations).toHaveLength(2); // deprecated + namespace
+      expect(result.violations).toHaveLength(1); // deprecated only (namespace handled by deprecated)
       
-      const deprecatedViolation = result.violations.find(v => v.details?.deprecatedFunction);
+      const deprecatedViolation = result.violations.find(v => v.metadata?.deprecatedFunction);
       expect(deprecatedViolation).toBeDefined();
       expect(deprecatedViolation.rule).toBe('SYNTAX_COMPATIBILITY_VALIDATION');
       expect(deprecatedViolation.severity).toBe('error');
@@ -283,8 +262,8 @@ describe('SYNTAX_COMPATIBILITY_VALIDATION', () => {
       
       expect(result.metrics).toBeDefined();
       expect(result.metrics.executionTime).toBeGreaterThan(0);
-      expect(result.metrics.deprecatedFunctionsFound).toBe(2);
-      expect(result.metrics.namespaceViolationsFound).toBe(3);
+      expect(result.metrics.deprecatedFunctionsFound).toBe(2); // sma + rsi (deprecated)
+      expect(result.metrics.namespaceViolationsFound).toBe(1); // abs (namespace requirement)
       expect(result.metrics.versionCompatible).toBe(false);
       expect(result.metrics.totalViolations).toBeGreaterThan(0);
     });
@@ -350,9 +329,9 @@ describe('SYNTAX_COMPATIBILITY_VALIDATION', () => {
       expect(result.hasSyntaxCompatibilityError).toBe(true);
       
       // Should detect version warning + multiple deprecated functions + namespace violations
-      const versionViolations = result.violations.filter(v => v.details?.upgradeRecommended);
-      const deprecatedViolations = result.violations.filter(v => v.details?.migrationRequired);
-      const namespaceViolations = result.violations.filter(v => v.details?.namespaceRequired);
+      const versionViolations = result.violations.filter(v => v.metadata?.upgradeRecommended);
+      const deprecatedViolations = result.violations.filter(v => v.metadata?.migrationRequired);
+      const namespaceViolations = result.violations.filter(v => v.metadata?.namespaceRequired);
       
       expect(versionViolations.length).toBe(1);
       expect(deprecatedViolations.length).toBeGreaterThan(0);

@@ -21,12 +21,16 @@
       "Bash(jq:*)",
       "Bash(time node:*)",
       "Bash(claude mcp use:*)",
-      "Bash(claude invoke pinescript-parser-expert \"MISSION: User Experience Documentation Analysis for mcp-server-pinescript\n\nCONTEXT: Production-ready MCP server v3.1.0 with 10 consecutive successes, 9 validation rules, and comprehensive Pine Script capabilities. Need user perspective analysis.\n\nANALYSIS REQUEST: Review existing documentation from TECHNICAL USER PERSPECTIVE:\n1. README.md primary entry point - identify developer onboarding friction\n2. USER-GUIDE.md setup instructions - assess barriers to first success  \n3. Package.json and setup flow - evaluate integration complexity\n4. Missing developer troubleshooting guidance\n\nSPECIFIC FOCUS AREAS:\n- New Pine Script developer first-time setup experience\n- MCP client integration guidance gaps  \n- Validation result interpretation help\n- Common error scenarios missing documentation\n- Enterprise deployment guidance needs\n\nDELIVERABLE: User perspective gap analysis with specific documentation update recommendations for EXISTING documents (no new files needed)\n\nWORKING DIRECTORY: /home/rdelgado/Development/mcp-server-pinescript\")",
       "Bash(claude:*)",
       "Bash(npm:*)",
       "Bash(jobs)",
       "Bash(fg:*)",
-      "Bash(time:*)"
+      "Bash(time:*)",
+      "Bash(kill:*)",
+      "Bash(cp:*)",
+      "Bash(git mv:*)",
+      "Bash(mv:*)",
+      "Bash(./scripts/set-session-type.sh:*)"
     ],
     "deny": []
   }

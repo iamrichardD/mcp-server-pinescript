@@ -8,7 +8,7 @@ This project serves three distinct audiences with tailored documentation:
 
 - **👤 [User Guide](USER-GUIDE.md)**: For developers integrating this into their AI workflow
 - **🔧 [Maintainer Guide](MAINTAINER.md)**: For contributors and project maintainers  
-- **🤖 [AI Integration Guide](AI-INTEGRATION.md)**: For AI systems and MCP client developers
+- **🤖 [AI Integration Guide](.project/AI-INTEGRATION.md)**: For AI systems and MCP client developers
 
 **New users should start with the [User Guide](USER-GUIDE.md)** for quick setup and usage examples.
 
@@ -199,7 +199,7 @@ claude -p "Use pinescript_review with invalid Pine Script syntax to test error h
 - **JSON parsing errors** → Validate tool parameters match schema exactly
 - **Streaming failures** → Ensure Claude Code CLI supports JSON streaming mode
 
-**Next Steps**: [Production API Patterns](#mcp-tools-documentation) • [Enterprise Integration Guide](AI-INTEGRATION.md) • [Performance Optimization](#performance-characteristics)
+**Next Steps**: [Production API Patterns](#mcp-tools-documentation) • [Enterprise Integration Guide](.project/AI-INTEGRATION.md) • [Performance Optimization](#performance-characteristics)
 
 ### 🏢 Enterprise Teams (5 minutes)
 *You're evaluating Pine Script quality tooling for organizational adoption*
@@ -296,7 +296,7 @@ ps aux | grep "node.*index.js" && free -h
 - **Integration Flexibility**: HTTP API, MCP protocol, streaming support for any enterprise stack
 - **Maintenance Overhead**: Zero-dependency Pine Script reference, automatic performance optimization
 
-**Next Steps**: [Enterprise Architecture Details](#architecture) • [Multi-Team Deployment Guide](#directory-review-workflow-new-in-v130) • [Production Integration Patterns](AI-INTEGRATION.md) • [Performance Monitoring](#performance-characteristics)
+**Next Steps**: [Enterprise Architecture Details](#architecture) • [Multi-Team Deployment Guide](#directory-review-workflow-new-in-v130) • [Production Integration Patterns](.project/AI-INTEGRATION.md) • [Performance Monitoring](#performance-characteristics)
 
 ---
 
@@ -538,6 +538,63 @@ Response exceeds token limits
 - `scripts/update-docs.js`: Documentation scraping and processing
 - `docs/`: All documentation storage (gitignored raw files)
 - `docs/processed/`: Structured data files (committed to Git)
+
+### Git Hooks Automation
+
+This project uses git hooks to ensure code quality and consistent versioning:
+
+**Setup** (required for development):
+```bash
+# Symlink git hooks (one-time setup)
+ln -sf ../../.githooks/* .git/hooks/
+```
+
+**Available Hooks**:
+- **pre-commit**: Runs TypeScript compilation, tests, linting, and semantic versioning
+- **post-commit**: Automatically creates git tags when version changes
+
+**Session Type Management**:
+```bash
+# Set development session type (determines version bump)
+./scripts/set-session-type.sh patch    # Bug fixes (1.0.0 → 1.0.1)
+./scripts/set-session-type.sh minor    # New features (1.0.0 → 1.1.0)  
+./scripts/set-session-type.sh major    # Breaking changes (1.0.0 → 2.0.0)
+
+# Check current session type
+./scripts/set-session-type.sh show
+```
+
+**Development Workflow**:
+```bash
+# 1. Set session type for your changes
+./scripts/set-session-type.sh minor
+
+# 2. Make your changes
+# ... edit code ...
+
+# 3. Commit (triggers automatic validation and version bump)
+git add .
+git commit -m "feat: add new validation rule"
+
+# 4. Push with tags
+git push origin main --tags
+```
+
+**Hook Bypass** (for emergencies):
+```bash
+git commit --no-verify  # Skip pre-commit hook
+```
+
+**Pre-commit Validation Steps**:
+1. TypeScript compilation (`npm run build`)
+2. Test suite execution (`npm test`)
+3. Code linting (`npm run lint` - non-blocking)
+4. Semantic version bump based on session type
+5. Package.json update and staging
+
+**Post-commit Actions**:
+- Automatic git tag creation for version changes
+- Tag format: `v1.2.3` with release notes
 
 ### Adding New Documentation Sources
 1. Modify `scripts/update-docs.js`

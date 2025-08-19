@@ -433,7 +433,7 @@ When PineScript v7 is released:
 - **This guide**: End-user focused setup and usage
 - **README.md**: Complete technical documentation  
 - **MAINTAINER.md**: For contributors and advanced users
-- **AI-INTEGRATION.md**: For AI system developers
+- **[AI-INTEGRATION.md](.project/AI-INTEGRATION.md)**: For AI system developers
 
 ### Support
 - GitHub Issues: https://github.com/iamrichardD/mcp-server-pinescript/issues
@@ -468,7 +468,7 @@ You can modify the server behavior by editing `index.js`, but this is advanced u
 
 ### API Integration
 
-If you're building custom tools, see `AI-INTEGRATION.md` for detailed API specifications and integration examples.
+If you're building custom tools, see `.project/AI-INTEGRATION.md` for detailed API specifications and integration examples.
 
 ---
 

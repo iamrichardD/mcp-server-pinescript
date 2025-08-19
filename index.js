@@ -780,6 +780,31 @@ async function reviewSingleCode(code, format, version, chunkSize = 20, severityF
         // Skip processed lines to maintain performance
         i = endLine;
       }
+    }
+    
+    // INVALID_LINE_CONTINUATION validation for entire code
+    try {
+      const { quickValidateLineContinuation } = await import('./src/parser/index.js');
+      const lineContinuationResult = await quickValidateLineContinuation(code);
+      
+      if (lineContinuationResult.hasLineContinuationError) {
+        violations.push(...lineContinuationResult.violations.map(violation => ({
+          line: violation.line,
+          column: violation.column,
+          severity: violation.severity,
+          message: violation.message,
+          rule: violation.rule,
+          category: violation.category
+        })));
+      }
+    } catch (error) {
+      // Fallback: continue without line continuation validation if parser fails
+      console.warn('Line continuation validation unavailable:', error.message);
+    }
+    
+    // Continue with line-by-line analysis
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
       
       // Style guide checks - corrected to camelCase per official Pine Script style guide
       if (line.includes('=') && !line.startsWith('//')) {

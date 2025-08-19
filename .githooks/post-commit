@@ -1,0 +1,34 @@
+#!/bin/sh
+#
+# Post-commit hook for mcp-server-pinescript
+#
+# This hook automatically creates git tags when package.json version changes
+# after a successful commit. Tags follow semantic versioning (v1.2.3 format).
+#
+
+# Check if package.json was modified in the last commit
+if git diff HEAD~1 HEAD --name-only | grep -q "package.json"; then
+    # Extract version from package.json
+    VERSION=$(node -p "require('./package.json').version" 2>/dev/null)
+    
+    if [ $? -eq 0 ] && [ -n "$VERSION" ]; then
+        TAG_NAME="v$VERSION"
+        
+        # Check if tag already exists
+        if git tag --list | grep -q "^$TAG_NAME$"; then
+            echo "⚠️  Tag $TAG_NAME already exists, skipping tag creation"
+        else
+            # Create annotated tag
+            git tag -a "$TAG_NAME" -m "Release $TAG_NAME
+
+🤖 Generated automatically by post-commit hook
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+            
+            echo "🏷️  Created git tag: $TAG_NAME"
+            echo "📤 Push tags with: git push origin --tags"
+        fi
+    else
+        echo "⚠️  Could not extract version from package.json"
+    fi
+fi

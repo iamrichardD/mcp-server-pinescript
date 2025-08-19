@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.0] - 2025-08-19
+
+### Added
+- fix: Include src/ directory in published package to resolve MCP startup failures
+
+🤖 Generated with automated version management
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+
+---
+
 ## [2.0.0] - 2025-07-28
 
 ### ⚠️ BREAKING CHANGES

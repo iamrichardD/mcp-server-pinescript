@@ -25,4 +25,4 @@ Thumbs.db
 # Keep these important files (explicit inclusion)
 # index.js - main server file
 # docs/processed/ - processed documentation data
-# README.md, USER-GUIDE.md, AI-INTEGRATION.md, MAINTAINER.md - documentation
+# README.md, USER-GUIDE.md, .project/AI-INTEGRATION.md, MAINTAINER.md - documentation
