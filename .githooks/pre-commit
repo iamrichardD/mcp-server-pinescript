@@ -75,7 +75,14 @@ case "$SESSION_TYPE" in
         
         # Step 5: Update CHANGELOG.md
         echo "📝 Step 5: Updating CHANGELOG.md..."
-        COMMIT_MSG=$(git log --staged --pretty=%B | head -1 2>/dev/null || echo "Version bump to $NEW_VERSION")
+        # Extract commit message from environment or use generic message
+        if [ -n "$COMMIT_MESSAGE" ]; then
+            COMMIT_MSG="$COMMIT_MESSAGE"
+        else
+            # Generate message based on changes
+            COMMIT_MSG="Automated $SESSION_TYPE version bump with validation enhancements"
+        fi
+        
         if ./scripts/update-changelog.sh "$NEW_VERSION" "$SESSION_TYPE" "$COMMIT_MSG"; then
             echo "✅ CHANGELOG.md updated"
             # Stage the updated changelog
@@ -84,8 +91,12 @@ case "$SESSION_TYPE" in
             echo "⚠️  CHANGELOG.md update failed (non-blocking)"
         fi
         
-        # Stage the updated package.json
+        # Stage the updated package.json and package-lock.json (version changes)
         git add package.json
+        if [ -f "package-lock.json" ]; then
+            git add package-lock.json
+            echo "✅ package-lock.json included in commit"
+        fi
         ;;
     *)
         echo "❌ Invalid session type: $SESSION_TYPE"

@@ -5,10 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.1] - 2025-08-19
+
+### Fixed
+- Automated patch version bump with validation enhancements
+
+🤖 Generated with automated version management
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+
+---
+
 ## [3.3.0] - 2025-08-19
 
 ### Added
-- fix: Include src/ directory in published package to resolve MCP startup failures
+- Implement enterprise-grade automation with git hooks and validation enhancements
+- Add comprehensive git hooks automation system (.githooks/ directory)
+- Implement pre-commit validation: build, test, lint, version bump, changelog
+- Add post-commit automatic git tagging
+- Create session type management system for semantic versioning
+- Add CHANGELOG.md automation to prevent sync issues
+- Clean up unused JavaScript automation scripts (1,348 lines removed)
+- Enhance Pine Script validation with new comprehensive rules
+- Update documentation with git hooks setup and workflow
+- Maintain backward compatibility for all MCP interfaces
 
 🤖 Generated with automated version management
 
