@@ -1,0 +1,191 @@
+{
+  "testCases": {
+    "basicTableViolations": {
+      "description": "Basic table.cell violations with deprecated parameters",
+      "code": "table.cell(t, 0, 0, \"Test\", textColor = color.white, textSize = size.normal)",
+      "expectedViolations": 2,
+      "expectedErrorCodes": ["DEPRECATED_PARAMETER_NAME", "DEPRECATED_PARAMETER_NAME"],
+      "expectedParameterNames": ["textColor", "textSize"],
+      "expectedSuggestions": ["text_color", "text_size"]
+    },
+    
+    "plotCamelCaseViolations": {
+      "description": "Plot function with camelCase parameter violations",
+      "code": "plot(close, lineWidth = 2, trackPrice = true)",
+      "expectedViolations": 2,
+      "expectedErrorCodes": ["INVALID_PARAMETER_NAMING_CONVENTION", "INVALID_PARAMETER_NAMING_CONVENTION"],
+      "expectedParameterNames": ["lineWidth", "trackPrice"],
+      "expectedSuggestions": ["line_width", "track_price"],
+      "expectedNamingConventions": ["camelCase", "camelCase"]
+    },
+    
+    "strategyEntryViolations": {
+      "description": "Strategy entry with parameter naming violations",
+      "code": "strategy.entry(\"Long\", strategy.long, qtyPercent = 50, ocaName = \"group1\")",
+      "expectedViolations": 2,
+      "expectedErrorCodes": ["INVALID_PARAMETER_NAMING_CONVENTION", "INVALID_PARAMETER_NAMING_CONVENTION"],
+      "expectedParameterNames": ["qtyPercent", "ocaName"],
+      "expectedSuggestions": ["qty_percent", "oca_name"]
+    },
+    
+    "inputFunctionViolations": {
+      "description": "Input function with camelCase parameter violations",
+      "code": "length = input.int(20, \"Length\", minVal = 1, maxVal = 100)",
+      "expectedViolations": 2,
+      "expectedErrorCodes": ["INVALID_PARAMETER_NAMING_CONVENTION", "INVALID_PARAMETER_NAMING_CONVENTION"],
+      "expectedParameterNames": ["minVal", "maxVal"],
+      "expectedSuggestions": ["min_val", "max_val"]
+    },
+    
+    "boxPascalCaseViolations": {
+      "description": "Box function with PascalCase parameter violations",
+      "code": "box.new(bar_index, high, bar_index+1, low, BorderColor = color.blue, BorderWidth = 2)",
+      "expectedViolations": 2,
+      "expectedErrorCodes": ["INVALID_PARAMETER_NAMING_CONVENTION", "INVALID_PARAMETER_NAMING_CONVENTION"],
+      "expectedParameterNames": ["BorderColor", "BorderWidth"],
+      "expectedSuggestions": ["border_color", "border_width"],
+      "expectedNamingConventions": ["PascalCase", "PascalCase"]
+    },
+    
+    "allCapsViolations": {
+      "description": "Function with ALL_CAPS parameter violations",
+      "code": "label.new(bar_index, high, \"Text\", TEXT_COLOR = color.red, TEXT_SIZE = size.normal)",
+      "expectedViolations": 2,
+      "expectedErrorCodes": ["INVALID_PARAMETER_NAMING_CONVENTION", "INVALID_PARAMETER_NAMING_CONVENTION"],
+      "expectedParameterNames": ["TEXT_COLOR", "TEXT_SIZE"],
+      "expectedSuggestions": ["text_color", "text_size"],
+      "expectedNamingConventions": ["ALL_CAPS", "ALL_CAPS"]
+    },
+    
+    "mixedViolations": {
+      "description": "Mixed deprecated and camelCase violations",
+      "code": "table.cell(t, 0, 0, \"Test\", textColor = color.white) and plot(close, lineWidth = 2)",
+      "expectedViolations": 2,
+      "expectedErrorCodes": ["DEPRECATED_PARAMETER_NAME", "INVALID_PARAMETER_NAMING_CONVENTION"],
+      "expectedParameterNames": ["textColor", "lineWidth"]
+    },
+    
+    "nestedFunctionViolations": {
+      "description": "Nested function calls with multiple violations",
+      "code": "plot(ta.sma(close, input.int(20, minVal=1)), lineWidth=2, trackPrice=true)",
+      "expectedViolations": 3,
+      "expectedErrorCodes": ["INVALID_PARAMETER_NAMING_CONVENTION", "INVALID_PARAMETER_NAMING_CONVENTION", "INVALID_PARAMETER_NAMING_CONVENTION"],
+      "expectedParameterNames": ["minVal", "lineWidth", "trackPrice"]
+    },
+    
+    "correctUsageNoViolations": {
+      "description": "Correct parameter naming - should pass validation",
+      "code": "table.cell(t, 0, 0, \"Test\", text_color = color.white, bgcolor = color.navy)",
+      "expectedViolations": 0,
+      "expectedErrorCodes": []
+    },
+    
+    "correctPlotUsage": {
+      "description": "Correct plot parameters - should pass validation",
+      "code": "plot(close, title = \"Close\", color = color.blue, linewidth = 2, trackprice = false)",
+      "expectedViolations": 0,
+      "expectedErrorCodes": []
+    },
+    
+    "correctInputUsage": {
+      "description": "Correct input parameters - should pass validation", 
+      "code": "length = input.int(20, \"Length\", minval = 1, maxval = 100, step = 1)",
+      "expectedViolations": 0,
+      "expectedErrorCodes": []
+    },
+    
+    "edgeCaseEmptyFunction": {
+      "description": "Function with no named parameters",
+      "code": "plot(close)",
+      "expectedViolations": 0,
+      "expectedErrorCodes": []
+    },
+    
+    "edgeCasePositionalParams": {
+      "description": "Function with only positional parameters",
+      "code": "plot(close, \"Title\", color.blue, 2)",
+      "expectedViolations": 0,
+      "expectedErrorCodes": []
+    },
+    
+    "complexExpressionViolation": {
+      "description": "Complex expression as parameter value with violation",
+      "code": "plot(close, lineWidth = math.max(1, ta.sma(volume, 20) > 1000 ? 3 : 1))",
+      "expectedViolations": 1,
+      "expectedErrorCodes": ["INVALID_PARAMETER_NAMING_CONVENTION"],
+      "expectedParameterNames": ["lineWidth"]
+    },
+    
+    "multilineFunctionViolations": {
+      "description": "Multiline function call with violations",
+      "code": "table.cell(\n  perfTable,\n  0,\n  0,\n  \"Title\",\n  textColor = color.white,\n  textSize = size.normal\n)",
+      "expectedViolations": 2,
+      "expectedErrorCodes": ["DEPRECATED_PARAMETER_NAME", "DEPRECATED_PARAMETER_NAME"],
+      "expectedParameterNames": ["textColor", "textSize"]
+    }
+  },
+  
+  "performanceExpectations": {
+    "maxValidationTimeMs": 8,
+    "functionsPerMs": 25,
+    "targetFunctionsCount": 100,
+    "maxViolationsDetected": 1000,
+    "maxMemoryUsageMB": 10
+  },
+  
+  "errorMessageRequirements": {
+    "deprecatedParameterMessage": {
+      "mustContain": ["function", "does not have an argument", "Use", "instead"],
+      "format": "The \"{functionName}\" function does not have an argument with the name \"{parameterName}\". Use \"{correctParameterName}\" instead."
+    },
+    "namingConventionMessage": {
+      "mustContain": ["Parameter", "uses", "naming", "should use"],
+      "format": "Parameter \"{parameterName}\" in \"{functionName}\" uses {detectedConvention} naming. Pine Script function parameters should use {expectedConvention}."
+    },
+    "suggestedFixFormat": {
+      "deprecated": "Replace \"{parameterName}\" with \"{correctParameterName}\"",
+      "namingConvention": "Consider using \"{suggestedParameterName}\" instead of \"{parameterName}\""
+    }
+  },
+  
+  "functionCoverageRequirements": {
+    "mustTestFunctions": [
+      "table.cell",
+      "plot",
+      "strategy.entry",
+      "strategy.exit", 
+      "input.int",
+      "input.float",
+      "input.bool",
+      "input.source",
+      "box.new",
+      "label.new",
+      "line.new",
+      "polyline.new"
+    ],
+    "deprecatedParameterMigrations": {
+      "table.cell": ["textColor", "textSize", "textHalign", "textValign"],
+      "box.new": ["textColor", "textSize", "textHalign", "textValign"],
+      "label.new": ["textColor", "textSize"]
+    }
+  },
+  
+  "validationRuleCompliance": {
+    "errorCode": "INVALID_PARAMETER_NAMING_CONVENTION",
+    "severity": "error",
+    "category": "parameter_validation",
+    "requiredFields": [
+      "errorCode",
+      "severity", 
+      "category",
+      "message",
+      "suggestedFix",
+      "line",
+      "column",
+      "functionName",
+      "parameterName",
+      "suggestedParameterName",
+      "namingConvention"
+    ]
+  }
+}

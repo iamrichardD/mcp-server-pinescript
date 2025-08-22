@@ -1,0 +1,150 @@
+// Pine Script Performance Test File for Parameter Naming Validation
+// Contains 100+ function calls with various parameter naming violations
+// Used to verify <2ms validation performance target
+
+//@version=6
+indicator("Parameter Naming Performance Test", overlay=true)
+
+// Performance test with exactly 100 function calls containing violations
+// Each function call should be detected and validated efficiently
+
+// Table function calls (20 calls)
+table.cell(t1, 0, 0, "Cell1", textColor = color.white, textSize = size.small)
+table.cell(t1, 0, 1, "Cell2", textColor = color.red, textSize = size.normal) 
+table.cell(t1, 0, 2, "Cell3", textColor = color.blue, textSize = size.large)
+table.cell(t1, 0, 3, "Cell4", textColor = color.green, textSize = size.small)
+table.cell(t1, 0, 4, "Cell5", textColor = color.yellow, textSize = size.normal)
+table.cell(t1, 1, 0, "Cell6", textColor = color.orange, textSize = size.large)
+table.cell(t1, 1, 1, "Cell7", textColor = color.purple, textSize = size.small)
+table.cell(t1, 1, 2, "Cell8", textColor = color.gray, textSize = size.normal)
+table.cell(t1, 1, 3, "Cell9", textColor = color.black, textSize = size.large)
+table.cell(t1, 1, 4, "Cell10", textColor = color.white, textSize = size.small)
+table.cell(t1, 2, 0, "Cell11", textColor = color.red, textSize = size.normal)
+table.cell(t1, 2, 1, "Cell12", textColor = color.blue, textSize = size.large)
+table.cell(t1, 2, 2, "Cell13", textColor = color.green, textSize = size.small)
+table.cell(t1, 2, 3, "Cell14", textColor = color.yellow, textSize = size.normal)
+table.cell(t1, 2, 4, "Cell15", textColor = color.orange, textSize = size.large)
+table.cell(t1, 3, 0, "Cell16", textColor = color.purple, textSize = size.small)
+table.cell(t1, 3, 1, "Cell17", textColor = color.gray, textSize = size.normal)
+table.cell(t1, 3, 2, "Cell18", textColor = color.black, textSize = size.large)
+table.cell(t1, 3, 3, "Cell19", textColor = color.white, textSize = size.small)
+table.cell(t1, 3, 4, "Cell20", textColor = color.red, textSize = size.normal)
+
+// Plot function calls (30 calls)  
+plot(close[1], lineWidth = 1, trackPrice = true)
+plot(close[2], lineWidth = 2, trackPrice = true)
+plot(close[3], lineWidth = 3, trackPrice = true)
+plot(close[4], lineWidth = 4, trackPrice = true)
+plot(close[5], lineWidth = 5, trackPrice = true)
+plot(close[6], lineWidth = 1, trackPrice = false)
+plot(close[7], lineWidth = 2, trackPrice = false)
+plot(close[8], lineWidth = 3, trackPrice = false)
+plot(close[9], lineWidth = 4, trackPrice = false)
+plot(close[10], lineWidth = 5, trackPrice = false)
+plot(high[1], lineWidth = 1, trackPrice = true)
+plot(high[2], lineWidth = 2, trackPrice = true)
+plot(high[3], lineWidth = 3, trackPrice = true)
+plot(high[4], lineWidth = 4, trackPrice = true)
+plot(high[5], lineWidth = 5, trackPrice = true)
+plot(low[1], lineWidth = 1, trackPrice = false)
+plot(low[2], lineWidth = 2, trackPrice = false)
+plot(low[3], lineWidth = 3, trackPrice = false)
+plot(low[4], lineWidth = 4, trackPrice = false)
+plot(low[5], lineWidth = 5, trackPrice = false)
+plot(open[1], lineWidth = 1, trackPrice = true)
+plot(open[2], lineWidth = 2, trackPrice = true)
+plot(open[3], lineWidth = 3, trackPrice = true)
+plot(open[4], lineWidth = 4, trackPrice = true)
+plot(open[5], lineWidth = 5, trackPrice = true)
+plot(hl2[1], lineWidth = 1, trackPrice = false)
+plot(hl2[2], lineWidth = 2, trackPrice = false)
+plot(hl2[3], lineWidth = 3, trackPrice = false)
+plot(hl2[4], lineWidth = 4, trackPrice = false)
+plot(hl2[5], lineWidth = 5, trackPrice = false)
+
+// Input function calls (20 calls)
+len1 = input.int(10, "Length 1", minVal = 1, maxVal = 100)
+len2 = input.int(20, "Length 2", minVal = 1, maxVal = 100)
+len3 = input.int(30, "Length 3", minVal = 1, maxVal = 100)
+len4 = input.int(40, "Length 4", minVal = 1, maxVal = 100)
+len5 = input.int(50, "Length 5", minVal = 1, maxVal = 100)
+mult1 = input.float(1.0, "Multiplier 1", minVal = 0.1, maxVal = 10.0)
+mult2 = input.float(2.0, "Multiplier 2", minVal = 0.1, maxVal = 10.0)
+mult3 = input.float(3.0, "Multiplier 3", minVal = 0.1, maxVal = 10.0)
+mult4 = input.float(4.0, "Multiplier 4", minVal = 0.1, maxVal = 10.0)
+mult5 = input.float(5.0, "Multiplier 5", minVal = 0.1, maxVal = 10.0)
+src1 = input.source(close, "Source 1", inLine = true)
+src2 = input.source(open, "Source 2", inLine = true)
+src3 = input.source(high, "Source 3", inLine = true)
+src4 = input.source(low, "Source 4", inLine = true)
+src5 = input.source(hl2, "Source 5", inLine = true)
+bool1 = input.bool(true, "Boolean 1", groupName = "Group1")
+bool2 = input.bool(false, "Boolean 2", groupName = "Group1")
+bool3 = input.bool(true, "Boolean 3", groupName = "Group2")
+bool4 = input.bool(false, "Boolean 4", groupName = "Group2")
+bool5 = input.bool(true, "Boolean 5", groupName = "Group3")
+
+// Box function calls (15 calls)
+box.new(bar_index-1, high[1], bar_index, low[1], BorderColor = color.blue, BorderWidth = 1)
+box.new(bar_index-2, high[2], bar_index-1, low[2], BorderColor = color.red, BorderWidth = 2)
+box.new(bar_index-3, high[3], bar_index-2, low[3], BorderColor = color.green, BorderWidth = 3)
+box.new(bar_index-4, high[4], bar_index-3, low[4], BorderColor = color.yellow, BorderWidth = 1)
+box.new(bar_index-5, high[5], bar_index-4, low[5], BorderColor = color.orange, BorderWidth = 2)
+box.new(bar_index-6, high[6], bar_index-5, low[6], BorderColor = color.purple, BorderWidth = 3)
+box.new(bar_index-7, high[7], bar_index-6, low[7], BorderColor = color.gray, BorderWidth = 1)
+box.new(bar_index-8, high[8], bar_index-7, low[8], BorderColor = color.black, BorderWidth = 2)
+box.new(bar_index-9, high[9], bar_index-8, low[9], BorderColor = color.white, BorderWidth = 3)
+box.new(bar_index-10, high[10], bar_index-9, low[10], BorderColor = color.blue, BorderWidth = 1)
+box.new(bar_index-11, high[11], bar_index-10, low[11], BorderColor = color.red, BorderWidth = 2)
+box.new(bar_index-12, high[12], bar_index-11, low[12], BorderColor = color.green, BorderWidth = 3)
+box.new(bar_index-13, high[13], bar_index-12, low[13], BorderColor = color.yellow, BorderWidth = 1)
+box.new(bar_index-14, high[14], bar_index-13, low[14], BorderColor = color.orange, BorderWidth = 2)
+box.new(bar_index-15, high[15], bar_index-14, low[15], BorderColor = color.purple, BorderWidth = 3)
+
+// Label function calls (15 calls)
+label.new(bar_index-1, high[1], "L1", textSize = size.small, textColor = color.white)
+label.new(bar_index-2, high[2], "L2", textSize = size.normal, textColor = color.black)
+label.new(bar_index-3, high[3], "L3", textSize = size.large, textColor = color.red)
+label.new(bar_index-4, high[4], "L4", textSize = size.small, textColor = color.blue)
+label.new(bar_index-5, high[5], "L5", textSize = size.normal, textColor = color.green)
+label.new(bar_index-6, high[6], "L6", textSize = size.large, textColor = color.yellow)
+label.new(bar_index-7, high[7], "L7", textSize = size.small, textColor = color.orange)
+label.new(bar_index-8, high[8], "L8", textSize = size.normal, textColor = color.purple)
+label.new(bar_index-9, high[9], "L9", textSize = size.large, textColor = color.gray)
+label.new(bar_index-10, high[10], "L10", textSize = size.small, textColor = color.white)
+label.new(bar_index-11, high[11], "L11", textSize = size.normal, textColor = color.black)
+label.new(bar_index-12, high[12], "L12", textSize = size.large, textColor = color.red)
+label.new(bar_index-13, high[13], "L13", textSize = size.small, textColor = color.blue)
+label.new(bar_index-14, high[14], "L14", textSize = size.normal, textColor = color.green)
+label.new(bar_index-15, high[15], "L15", textSize = size.large, textColor = color.yellow)
+
+// Total function calls: 20 + 30 + 20 + 15 + 15 = 100 function calls
+// Each call contains at least one parameter naming violation
+// Expected violations: 200+ (most calls have 2+ violations each)
+
+// Additional complex nested calls for stress testing
+plot(ta.sma(close, input.int(20, minVal=1, maxVal=200)), lineWidth=2, trackPrice=true)
+plot(ta.ema(close, input.int(50, minVal=1, maxVal=200)), lineWidth=3, trackPrice=false)
+plot(ta.wma(close, input.int(30, minVal=1, maxVal=200)), lineWidth=1, trackPrice=true)
+
+// More complex expressions as parameter values
+plot(close, lineWidth = math.max(1, input.int(2, minVal=1, maxVal=5)))
+table.cell(t, 0, 0, "Complex", textColor = color.new(color.blue, input.int(50, minVal=0, maxVal=100)))
+
+// Multi-line function calls
+box.new(
+    bar_index - input.int(10, minVal=1, maxVal=50),
+    high[input.int(5, minVal=1, maxVal=20)],
+    bar_index,
+    low[input.int(3, minVal=1, maxVal=10)],
+    BorderColor = color.blue,
+    BorderWidth = input.int(2, minVal=1, maxVal=5),
+    textColor = color.white
+)
+
+// Nested function calls with multiple levels
+plot(ta.sma(ta.ema(close, input.int(20, minVal=5, maxVal=100)), input.int(10, minVal=3, maxVal=50)), 
+     lineWidth=input.int(2, minVal=1, maxVal=5), 
+     trackPrice=true)
+
+// Total: 100+ function calls for comprehensive performance testing

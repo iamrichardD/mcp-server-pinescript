@@ -1,0 +1,181 @@
+// Pine Script Test Cases for Parameter Naming Convention Validation
+// This file contains various scenarios with naming violations for comprehensive testing
+
+//@version=6
+indicator("Parameter Naming Test Cases", overlay=true)
+
+// =============================================================================
+// TABLE FUNCTION VIOLATIONS
+// =============================================================================
+
+// Deprecated parameter names (should trigger DEPRECATED_PARAMETER_NAME)
+table.cell(perfTable, 0, 0, "Title", textColor = color.white, bgcolor = color.navy)
+table.cell(perfTable, 0, 1, "Value", textSize = size.normal)
+table.cell(perfTable, 0, 2, "Align", textHalign = text.align_center, textValign = text.align_middle)
+
+// Mixed valid and deprecated parameters
+table.cell(perfTable, 1, 0, "Mixed", text_color = color.black, textSize = size.small)
+
+// =============================================================================
+// PLOT FUNCTION VIOLATIONS  
+// =============================================================================
+
+// camelCase violations (should trigger INVALID_PARAMETER_NAMING_CONVENTION)
+plot(high, lineWidth = 3, trackPrice = true)
+plot(low, lineWidth = 1, histBase = 0)
+
+// Multiple violations in single call
+plot(close, title = "Close", lineWidth = 2, trackPrice = true, forceOverlay = false)
+
+// Correct usage for comparison
+plot(open, title = "Open", linewidth = 1, trackprice = false)
+
+// =============================================================================
+// STRATEGY FUNCTION VIOLATIONS
+// =============================================================================
+
+// Strategy entry with camelCase violations
+strategy.entry("Long Entry", strategy.long, qty = 100, qtyPercent = 50)
+strategy.entry("Short Entry", strategy.short, ocaName = "MyGroup", alertMessage = "Entry Alert")
+
+// Strategy exit with violations
+strategy.exit("Exit Long", from_entry = "Long Entry", qtyPercent = 100)
+
+// Correct usage
+strategy.entry("Correct Long", strategy.long, qty = 100, oca_name = "group1")
+
+// =============================================================================
+// INPUT FUNCTION VIOLATIONS
+// =============================================================================
+
+// Input functions with camelCase violations
+length1 = input.int(20, "Length 1", minVal = 1, maxVal = 100, step = 1)
+length2 = input.int(50, "Length 2", minVal = 10, maxVal = 200)
+source1 = input.source(close, "Source 1", inLine = true, groupName = "Inputs")
+multiplier = input.float(2.0, "Multiplier", minVal = 0.1, maxVal = 10.0, step = 0.1)
+
+// Input with ALL_CAPS violation
+useMA = input.bool(true, "Use MA", GROUP_NAME = "Moving Averages")
+
+// Correct usage
+length_correct = input.int(20, "Correct Length", minval = 1, maxval = 100, step = 1)
+
+// =============================================================================
+// DRAWING OBJECTS VIOLATIONS
+// =============================================================================
+
+// Box with PascalCase and deprecated violations
+box.new(bar_index, high, bar_index+1, low, 
+    BorderColor = color.blue, 
+    BorderWidth = 2,
+    BorderStyle = line.style_solid,
+    textColor = color.white,
+    textSize = size.normal)
+
+// Label with various violations
+label.new(bar_index, high, "Test Label",
+    textAlign = text.align_left,
+    textSize = size.large,
+    textColor = color.black,
+    TEXT_FONT = "Arial")
+
+// Line with camelCase violations
+line.new(bar_index-10, high[10], bar_index, high,
+    lineWidth = 2,
+    lineStyle = line.style_dashed,
+    lineColor = color.red)
+
+// Polyline with violations
+polyline.new(lineWidth = 3, lineColor = color.green, lineStyle = line.style_solid)
+
+// Correct usage examples
+box.new(bar_index, high, bar_index+1, low, border_color = color.blue, border_width = 1)
+label.new(bar_index, high, "Correct", text_color = color.white, size = size.normal)
+
+// =============================================================================
+// TECHNICAL ANALYSIS FUNCTION VIOLATIONS
+// =============================================================================
+
+// TA functions with parameter violations (if they have named parameters)
+sma_value = ta.sma(close, length, sourceType = "close")  // hypothetical violation
+ema_value = ta.ema(close, length, smoothType = "ema")    // hypothetical violation
+
+// =============================================================================
+// NESTED FUNCTION CALLS WITH VIOLATIONS
+// =============================================================================
+
+// Complex nested calls with multiple violations
+plot(ta.sma(close, input.int(20, "SMA Length", minVal=1, maxVal=200)), 
+     title = "SMA", 
+     lineWidth = 2, 
+     trackPrice = true,
+     color = color.new(color.blue, transparency = input.int(0, "Transparency", minVal=0, maxVal=100)))
+
+// Multiple functions on same line
+table.cell(t1, 0, 0, "A", textColor=color.white) and plot(close, lineWidth=3)
+
+// =============================================================================  
+// EDGE CASES AND COMPLEX SCENARIOS
+// =============================================================================
+
+// Function with string containing parameter-like syntax
+table.cell(perfTable, 0, 0, "textColor = color.red", textColor = color.white)
+
+// Function with complex expression as parameter value
+plot(close, lineWidth = math.max(1, ta.sma(volume, 20) > 1000000 ? 3 : 1))
+
+// Multiline function call with violations
+box.new(
+    left = bar_index - 10,
+    top = high[10], 
+    right = bar_index,
+    bottom = low[0],
+    BorderColor = color.blue,
+    BorderWidth = 2,
+    textColor = color.white,
+    textSize = size.small
+)
+
+// Function with mixed positional and named parameters
+plot(close, "Close Price", color.blue, lineWidth = 2, trackPrice = true)
+
+// =============================================================================
+// PERFORMANCE TEST CASES
+// =============================================================================
+
+// Generate multiple function calls for performance testing
+plot(close[1], lineWidth = 1)
+plot(close[2], lineWidth = 2) 
+plot(close[3], lineWidth = 3)
+plot(close[4], lineWidth = 4)
+plot(close[5], lineWidth = 5)
+plot(close[6], lineWidth = 6)
+plot(close[7], lineWidth = 7)
+plot(close[8], lineWidth = 8)
+plot(close[9], lineWidth = 9)
+plot(close[10], lineWidth = 10)
+
+// More performance test calls
+table.cell(t, 0, 0, "1", textColor = color.white)
+table.cell(t, 0, 1, "2", textColor = color.white)
+table.cell(t, 0, 2, "3", textColor = color.white)
+table.cell(t, 0, 3, "4", textColor = color.white)
+table.cell(t, 0, 4, "5", textColor = color.white)
+
+// =============================================================================
+// CORRECT USAGE EXAMPLES (NO VIOLATIONS)
+// =============================================================================
+
+// These should pass validation
+plot(high, title = "High", color = color.green, linewidth = 1)
+table.cell(correctTable, 0, 0, "Correct", text_color = color.blue, bgcolor = color.white)  
+strategy.entry("Correct Entry", strategy.long, qty = 100, oca_name = "group1")
+correctLength = input.int(20, "Correct", minval = 1, maxval = 100)
+box.new(bar_index, high, bar_index+1, low, border_color = color.red)
+label.new(bar_index, high, "Correct", text_color = color.black, size = size.normal)
+
+// Functions with only positional parameters (should be ignored)
+plot(close)
+plot(open, "Open")
+plot(high, "High", color.red)
+plot(low, "Low", color.blue, 2)

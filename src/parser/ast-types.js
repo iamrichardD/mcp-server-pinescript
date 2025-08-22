@@ -1,10 +1,10 @@
 /**
  * AST Node Type Definitions
- * 
+ *
  * TypeScript-ready interfaces defined as JSDoc-annotated JavaScript objects.
  * This module provides the foundation for Pine Script AST generation with
  * clear type patterns that will transition smoothly to TypeScript.
- * 
+ *
  * Performance target: <15ms AST generation for typical Pine Script files
  * Integration point: index.js:577-579 validation system
  */
@@ -122,12 +122,15 @@
  * @returns {node is BaseASTNode} - Type predicate
  */
 export function isASTNode(node) {
-  return node && 
-         typeof node === 'object' && 
-         typeof node.type === 'string' && 
-         node.location &&
-         typeof node.location.line === 'number' &&
-         typeof node.location.column === 'number';
+  return Boolean(
+    node &&
+    typeof node === "object" &&
+    typeof node.type === "string" &&
+    Object.values(AST_NODE_TYPES).includes(node.type) &&
+    node.location &&
+    typeof node.location.line === "number" &&
+    typeof node.location.column === "number"
+  );
 }
 
 /**
@@ -136,10 +139,12 @@ export function isASTNode(node) {
  * @returns {node is FunctionCallNode} - Type predicate
  */
 export function isFunctionCallNode(node) {
-  return isASTNode(node) && 
-         node.type === 'FunctionCall' &&
-         typeof node.name === 'string' &&
-         Array.isArray(node.parameters);
+  return Boolean(
+    isASTNode(node) &&
+    node.type === "FunctionCall" &&
+    typeof node.name === "string" &&
+    Array.isArray(node.parameters)
+  );
 }
 
 /**
@@ -148,11 +153,13 @@ export function isFunctionCallNode(node) {
  * @returns {node is ParameterNode} - Type predicate
  */
 export function isParameterNode(node) {
-  return isASTNode(node) && 
-         node.type === AST_NODE_TYPES.PARAMETER &&
-         node.value &&
-         typeof node.position === 'number' &&
-         typeof node.isNamed === 'boolean';
+  return Boolean(
+    isASTNode(node) &&
+    node.type === AST_NODE_TYPES.PARAMETER &&
+    node.value !== undefined &&
+    typeof node.position === "number" &&
+    typeof node.isNamed === "boolean"
+  );
 }
 
 /**
@@ -169,12 +176,12 @@ export function isParameterNode(node) {
  */
 export function createFunctionCallNode(name, parameters, location, namespace) {
   return {
-    type: 'FunctionCall',
+    type: "FunctionCall",
     name,
     parameters: parameters || [],
     location,
     namespace,
-    isBuiltIn: isBuiltInFunction(name, namespace)
+    isBuiltIn: isBuiltInFunction(name, namespace),
   };
 }
 
@@ -186,14 +193,14 @@ export function createFunctionCallNode(name, parameters, location, namespace) {
  * @param {number} position - Parameter position
  * @returns {ParameterNode} - Parameter node
  */
-export function createParameterNode(value, location, name, position) {
+export function createParameterNode(value, location, name = null, position = 0) {
   return {
     type: AST_NODE_TYPES.PARAMETER,
     value,
     location,
     name,
     position,
-    isNamed: Boolean(name)
+    isNamed: Boolean(name),
   };
 }
 
@@ -206,22 +213,22 @@ export function createParameterNode(value, location, name, position) {
  */
 export function createLiteralNode(value, location, raw) {
   let dataType;
-  if (typeof value === 'string') {
-    dataType = 'string';
-  } else if (typeof value === 'number') {
-    dataType = 'number';
-  } else if (typeof value === 'boolean') {
-    dataType = 'boolean';
+  if (typeof value === "string") {
+    dataType = "string";
+  } else if (typeof value === "number") {
+    dataType = "number";
+  } else if (typeof value === "boolean") {
+    dataType = "boolean";
   } else {
-    dataType = 'unknown';
+    dataType = "unknown";
   }
 
   return {
-    type: 'Literal',
+    type: "Literal",
     value,
     location,
     raw,
-    dataType
+    dataType,
   };
 }
 
@@ -246,42 +253,67 @@ export function createSourceLocation(line, column, offset, length) {
 function isBuiltInFunction(name, namespace) {
   // Common built-in functions - this would be populated from language-reference.json
   const builtIns = new Set([
-    'indicator', 'strategy', 'library',
-    'plot', 'plotshape', 'plotchar', 'plotbar', 'plotcandle',
-    'hline', 'fill', 'bgcolor',
-    'var', 'varip',
-    'if', 'for', 'while', 'switch'
+    "indicator",
+    "strategy",
+    "library",
+    "plot",
+    "plotshape",
+    "plotchar",
+    "plotbar",
+    "plotcandle",
+    "hline",
+    "fill",
+    "bgcolor",
+    "var",
+    "varip",
+    "if",
+    "for",
+    "while",
+    "switch",
   ]);
 
   const namespacedBuiltIns = new Set([
-    'ta.sma', 'ta.ema', 'ta.rsi', 'ta.macd', 'ta.stoch',
-    'math.abs', 'math.max', 'math.min', 'math.round',
-    'str.tostring', 'str.tonumber', 'str.length',
-    'array.new', 'array.push', 'array.get',
-    'matrix.new', 'matrix.set', 'matrix.get'
+    "ta.sma",
+    "ta.ema",
+    "ta.rsi",
+    "ta.macd",
+    "ta.stoch",
+    "math.abs",
+    "math.max",
+    "math.min",
+    "math.round",
+    "str.tostring",
+    "str.tonumber",
+    "str.length",
+    "array.new",
+    "array.push",
+    "array.get",
+    "matrix.new",
+    "matrix.set",
+    "matrix.get",
   ]);
 
   if (namespace) {
     return namespacedBuiltIns.has(`${namespace}.${name}`);
   }
-  
+
   return builtIns.has(name);
 }
 
 // Export type information for runtime introspection
 export const AST_NODE_TYPES = {
-  PROGRAM: 'Program',
-  FUNCTION_CALL: 'FunctionCall', 
-  PARAMETER: 'Parameter',
-  LITERAL: 'Literal',
-  IDENTIFIER: 'Identifier',
-  DECLARATION: 'Declaration'
+  PROGRAM: "Program",
+  FUNCTION_CALL: "FunctionCall",
+  PARAMETER: "Parameter",
+  LITERAL: "Literal",
+  IDENTIFIER: "Identifier",
+  DECLARATION: "Declaration",
 };
 
 export const DATA_TYPES = {
-  STRING: 'string',
-  NUMBER: 'number',
-  BOOLEAN: 'boolean',
-  COLOR: 'color',
-  UNKNOWN: 'unknown'
+  STRING: "string",
+  NUMBER: "number",
+  BOOLEAN: "boolean",
+  COLOR: "color",
+  UNKNOWN: "unknown",
 };

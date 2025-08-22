@@ -1,19 +1,19 @@
 /**
  * Error Handling Patterns for Pine Script Parser
- * 
+ *
  * TypeScript-ready error handling with result patterns and type safety.
  * Designed for graceful error recovery and detailed error reporting.
- * 
+ *
  * These patterns will transition smoothly to TypeScript with proper
  * discriminated unions and type guards.
  */
 
-import { createSourceLocation } from './ast-types.js';
+import { createSourceLocation } from "./ast-types.js";
 
 /**
  * Result pattern for type-safe error handling
  * This will become a proper TypeScript discriminated union
- * 
+ *
  * @template T, E
  * @typedef {Object} Result
  * @property {boolean} success - Whether operation succeeded
@@ -25,22 +25,22 @@ import { createSourceLocation } from './ast-types.js';
  * Error severity levels
  */
 export const ERROR_SEVERITY = {
-  INFO: 'info',
-  WARNING: 'warning', 
-  ERROR: 'error',
-  CRITICAL: 'critical'
+  INFO: "info",
+  WARNING: "warning",
+  ERROR: "error",
+  CRITICAL: "critical",
 };
 
 /**
  * Error categories for classification
  */
 export const ERROR_CATEGORIES = {
-  LEXICAL: 'lexical_error',
-  SYNTAX: 'syntax_error',
-  SEMANTIC: 'semantic_error',
-  VALIDATION: 'validation_error',
-  PERFORMANCE: 'performance_error',
-  INTEGRATION: 'integration_error'
+  LEXICAL: "lexical_error",
+  SYNTAX: "syntax_error",
+  SEMANTIC: "semantic_error",
+  VALIDATION: "validation_error",
+  PERFORMANCE: "performance_error",
+  INTEGRATION: "integration_error",
 };
 
 /**
@@ -48,33 +48,33 @@ export const ERROR_CATEGORIES = {
  */
 export const ERROR_CODES = {
   // Lexical errors
-  INVALID_TOKEN: 'INVALID_TOKEN',
-  UNTERMINATED_STRING: 'UNTERMINATED_STRING',
-  INVALID_NUMBER: 'INVALID_NUMBER',
-  
+  INVALID_TOKEN: "INVALID_TOKEN",
+  UNTERMINATED_STRING: "UNTERMINATED_STRING",
+  INVALID_NUMBER: "INVALID_NUMBER",
+
   // Syntax errors
-  UNEXPECTED_TOKEN: 'UNEXPECTED_TOKEN',
-  EXPECTED_TOKEN: 'EXPECTED_TOKEN',
-  MISSING_CLOSING_PAREN: 'MISSING_CLOSING_PAREN',
-  INVALID_FUNCTION_CALL: 'INVALID_FUNCTION_CALL',
-  
+  UNEXPECTED_TOKEN: "UNEXPECTED_TOKEN",
+  EXPECTED_TOKEN: "EXPECTED_TOKEN",
+  MISSING_CLOSING_PAREN: "MISSING_CLOSING_PAREN",
+  INVALID_FUNCTION_CALL: "INVALID_FUNCTION_CALL",
+
   // Semantic errors
-  UNDEFINED_FUNCTION: 'UNDEFINED_FUNCTION',
-  INVALID_PARAMETER_COUNT: 'INVALID_PARAMETER_COUNT',
-  TYPE_MISMATCH: 'TYPE_MISMATCH',
-  
+  UNDEFINED_FUNCTION: "UNDEFINED_FUNCTION",
+  INVALID_PARAMETER_COUNT: "INVALID_PARAMETER_COUNT",
+  TYPE_MISMATCH: "TYPE_MISMATCH",
+
   // Validation errors
-  SHORT_TITLE_TOO_LONG: 'SHORT_TITLE_TOO_LONG',
-  PARAMETER_OUT_OF_RANGE: 'PARAMETER_OUT_OF_RANGE',
-  REQUIRED_PARAMETER_MISSING: 'REQUIRED_PARAMETER_MISSING',
-  
+  SHORT_TITLE_TOO_LONG: "SHORT_TITLE_TOO_LONG",
+  PARAMETER_OUT_OF_RANGE: "PARAMETER_OUT_OF_RANGE",
+  REQUIRED_PARAMETER_MISSING: "REQUIRED_PARAMETER_MISSING",
+
   // Performance errors
-  PARSE_TIMEOUT: 'PARSE_TIMEOUT',
-  MEMORY_LIMIT_EXCEEDED: 'MEMORY_LIMIT_EXCEEDED',
-  
+  PARSE_TIMEOUT: "PARSE_TIMEOUT",
+  MEMORY_LIMIT_EXCEEDED: "MEMORY_LIMIT_EXCEEDED",
+
   // Integration errors
-  VALIDATION_RULES_NOT_LOADED: 'VALIDATION_RULES_NOT_LOADED',
-  INVALID_CONFIGURATION: 'INVALID_CONFIGURATION'
+  VALIDATION_RULES_NOT_LOADED: "VALIDATION_RULES_NOT_LOADED",
+  INVALID_CONFIGURATION: "INVALID_CONFIGURATION",
 };
 
 /**
@@ -108,7 +108,7 @@ export const ERROR_CODES = {
 export function success(data) {
   return {
     success: true,
-    data
+    data,
   };
 }
 
@@ -121,7 +121,7 @@ export function success(data) {
 export function error(error) {
   return {
     success: false,
-    error
+    error,
   };
 }
 
@@ -132,17 +132,17 @@ export function error(error) {
  * @returns {result is {success: true, data: T}} - Type predicate
  */
 export function isSuccess(result) {
-  return result.success === true;
+  return Boolean(result && result.success === true);
 }
 
 /**
  * Type guard for error results
  * @template T, E
- * @param {Result<T, E>} result - Result to check  
+ * @param {Result<T, E>} result - Result to check
  * @returns {result is {success: false, error: E}} - Type predicate
  */
 export function isError(result) {
-  return result.success === false;
+  return Boolean(result && result.success === false);
 }
 
 /**
@@ -158,15 +158,63 @@ export function isError(result) {
  * @returns {ErrorInfo} - Structured error information
  */
 export function createError(code, message, location, options = {}) {
+  // Determine default category based on error code if not provided
+  let defaultCategory = ERROR_CATEGORIES.SYNTAX;
+  
+  if (options.category) {
+    defaultCategory = options.category;
+  } else {
+    // Map error codes to appropriate categories
+    switch (code) {
+      // Lexical errors
+      case ERROR_CODES.INVALID_TOKEN:
+      case ERROR_CODES.UNTERMINATED_STRING:
+      case ERROR_CODES.INVALID_NUMBER:
+        defaultCategory = ERROR_CATEGORIES.LEXICAL;
+        break;
+        
+      // Semantic errors
+      case ERROR_CODES.UNDEFINED_FUNCTION:
+      case ERROR_CODES.INVALID_PARAMETER_COUNT:
+      case ERROR_CODES.TYPE_MISMATCH:
+        defaultCategory = ERROR_CATEGORIES.SEMANTIC;
+        break;
+        
+      // Validation errors
+      case ERROR_CODES.SHORT_TITLE_TOO_LONG:
+      case ERROR_CODES.PARAMETER_OUT_OF_RANGE:
+      case ERROR_CODES.REQUIRED_PARAMETER_MISSING:
+        defaultCategory = ERROR_CATEGORIES.VALIDATION;
+        break;
+        
+      // Performance errors
+      case ERROR_CODES.PARSE_TIMEOUT:
+      case ERROR_CODES.MEMORY_LIMIT_EXCEEDED:
+        defaultCategory = ERROR_CATEGORIES.PERFORMANCE;
+        break;
+        
+      // Integration errors
+      case ERROR_CODES.VALIDATION_RULES_NOT_LOADED:
+      case ERROR_CODES.INVALID_CONFIGURATION:
+        defaultCategory = ERROR_CATEGORIES.INTEGRATION;
+        break;
+        
+      // Default to syntax for unknown codes
+      default:
+        defaultCategory = ERROR_CATEGORIES.SYNTAX;
+        break;
+    }
+  }
+
   return {
     code,
     message,
     location,
     severity: options.severity || ERROR_SEVERITY.ERROR,
-    category: options.category || ERROR_CATEGORIES.SYNTAX,
+    category: defaultCategory,
     metadata: options.metadata,
     suggestion: options.suggestion,
-    documentation: options.documentation
+    documentation: options.documentation,
   };
 }
 
@@ -178,15 +226,10 @@ export function createError(code, message, location, options = {}) {
  * @returns {ErrorInfo} - Lexical error
  */
 export function createLexicalError(message, location, suggestion) {
-  return createError(
-    ERROR_CODES.INVALID_TOKEN,
-    message,
-    location,
-    {
-      category: ERROR_CATEGORIES.LEXICAL,
-      suggestion
-    }
-  );
+  return createError(ERROR_CODES.INVALID_TOKEN, message, location, {
+    category: ERROR_CATEGORIES.LEXICAL,
+    suggestion,
+  });
 }
 
 /**
@@ -204,7 +247,7 @@ export function createSyntaxError(expected, actual, location) {
     {
       category: ERROR_CATEGORIES.SYNTAX,
       metadata: { expected, actual },
-      suggestion: `Replace '${actual}' with '${expected}'`
+      suggestion: `Replace '${actual}' with '${expected}'`,
     }
   );
 }
@@ -218,15 +261,10 @@ export function createSyntaxError(expected, actual, location) {
  * @returns {ErrorInfo} - Validation error
  */
 export function createValidationError(code, message, location, metadata) {
-  return createError(
-    code,
-    message,
-    location,
-    {
-      category: ERROR_CATEGORIES.VALIDATION,
-      metadata
-    }
-  );
+  return createError(code, message, location, {
+    category: ERROR_CATEGORIES.VALIDATION,
+    metadata,
+  });
 }
 
 /**
@@ -246,7 +284,7 @@ export function createShortTitleError(actualTitle, actualLength, maxLength, loca
       actualTitle,
       actualLength,
       maxLength,
-      functionType: 'indicator/strategy'
+      functionType: "indicator/strategy",
     }
   );
 }
@@ -255,12 +293,12 @@ export function createShortTitleError(actualTitle, actualLength, maxLength, loca
  * Error recovery strategies
  */
 export const RECOVERY_STRATEGIES = {
-  SKIP_TOKEN: 'skip_token',
-  SKIP_TO_SEMICOLON: 'skip_to_semicolon', 
-  SKIP_TO_NEWLINE: 'skip_to_newline',
-  SKIP_TO_CLOSING_PAREN: 'skip_to_closing_paren',
-  INSERT_MISSING_TOKEN: 'insert_missing_token',
-  CONTINUE_PARSING: 'continue_parsing'
+  SKIP_TOKEN: "skip_token",
+  SKIP_TO_SEMICOLON: "skip_to_semicolon",
+  SKIP_TO_NEWLINE: "skip_to_newline",
+  SKIP_TO_CLOSING_PAREN: "skip_to_closing_paren",
+  INSERT_MISSING_TOKEN: "insert_missing_token",
+  CONTINUE_PARSING: "continue_parsing",
 };
 
 /**
@@ -273,7 +311,7 @@ export class ErrorCollector {
     this.recoveryAttempts = 0;
     this.maxRecoveryAttempts = 10;
   }
-  
+
   /**
    * Add an error to the collection
    * @param {ErrorInfo} error - Error to add
@@ -285,7 +323,7 @@ export class ErrorCollector {
       this.errors.push(error);
     }
   }
-  
+
   /**
    * Add a recovery attempt
    * @param {string} strategy - Recovery strategy used
@@ -293,32 +331,34 @@ export class ErrorCollector {
    */
   addRecovery(strategy, location) {
     this.recoveryAttempts++;
-    
+
     if (this.recoveryAttempts > this.maxRecoveryAttempts) {
-      this.addError(createError(
-        ERROR_CODES.PARSE_TIMEOUT,
-        'Too many parse errors, stopping recovery attempts',
-        location,
-        {
-          severity: ERROR_SEVERITY.CRITICAL,
-          category: ERROR_CATEGORIES.PERFORMANCE,
-          metadata: { recoveryAttempts: this.recoveryAttempts }
-        }
-      ));
+      this.addError(
+        createError(
+          ERROR_CODES.PARSE_TIMEOUT,
+          "Too many parse errors, stopping recovery attempts",
+          location,
+          {
+            severity: ERROR_SEVERITY.CRITICAL,
+            category: ERROR_CATEGORIES.PERFORMANCE,
+            metadata: { recoveryAttempts: this.recoveryAttempts },
+          }
+        )
+      );
       return false;
     }
-    
+
     return true;
   }
-  
+
   /**
    * Check if there are any critical errors
    * @returns {boolean} - Whether there are critical errors
    */
   hasCriticalErrors() {
-    return this.errors.some(error => error.severity === ERROR_SEVERITY.CRITICAL);
+    return this.errors.some((error) => error.severity === ERROR_SEVERITY.CRITICAL);
   }
-  
+
   /**
    * Get error summary
    * @returns {Object} - Error summary
@@ -327,26 +367,42 @@ export class ErrorCollector {
     return {
       totalErrors: this.errors.length,
       totalWarnings: this.warnings.length,
-      criticalErrors: this.errors.filter(e => e.severity === ERROR_SEVERITY.CRITICAL).length,
+      criticalErrors: this.errors.filter((e) => e.severity === ERROR_SEVERITY.CRITICAL).length,
       recoveryAttempts: this.recoveryAttempts,
-      categories: this.getCategorySummary()
+      categories: this.getCategorySummary(),
     };
   }
-  
+
   /**
    * Get error breakdown by category
    * @returns {Object} - Category summary
    */
   getCategorySummary() {
     const categories = {};
-    
+
     for (const error of this.errors) {
       categories[error.category] = (categories[error.category] || 0) + 1;
     }
-    
+
     return categories;
   }
-  
+
+  /**
+   * Get all errors
+   * @returns {ErrorInfo[]} - Array of errors
+   */
+  getErrors() {
+    return this.errors;
+  }
+
+  /**
+   * Get all warnings
+   * @returns {ErrorInfo[]} - Array of warnings
+   */
+  getWarnings() {
+    return this.warnings;
+  }
+
   /**
    * Clear all errors and warnings
    */
@@ -368,16 +424,29 @@ export function tryParse(fn, context = {}) {
     const result = fn();
     return success(result);
   } catch (err) {
+    // Handle different types of thrown values
+    let message, originalError;
+    if (typeof err === 'string') {
+      message = err;
+      originalError = 'String';
+    } else if (err instanceof Error) {
+      message = err.message;
+      originalError = err.name;
+    } else {
+      message = String(err);
+      originalError = typeof err;
+    }
+
     const errorInfo = createError(
       ERROR_CODES.UNEXPECTED_TOKEN,
-      err.message,
+      message,
       context.location || createSourceLocation(0, 0, 0, 0),
       {
         category: ERROR_CATEGORIES.SYNTAX,
-        metadata: { originalError: err.name, context }
+        metadata: { originalError, context },
       }
     );
-    
+
     return error(errorInfo);
   }
 }
@@ -393,16 +462,29 @@ export async function tryParseAsync(fn, context = {}) {
     const result = await fn();
     return success(result);
   } catch (err) {
+    // Handle different types of thrown values
+    let message, originalError;
+    if (typeof err === 'string') {
+      message = err;
+      originalError = 'String';
+    } else if (err instanceof Error) {
+      message = err.message;
+      originalError = err.name;
+    } else {
+      message = String(err);
+      originalError = typeof err;
+    }
+
     const errorInfo = createError(
       ERROR_CODES.UNEXPECTED_TOKEN,
-      err.message,
+      message,
       context.location || createSourceLocation(0, 0, 0, 0),
       {
         category: ERROR_CATEGORIES.SYNTAX,
-        metadata: { originalError: err.name, context }
+        metadata: { originalError, context },
       }
     );
-    
+
     return error(errorInfo);
   }
 }
@@ -416,7 +498,7 @@ export async function tryParseAsync(fn, context = {}) {
 export function combineResults(results) {
   const successResults = [];
   const errors = [];
-  
+
   for (const result of results) {
     if (isSuccess(result)) {
       successResults.push(result.data);
@@ -424,11 +506,11 @@ export function combineResults(results) {
       errors.push(result.error);
     }
   }
-  
+
   if (errors.length > 0) {
     return error(errors);
   }
-  
+
   return success(successResults);
 }
 

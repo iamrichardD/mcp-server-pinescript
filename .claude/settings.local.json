@@ -30,7 +30,16 @@
       "Bash(cp:*)",
       "Bash(git mv:*)",
       "Bash(mv:*)",
-      "Bash(./scripts/set-session-type.sh:*)"
+      "Bash(./scripts/set-session-type.sh:*)",
+      "Bash(tsc --noEmit)",
+      "Bash(echo:*)",
+      "Bash(npx biome format:*)",
+      "Bash(biome format:*)",
+      "Bash(biome check:*)",
+      "Bash(npx biome check:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx biome lint:*)",
+      "Bash(npx biome:*)"
     ],
     "deny": []
   }

@@ -280,6 +280,48 @@
           "pattern": "strategy\\.entry\\s*\\([^)]*\\bqty_percent\\s*=",
           "documentation": "Detects incorrect parameter names in function calls"
         }
+      },
+      "invalidParameterNamingConvention": {
+        "validation_constraints": {
+          "errorCode": "INVALID_PARAMETER_NAMING_CONVENTION",
+          "errorMessage": "Parameter name '{paramName}' in function '{functionName}' should use snake_case convention. Use '{suggestedName}' instead.",
+          "severity": "error",
+          "category": "parameter_validation",
+          "patterns": {
+            "functionCallWithNamedParameters": "([a-zA-Z_][a-zA-Z0-9_]*(?:\\.[a-zA-Z_][a-zA-Z0-9_]*)?)\\s*\\(([^)]*\\b([a-zA-Z][a-zA-Z0-9_]*[A-Z][a-zA-Z0-9_]*)\\s*=)",
+            "namedParameterExtraction": "\\b([a-zA-Z][a-zA-Z0-9_]*[A-Z][a-zA-Z0-9_]*)\\s*=\\s*([^,)]+)",
+            "camelCaseParameter": "\\b([a-z][a-zA-Z0-9]*[A-Z][a-zA-Z0-9_]*)\\s*=",
+            "PascalCaseParameter": "\\b([A-Z][a-zA-Z0-9_]+)\\s*="
+          },
+          "namingRules": {
+            "validConvention": "snake_case",
+            "invalidConventions": ["camelCase", "PascalCase", "UPPER_CASE"],
+            "conversionRules": {
+              "camelCase": "Convert camelCase to snake_case (e.g., lineWidth → linewidth or line_width)",
+              "PascalCase": "Convert PascalCase to snake_case (e.g., BorderColor → border_color)",
+              "mixedCase": "Use lowercase with underscores (e.g., textColor → text_color)"
+            }
+          },
+          "commonViolations": {
+            "textColor": "text_color",
+            "lineWidth": "linewidth", 
+            "borderColor": "border_color",
+            "borderWidth": "border_width",
+            "qtyPercent": "qty_percent",
+            "minVal": "minval",
+            "maxVal": "maxval",
+            "stepSize": "step",
+            "trackPrice": "trackprice",
+            "showLast": "show_last"
+          },
+          "builtinFunctions": [
+            "table.cell", "table.set_*", "plot", "plotshape", "plotchar", "plotcandle", 
+            "strategy.entry", "strategy.exit", "strategy.close", "box.new", "box.set_*",
+            "line.new", "line.set_*", "label.new", "label.set_*", "input.int", 
+            "input.float", "input.string", "input.bool", "input.color", "ta.*"
+          ],
+          "documentation": "Validates that all function parameters follow Pine Script v6 snake_case naming convention across ALL built-in functions"
+        }
       }
     },
     "syntaxValidation": {
@@ -429,6 +471,36 @@
       "category": "parameter_validation",
       "documentation": "Function called with a parameter name that doesn't exist in the function signature. Check Pine Script reference for correct parameter names.",
       "suggestedFix": "Check function signature and use correct parameter name (e.g., 'qty_percent' → 'qty' for strategy.entry)"
+    },
+    "INVALID_PARAMETER_NAMING_CONVENTION": {
+      "description": "Function parameter name violates Pine Script v6 snake_case naming convention",
+      "severity": "error",
+      "category": "parameter_validation",
+      "documentation": "All Pine Script v6 function parameters must use snake_case convention (lowercase with underscores). This rule detects camelCase, PascalCase, and other naming violations across ALL built-in functions.",
+      "examples": {
+        "problematic": [
+          "table.cell(perfTable, 0, 0, \"Title\", textColor = color.white)",
+          "plot(close, lineWidth = 2, trackPrice = true)",
+          "strategy.entry(\"Buy\", strategy.long, qtyPercent = 50)",
+          "box.new(left, top, right, bottom, BorderColor = color.blue)",
+          "input.int(20, minVal = 1, maxVal = 100, stepSize = 1)"
+        ],
+        "correct": [
+          "table.cell(perfTable, 0, 0, \"Title\", text_color = color.white)",
+          "plot(close, linewidth = 2, trackprice = true)",
+          "strategy.entry(\"Buy\", strategy.long, qty_percent = 50)",
+          "box.new(left, top, right, bottom, border_color = color.blue)",
+          "input.int(20, minval = 1, maxval = 100, step = 1)"
+        ]
+      },
+      "commonViolations": {
+        "textColor → text_color": "Table and label functions",
+        "lineWidth → linewidth": "Plot functions",
+        "borderColor → border_color": "Drawing objects",
+        "qtyPercent → qty_percent": "Strategy functions",
+        "minVal/maxVal → minval/maxval": "Input functions"
+      },
+      "suggestedFix": "Convert parameter name to snake_case convention using lowercase letters and underscores"
     },
     "INVALID_UDT_HISTORY_REFERENCE": {
       "description": "Incorrect syntax for accessing history of user-defined type fields",

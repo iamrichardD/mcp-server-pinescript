@@ -1,55 +1,55 @@
 /**
  * Pine Script Lexer
- * 
+ *
  * Tokenizes Pine Script source code for AST generation.
  * Designed with TypeScript migration in mind - clean interfaces and predictable behavior.
- * 
+ *
  * Performance target: <5ms tokenization for typical Pine Script files
  * Memory efficient: Streaming tokenization without storing entire source
  */
 
-import { createSourceLocation } from './ast-types.js';
+import { createSourceLocation } from "./ast-types.js";
 
 /**
  * Token types for Pine Script lexical analysis
  */
 export const TOKEN_TYPES = {
   // Literals
-  STRING: 'STRING',
-  NUMBER: 'NUMBER', 
-  BOOLEAN: 'BOOLEAN',
-  COLOR: 'COLOR',
-  
+  STRING: "STRING",
+  NUMBER: "NUMBER",
+  BOOLEAN: "BOOLEAN",
+  COLOR: "COLOR",
+
   // Identifiers and keywords
-  IDENTIFIER: 'IDENTIFIER',
-  KEYWORD: 'KEYWORD',
-  
+  IDENTIFIER: "IDENTIFIER",
+  KEYWORD: "KEYWORD",
+
   // Operators
-  ASSIGN: 'ASSIGN',           // =, :=
-  ARITHMETIC: 'ARITHMETIC',   // +, -, *, /, %
-  COMPARISON: 'COMPARISON',   // ==, !=, <, >, <=, >=
-  LOGICAL: 'LOGICAL',        // and, or, not
-  OPERATOR: 'OPERATOR',      // Generic operator type for tests
-  
+  ASSIGN: "ASSIGN", // =, :=
+  ARITHMETIC: "ARITHMETIC", // +, -, *, /, %
+  COMPARISON: "COMPARISON", // ==, !=, <, >, <=, >=
+  LOGICAL: "LOGICAL", // and, or, not
+  OPERATOR: "OPERATOR", // Generic operator type for tests
+
   // Punctuation
-  LPAREN: 'LPAREN',          // (
-  RPAREN: 'RPAREN',          // )
-  LBRACKET: 'LBRACKET',      // [
-  RBRACKET: 'RBRACKET',      // ]
-  COMMA: 'COMMA',            // ,
-  DOT: 'DOT',                // .
-  QUESTION: 'QUESTION',      // ?
-  COLON: 'COLON',            // :
-  
+  LPAREN: "LPAREN", // (
+  RPAREN: "RPAREN", // )
+  LBRACKET: "LBRACKET", // [
+  RBRACKET: "RBRACKET", // ]
+  COMMA: "COMMA", // ,
+  DOT: "DOT", // .
+  QUESTION: "QUESTION", // ?
+  COLON: "COLON", // :
+
   // Special
-  NEWLINE: 'NEWLINE',
-  INDENT: 'INDENT',
-  DEDENT: 'DEDENT',
-  COMMENT: 'COMMENT',
-  EOF: 'EOF',
-  
+  NEWLINE: "NEWLINE",
+  INDENT: "INDENT",
+  DEDENT: "DEDENT",
+  COMMENT: "COMMENT",
+  EOF: "EOF",
+
   // Error token
-  ERROR: 'ERROR'
+  ERROR: "ERROR",
 };
 
 /**
@@ -78,28 +78,52 @@ export const TOKEN_TYPES = {
  */
 const KEYWORDS = new Set([
   // Declarations
-  'indicator', 'strategy', 'library',
-  'var', 'varip',
-  
+  "indicator",
+  "strategy",
+  "library",
+  "var",
+  "varip",
+
   // Control flow
-  'if', 'else', 'for', 'while', 'break', 'continue', 'switch',
-  
+  "if",
+  "else",
+  "for",
+  "while",
+  "break",
+  "continue",
+  "switch",
+
   // Built-in types
-  'int', 'float', 'bool', 'string', 'color',
-  'line', 'label', 'box', 'table', 'array', 'matrix',
-  'series', 'simple',
-  
+  "int",
+  "float",
+  "bool",
+  "string",
+  "color",
+  "line",
+  "label",
+  "box",
+  "table",
+  "array",
+  "matrix",
+  "series",
+  "simple",
+
   // Built-in constants
-  'true', 'false', 'na',
-  
+  "true",
+  "false",
+  "na",
+
   // Operators as keywords
-  'and', 'or', 'not',
-  
+  "and",
+  "or",
+  "not",
+
   // Import/export
-  'import', 'export',
-  
+  "import",
+  "export",
+
   // Function modifiers
-  'method'
+  "method",
 ]);
 
 /**
@@ -115,14 +139,14 @@ export function createLexer(source) {
     column: 0,
     indentLevel: 0,
     indentStack: [0],
-    atLineStart: true
+    atLineStart: true,
   };
-  
+
   // Add tokenize method to the lexer for tests
-  lexer.tokenize = function() {
+  lexer.tokenize = function () {
     return tokenize(this.source);
   };
-  
+
   return lexer;
 }
 
@@ -134,21 +158,21 @@ export function createLexer(source) {
 export function tokenize(source) {
   const lexer = createLexer(source);
   const tokens = [];
-  
+
   while (!isAtEnd(lexer)) {
     const token = nextToken(lexer);
     if (token) {
       tokens.push(token);
     }
   }
-  
+
   // Add EOF token
   tokens.push({
     type: TOKEN_TYPES.EOF,
-    value: '',
-    location: createSourceLocation(lexer.line, lexer.column, lexer.position, 0)
+    value: "",
+    location: createSourceLocation(lexer.line, lexer.column, lexer.position, 0),
   });
-  
+
   return tokens;
 }
 
@@ -159,71 +183,78 @@ export function tokenize(source) {
  */
 export function nextToken(lexer) {
   skipWhitespace(lexer);
-  
+
   if (isAtEnd(lexer)) {
     return null;
   }
-  
+
   const start = lexer.position;
   const startLine = lexer.line;
   const startColumn = lexer.column;
-  
+
   const char = peek(lexer);
-  
+
   // Handle newlines and indentation
-  if (char === '\n') {
+  if (char === "\n") {
     advance(lexer);
     lexer.line++;
     lexer.column = 0;
     lexer.atLineStart = true;
-    return createToken(TOKEN_TYPES.NEWLINE, '\n', startLine, startColumn, start, 1);
+    return createToken(TOKEN_TYPES.NEWLINE, "\n", startLine, startColumn, start, 1);
   }
-  
+
   // Handle indentation at line start
-  if (lexer.atLineStart && (char === ' ' || char === '\t')) {
+  if (lexer.atLineStart && (char === " " || char === "\t")) {
     return handleIndentation(lexer, startLine, startColumn, start);
   }
-  
+
   lexer.atLineStart = false;
-  
+
   // Comments
-  if (char === '/') {
-    if (peekNext(lexer) === '/') {
+  if (char === "/") {
+    if (peekNext(lexer) === "/") {
       return readLineComment(lexer, startLine, startColumn, start);
     }
   }
-  
+
   // String literals
   if (char === '"' || char === "'") {
     return readString(lexer, startLine, startColumn, start);
   }
-  
+
   // Number literals
-  if (isDigit(char) || (char === '.' && isDigit(peekNext(lexer)))) {
+  if (isDigit(char) || (char === "." && isDigit(peekNext(lexer)))) {
     return readNumber(lexer, startLine, startColumn, start);
   }
 
   // Handle negative numbers (unary minus followed by digit)
-  if (char === '-' && !isAtEnd(lexer) && isDigit(peekNext(lexer))) {
+  if (char === "-" && !isAtEnd(lexer) && isDigit(peekNext(lexer))) {
     return readNegativeNumber(lexer, startLine, startColumn, start);
   }
-  
+
   // Identifiers and keywords
-  if (isAlpha(char) || char === '_') {
+  if (isAlpha(char) || char === "_") {
     return readIdentifier(lexer, startLine, startColumn, start);
   }
-  
+
   // Two-character operators
   const twoChar = peek(lexer) + peekNext(lexer);
-  if (twoChar === ':=' || twoChar === '==' || twoChar === '!=' || 
-      twoChar === '<=' || twoChar === '>=' || twoChar === '//' ||
-      twoChar === '/*' || twoChar === '*/') {
+  if (
+    twoChar === ":=" ||
+    twoChar === "==" ||
+    twoChar === "!=" ||
+    twoChar === "<=" ||
+    twoChar === ">=" ||
+    twoChar === "//" ||
+    twoChar === "/*" ||
+    twoChar === "*/"
+  ) {
     advance(lexer);
     advance(lexer);
     const type = getOperatorType(twoChar);
     return createToken(type, twoChar, startLine, startColumn, start, 2);
   }
-  
+
   // Single-character tokens
   advance(lexer);
   const type = getSingleCharType(char);
@@ -240,31 +271,48 @@ export function nextToken(lexer) {
  */
 function handleIndentation(lexer, startLine, startColumn, start) {
   let indentSize = 0;
-  
-  while (!isAtEnd(lexer) && (peek(lexer) === ' ' || peek(lexer) === '\t')) {
-    if (peek(lexer) === '\t') {
+
+  while (!isAtEnd(lexer) && (peek(lexer) === " " || peek(lexer) === "\t")) {
+    if (peek(lexer) === "\t") {
       indentSize += 4; // Treat tab as 4 spaces
     } else {
       indentSize += 1;
     }
     advance(lexer);
   }
-  
+
   const currentIndent = lexer.indentStack[lexer.indentStack.length - 1];
-  
+
   if (indentSize > currentIndent) {
     lexer.indentStack.push(indentSize);
     lexer.atLineStart = false;
-    return createToken(TOKEN_TYPES.INDENT, ' '.repeat(indentSize), startLine, startColumn, start, indentSize);
+    return createToken(
+      TOKEN_TYPES.INDENT,
+      " ".repeat(indentSize),
+      startLine,
+      startColumn,
+      start,
+      indentSize
+    );
   } else if (indentSize < currentIndent) {
     // Handle dedent
-    while (lexer.indentStack.length > 1 && lexer.indentStack[lexer.indentStack.length - 1] > indentSize) {
+    while (
+      lexer.indentStack.length > 1 &&
+      lexer.indentStack[lexer.indentStack.length - 1] > indentSize
+    ) {
       lexer.indentStack.pop();
     }
     lexer.atLineStart = false;
-    return createToken(TOKEN_TYPES.DEDENT, ' '.repeat(indentSize), startLine, startColumn, start, indentSize);
+    return createToken(
+      TOKEN_TYPES.DEDENT,
+      " ".repeat(indentSize),
+      startLine,
+      startColumn,
+      start,
+      indentSize
+    );
   }
-  
+
   lexer.atLineStart = false;
   return null; // Same indentation level, no token needed
 }
@@ -279,37 +327,51 @@ function handleIndentation(lexer, startLine, startColumn, start) {
  */
 function readString(lexer, startLine, startColumn, start) {
   const quote = advance(lexer); // Consume opening quote
-  let value = '';
-  
+  let value = "";
+
   while (!isAtEnd(lexer) && peek(lexer) !== quote) {
-    if (peek(lexer) === '\\') {
+    if (peek(lexer) === "\\") {
       advance(lexer); // Consume backslash
       if (!isAtEnd(lexer)) {
         const escaped = advance(lexer);
         // Handle escape sequences
         switch (escaped) {
-          case 'n': value += '\n'; break;
-          case 't': value += '\t'; break;
-          case 'r': value += '\r'; break;
-          case '\\': value += '\\'; break;
-          case '"': value += '"'; break;
-          case "'": value += "'"; break;
-          default: value += escaped; break;
+          case "n":
+            value += "\n";
+            break;
+          case "t":
+            value += "\t";
+            break;
+          case "r":
+            value += "\r";
+            break;
+          case "\\":
+            value += "\\";
+            break;
+          case '"':
+            value += '"';
+            break;
+          case "'":
+            value += "'";
+            break;
+          default:
+            value += escaped;
+            break;
         }
       }
     } else {
-      if (peek(lexer) === '\n') {
+      if (peek(lexer) === "\n") {
         lexer.line++;
         lexer.column = 0;
       }
       value += advance(lexer);
     }
   }
-  
+
   if (!isAtEnd(lexer)) {
     advance(lexer); // Consume closing quote
   }
-  
+
   const length = lexer.position - start;
   return createToken(TOKEN_TYPES.STRING, value, startLine, startColumn, start, length);
 }
@@ -323,27 +385,27 @@ function readString(lexer, startLine, startColumn, start) {
  * @returns {Token} - Number token
  */
 function readNumber(lexer, startLine, startColumn, start) {
-  let value = '';
+  let value = "";
   let hasDecimal = false;
-  
-  while (!isAtEnd(lexer) && (isDigit(peek(lexer)) || (!hasDecimal && peek(lexer) === '.'))) {
-    if (peek(lexer) === '.') {
+
+  while (!isAtEnd(lexer) && (isDigit(peek(lexer)) || (!hasDecimal && peek(lexer) === "."))) {
+    if (peek(lexer) === ".") {
       hasDecimal = true;
     }
     value += advance(lexer);
   }
-  
+
   // Handle scientific notation
-  if (!isAtEnd(lexer) && (peek(lexer) === 'e' || peek(lexer) === 'E')) {
+  if (!isAtEnd(lexer) && (peek(lexer) === "e" || peek(lexer) === "E")) {
     value += advance(lexer);
-    if (!isAtEnd(lexer) && (peek(lexer) === '+' || peek(lexer) === '-')) {
+    if (!isAtEnd(lexer) && (peek(lexer) === "+" || peek(lexer) === "-")) {
       value += advance(lexer);
     }
     while (!isAtEnd(lexer) && isDigit(peek(lexer))) {
       value += advance(lexer);
     }
   }
-  
+
   const length = lexer.position - start;
   return createToken(TOKEN_TYPES.NUMBER, value, startLine, startColumn, start, length);
 }
@@ -357,20 +419,20 @@ function readNumber(lexer, startLine, startColumn, start) {
  * @returns {Token} - Identifier or keyword token
  */
 function readIdentifier(lexer, startLine, startColumn, start) {
-  let value = '';
-  
-  while (!isAtEnd(lexer) && (isAlphaNumeric(peek(lexer)) || peek(lexer) === '_')) {
+  let value = "";
+
+  while (!isAtEnd(lexer) && (isAlphaNumeric(peek(lexer)) || peek(lexer) === "_")) {
     value += advance(lexer);
   }
-  
+
   const length = lexer.position - start;
   const type = KEYWORDS.has(value) ? TOKEN_TYPES.KEYWORD : TOKEN_TYPES.IDENTIFIER;
-  
+
   // Special handling for boolean literals
-  if (value === 'true' || value === 'false') {
+  if (value === "true" || value === "false") {
     return createToken(TOKEN_TYPES.BOOLEAN, value, startLine, startColumn, start, length);
   }
-  
+
   return createToken(type, value, startLine, startColumn, start, length);
 }
 
@@ -383,16 +445,16 @@ function readIdentifier(lexer, startLine, startColumn, start) {
  * @returns {Token} - Comment token
  */
 function readLineComment(lexer, startLine, startColumn, start) {
-  let value = '';
-  
+  let value = "";
+
   // Consume '//'
   advance(lexer);
   advance(lexer);
-  
-  while (!isAtEnd(lexer) && peek(lexer) !== '\n') {
+
+  while (!isAtEnd(lexer) && peek(lexer) !== "\n") {
     value += advance(lexer);
   }
-  
+
   const length = lexer.position - start;
   return createToken(TOKEN_TYPES.COMMENT, value.trim(), startLine, startColumn, start, length);
 }
@@ -405,7 +467,7 @@ function createToken(type, value, line, column, offset, length) {
   return {
     type,
     value,
-    location: createSourceLocation(line, column, offset, length)
+    location: createSourceLocation(line, column, offset, length),
   };
 }
 
@@ -414,17 +476,17 @@ function isAtEnd(lexer) {
 }
 
 function peek(lexer) {
-  if (isAtEnd(lexer)) return '\0';
+  if (isAtEnd(lexer)) return "\0";
   return lexer.source[lexer.position];
 }
 
 function peekNext(lexer) {
-  if (lexer.position + 1 >= lexer.source.length) return '\0';
+  if (lexer.position + 1 >= lexer.source.length) return "\0";
   return lexer.source[lexer.position + 1];
 }
 
 function advance(lexer) {
-  if (isAtEnd(lexer)) return '\0';
+  if (isAtEnd(lexer)) return "\0";
   lexer.column++;
   return lexer.source[lexer.position++];
 }
@@ -432,8 +494,9 @@ function advance(lexer) {
 function skipWhitespace(lexer) {
   while (!isAtEnd(lexer)) {
     const char = peek(lexer);
-    if (char === ' ' || char === '\t' || char === '\r') {
-      if (!lexer.atLineStart) { // Only skip if not at line start (preserve indentation)
+    if (char === " " || char === "\t" || char === "\r") {
+      if (!lexer.atLineStart) {
+        // Only skip if not at line start (preserve indentation)
         advance(lexer);
       } else {
         break;
@@ -445,13 +508,11 @@ function skipWhitespace(lexer) {
 }
 
 function isDigit(char) {
-  return char >= '0' && char <= '9';
+  return char >= "0" && char <= "9";
 }
 
 function isAlpha(char) {
-  return (char >= 'a' && char <= 'z') || 
-         (char >= 'A' && char <= 'Z') || 
-         char === '_';
+  return (char >= "a" && char <= "z") || (char >= "A" && char <= "Z") || char === "_";
 }
 
 function isAlphaNumeric(char) {
@@ -460,18 +521,33 @@ function isAlphaNumeric(char) {
 
 function getSingleCharType(char) {
   switch (char) {
-    case '(': return TOKEN_TYPES.LPAREN;
-    case ')': return TOKEN_TYPES.RPAREN;
-    case '[': return TOKEN_TYPES.LBRACKET;
-    case ']': return TOKEN_TYPES.RBRACKET;
-    case ',': return TOKEN_TYPES.COMMA;
-    case '.': return TOKEN_TYPES.DOT;
-    case '?': return TOKEN_TYPES.QUESTION;
-    case ':': return TOKEN_TYPES.COLON;
-    case '=': return TOKEN_TYPES.ASSIGN;
-    case '+': case '-': case '*': case '/': case '%':
+    case "(":
+      return TOKEN_TYPES.LPAREN;
+    case ")":
+      return TOKEN_TYPES.RPAREN;
+    case "[":
+      return TOKEN_TYPES.LBRACKET;
+    case "]":
+      return TOKEN_TYPES.RBRACKET;
+    case ",":
+      return TOKEN_TYPES.COMMA;
+    case ".":
+      return TOKEN_TYPES.DOT;
+    case "?":
+      return TOKEN_TYPES.QUESTION;
+    case ":":
+      return TOKEN_TYPES.COLON;
+    case "=":
+      return TOKEN_TYPES.ASSIGN;
+    case "+":
+    case "-":
+    case "*":
+    case "/":
+    case "%":
       return TOKEN_TYPES.ARITHMETIC;
-    case '<': case '>': case '!':
+    case "<":
+    case ">":
+    case "!":
       return TOKEN_TYPES.COMPARISON;
     default:
       return TOKEN_TYPES.ERROR;
@@ -480,15 +556,20 @@ function getSingleCharType(char) {
 
 function getOperatorType(operator) {
   switch (operator) {
-    case ':=': case '==': case '!=': case '<=': case '>=':
+    case ":=":
+    case "==":
+    case "!=":
+    case "<=":
+    case ">=":
       return TOKEN_TYPES.COMPARISON;
-    case '//': case '/*': case '*/':
+    case "//":
+    case "/*":
+    case "*/":
       return TOKEN_TYPES.COMMENT;
     default:
       return TOKEN_TYPES.ERROR;
   }
 }
-
 
 // Export for testing and introspection
 // Convert Set to Array for test compatibility
@@ -504,31 +585,31 @@ export { KEYWORDS, KEYWORDS_ARRAY as KEYWORDS_SET };
  * @returns {Token} - Number token with negative value
  */
 function readNegativeNumber(lexer, startLine, startColumn, start) {
-  let value = '';
-  
+  let value = "";
+
   // Consume the minus sign
   value += advance(lexer);
-  
+
   // Read the number part
   let hasDecimal = false;
-  while (!isAtEnd(lexer) && (isDigit(peek(lexer)) || (!hasDecimal && peek(lexer) === '.'))) {
-    if (peek(lexer) === '.') {
+  while (!isAtEnd(lexer) && (isDigit(peek(lexer)) || (!hasDecimal && peek(lexer) === "."))) {
+    if (peek(lexer) === ".") {
       hasDecimal = true;
     }
     value += advance(lexer);
   }
-  
+
   // Handle scientific notation
-  if (!isAtEnd(lexer) && (peek(lexer) === 'e' || peek(lexer) === 'E')) {
+  if (!isAtEnd(lexer) && (peek(lexer) === "e" || peek(lexer) === "E")) {
     value += advance(lexer);
-    if (!isAtEnd(lexer) && (peek(lexer) === '+' || peek(lexer) === '-')) {
+    if (!isAtEnd(lexer) && (peek(lexer) === "+" || peek(lexer) === "-")) {
       value += advance(lexer);
     }
     while (!isAtEnd(lexer) && isDigit(peek(lexer))) {
       value += advance(lexer);
     }
   }
-  
+
   const length = lexer.position - start;
   return createToken(TOKEN_TYPES.NUMBER, value, startLine, startColumn, start, length);
 }

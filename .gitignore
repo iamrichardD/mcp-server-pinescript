@@ -46,3 +46,6 @@ logs
 
 # Project documentation archive (deleted files)
 .project/.deleted/
+
+# Articles directory
+.project/.articles/
