@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-import fs from "fs/promises";
-import path from "path";
-import { fileURLToPath } from "url";
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -12,17 +12,17 @@ const __dirname = path.dirname(__filename);
  * into a single language-reference.json file
  */
 async function createLanguageReference() {
-  const docsDir = path.join(__dirname, "../docs/processed");
+  const docsDir = path.join(__dirname, '../docs/processed');
 
-  console.log("🔄 Creating consolidated language-reference.json...");
+  console.log('🔄 Creating consolidated language-reference.json...');
 
   try {
     // Read the HTML-parsed data
-    const functionsPath = path.join(docsDir, "functions-from-html.json");
-    const variablesPath = path.join(docsDir, "variables-from-html.json");
+    const functionsPath = path.join(docsDir, 'functions-from-html.json');
+    const variablesPath = path.join(docsDir, 'variables-from-html.json');
 
-    const functionsData = JSON.parse(await fs.readFile(functionsPath, "utf8"));
-    const variablesData = JSON.parse(await fs.readFile(variablesPath, "utf8"));
+    const functionsData = JSON.parse(await fs.readFile(functionsPath, 'utf8'));
+    const variablesData = JSON.parse(await fs.readFile(variablesPath, 'utf8'));
 
     console.log(`📊 Loaded ${Object.keys(functionsData).length} functions`);
     console.log(`📊 Loaded ${Object.keys(variablesData).length} variables`);
@@ -35,8 +35,8 @@ async function createLanguageReference() {
       functions: functionsData,
       variables: variablesData,
       metadata: {
-        source: "Pine Script® language reference manual",
-        extraction_method: "manual_html_parsing",
+        source: 'Pine Script® language reference manual',
+        extraction_method: 'manual_html_parsing',
         last_updated: new Date().toISOString(),
         total_functions: Object.keys(functionsData).length,
         total_variables: Object.keys(variablesData).length,
@@ -53,10 +53,10 @@ async function createLanguageReference() {
     };
 
     // Save consolidated file
-    const outputPath = path.join(docsDir, "language-reference.json");
+    const outputPath = path.join(docsDir, 'language-reference.json');
     await fs.writeFile(outputPath, JSON.stringify(languageReference, null, 2));
 
-    console.log("✅ Created language-reference.json with:");
+    console.log('✅ Created language-reference.json with:');
     console.log(`   🔧 ${languageReference.metadata.categories.functions} functions`);
     console.log(
       `   📊 ${languageReference.metadata.categories.built_in_variables} built-in variables`
@@ -70,7 +70,7 @@ async function createLanguageReference() {
 
     return languageReference;
   } catch (error) {
-    console.error("❌ Failed to create language-reference.json:", error.message);
+    console.error('❌ Failed to create language-reference.json:', error.message);
     throw error;
   }
 }
@@ -91,82 +91,82 @@ function categorizeVariables(variablesData) {
   for (const [id, variable] of Object.entries(variablesData)) {
     const name = variable.name;
 
-    if (name.startsWith("@")) {
+    if (name.startsWith('@')) {
       categories.annotations++;
     } else if (
       [
-        "and",
-        "or",
-        "not",
-        "if",
-        "for",
-        "while",
-        "switch",
-        "var",
-        "varip",
-        "const",
-        "import",
-        "export",
-        "enum",
-        "method",
-        "type",
-        "true",
-        "false",
+        'and',
+        'or',
+        'not',
+        'if',
+        'for',
+        'while',
+        'switch',
+        'var',
+        'varip',
+        'const',
+        'import',
+        'export',
+        'enum',
+        'method',
+        'type',
+        'true',
+        'false',
       ].includes(name)
     ) {
       categories.keywords++;
     } else if (
       [
-        "int",
-        "float",
-        "string",
-        "bool",
-        "color",
-        "array",
-        "matrix",
-        "map",
-        "table",
-        "line",
-        "label",
-        "box",
-        "series",
-        "simple",
+        'int',
+        'float',
+        'string',
+        'bool',
+        'color',
+        'array',
+        'matrix',
+        'map',
+        'table',
+        'line',
+        'label',
+        'box',
+        'series',
+        'simple',
       ].includes(name)
     ) {
       categories.types++;
     } else if (
       [
-        ":=",
-        "+=",
-        "-=",
-        "*=",
-        "/=",
-        "%=",
-        "==",
-        "!=",
-        "<=",
-        ">=",
-        "<",
-        ">",
-        "+",
-        "-",
-        "*",
-        "/",
-        "%",
-        "?:",
-        "[]",
+        ':=',
+        '+=',
+        '-=',
+        '*=',
+        '/=',
+        '%=',
+        '==',
+        '!=',
+        '<=',
+        '>=',
+        '<',
+        '>',
+        '+',
+        '-',
+        '*',
+        '/',
+        '%',
+        '?:',
+        '[]',
       ].includes(name)
     ) {
       categories.operators++;
     } else if (
-      name.includes(".") &&
-      (name.startsWith("color.") ||
-        name.startsWith("currency.") ||
-        name.startsWith("strategy.") ||
-        name.startsWith("math.") ||
-        name.startsWith("format.") ||
-        name.startsWith("scale.") ||
-        name.startsWith("display."))
+      name.includes('.') &&
+      (name.startsWith('color.') ||
+        name.startsWith('currency.') ||
+        name.startsWith('strategy.') ||
+        name.startsWith('math.') ||
+        name.startsWith('format.') ||
+        name.startsWith('scale.') ||
+        name.startsWith('display.'))
     ) {
       categories.constants++;
     } else {
@@ -181,9 +181,9 @@ function categorizeVariables(variablesData) {
 if (import.meta.url === `file://${process.argv[1]}`) {
   try {
     await createLanguageReference();
-    console.log("\n🎉 Language reference consolidation completed successfully!");
+    console.log('\n🎉 Language reference consolidation completed successfully!');
   } catch (error) {
-    console.error("\n💥 Consolidation failed:", error.message);
+    console.error('\n💥 Consolidation failed:', error.message);
     process.exit(1);
   }
 }
