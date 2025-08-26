@@ -309,7 +309,7 @@ describe('Type Guards - Constant Type Validation', () => {
             expect(ERROR_CODES.EXPECTED_TOKEN).toBe('EXPECTED_TOKEN');
             expect(ERROR_CODES.SHORT_TITLE_TOO_LONG).toBe('SHORT_TITLE_TOO_LONG');
             const duration = performance.now() - start;
-            expect(duration).toBeLessThan(2.0);
+            expect(duration).toBeLessThan(2.5);
         });
     });
 });

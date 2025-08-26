@@ -14,8 +14,8 @@ import {
   createLiteralNode,
   createParameterNode,
   createSourceLocation,
-} from "./ast-types.js";
-import { TOKEN_TYPES, tokenize } from "./lexer.js";
+} from './ast-types.js';
+import { TOKEN_TYPES, tokenize } from './lexer.js';
 
 /**
  * Parser state for tracking tokens and position
@@ -61,7 +61,7 @@ export function parseScript(source) {
           ast.statements.push(stmt);
 
           // Detect script type from special functions
-          if (stmt.name === "indicator" || stmt.name === "strategy" || stmt.name === "library") {
+          if (stmt.name === 'indicator' || stmt.name === 'strategy' || stmt.name === 'library') {
             ast.metadata.scriptType = stmt.name;
           }
         } else if (stmt.type === AST_NODE_TYPES.DECLARATION) {
@@ -71,10 +71,10 @@ export function parseScript(source) {
     } catch (error) {
       // Graceful error handling - record error and continue
       parser.errors.push({
-        code: "PARSE_ERROR",
+        code: 'PARSE_ERROR',
         message: error.message,
         location: getCurrentLocation(parser),
-        severity: "error",
+        severity: 'error',
       });
 
       // Skip to next statement
@@ -165,6 +165,7 @@ function createParser(tokens) {
     current: 0,
     errors: [],
     warnings: [],
+    symbolTable: new Map(), // Add symbol table for stateful analysis
     startTime: performance.now(),
   };
 }
@@ -187,10 +188,22 @@ function parseStatement(parser) {
     return null;
   }
 
+  // Check for variable declarations: `var <type> <name> = <value>`
+  if (peek(parser).value === 'var') {
+    return parseVariableDeclaration(parser);
+  }
+
+  // Handle `if` statements minimally to find expressions in them
+  if (peek(parser).value === 'if') {
+    advance(parser); // consume 'if'
+    parseExpression(parser); // This will parse the condition and find na-access errors
+    // We don't need to parse the body for this fix, just recover
+    synchronize(parser);
+    return null;
+  }
+
   // Check for assignments and function calls
   if (check(parser, TOKEN_TYPES.IDENTIFIER) || check(parser, TOKEN_TYPES.KEYWORD)) {
-    const startToken = peek(parser);
-
     // Look ahead for assignment pattern: identifier '='
     if (peekNext(parser) && peekNext(parser).type === TOKEN_TYPES.ASSIGN) {
       return parseAssignment(parser);
@@ -218,6 +231,32 @@ function parseStatement(parser) {
 
   // Skip unrecognized tokens
   advance(parser);
+  return null;
+}
+
+/**
+ * Parse a variable declaration
+ * @param {ParserState} parser - Parser state
+ * @returns {null} - For now, we only update the symbol table
+ */
+function parseVariableDeclaration(parser) {
+  advance(parser); // consume 'var'
+
+  if (check(parser, TOKEN_TYPES.IDENTIFIER)) {
+    const typeName = advance(parser).value; // e.g., MyState
+    const varName = advance(parser).value; // e.g., myState
+
+    if (check(parser, TOKEN_TYPES.ASSIGN)) {
+      advance(parser); // consume '='
+      const valueExpr = parseExpression(parser);
+
+      if (valueExpr && valueExpr.name === 'na') {
+        parser.symbolTable.set(varName, { type: typeName, isNa: true });
+      }
+    }
+  }
+
+  // We don't return a node for now, just update the symbol table
   return null;
 }
 
@@ -334,8 +373,8 @@ function addFunctionCall(stmt, functionCalls) {
       params[`_${param.position}`] = extractParameterValue(param.value);
 
       // Special handling for strategy function: second positional parameter is shorttitle
-      if (stmt.name === "strategy" && param.position === 1) {
-        params["shorttitle"] = extractParameterValue(param.value);
+      if (stmt.name === 'strategy' && param.position === 1) {
+        params.shorttitle = extractParameterValue(param.value);
       }
     }
   }
@@ -355,7 +394,7 @@ function addFunctionCall(stmt, functionCalls) {
  * @returns {Array} - Array of function call nodes found in the assignment
  */
 function parseAssignment(parser) {
-  const varName = advance(parser); // consume variable name
+  advance(parser); // consume variable name
   advance(parser); // consume '='
 
   // Parse the right-hand side expression which may contain function calls
@@ -435,13 +474,13 @@ function parseExpression(parser) {
 
   if (check(parser, TOKEN_TYPES.NUMBER)) {
     const token = advance(parser);
-    const value = token.value.includes(".") ? parseFloat(token.value) : parseInt(token.value);
+    const value = token.value.includes('.') ? parseFloat(token.value) : parseInt(token.value, 10);
     return createLiteralNode(value, token.location, token.value);
   }
 
   if (check(parser, TOKEN_TYPES.BOOLEAN)) {
     const token = advance(parser);
-    const value = token.value === "true";
+    const value = token.value === 'true';
     return createLiteralNode(value, token.location, token.value);
   }
 
@@ -453,7 +492,7 @@ function parseExpression(parser) {
       type: AST_NODE_TYPES.IDENTIFIER,
       name: token.value,
       location: token.location,
-      kind: "variable",
+      kind: 'variable',
     };
 
     // Check for member expressions (dot notation)
@@ -461,8 +500,24 @@ function parseExpression(parser) {
       advance(parser); // consume dot
       if (check(parser, TOKEN_TYPES.IDENTIFIER) || check(parser, TOKEN_TYPES.KEYWORD)) {
         const memberToken = advance(parser);
+
+        // Check symbol table for `na` access before creating the expression
+        const objectName = expr.name;
+        if (
+          objectName &&
+          parser.symbolTable.has(objectName) &&
+          parser.symbolTable.get(objectName).isNa
+        ) {
+          parser.errors.push({
+            code: 'NA_OBJECT_ACCESS',
+            message: 'Cannot access field of an undefined (na) object.',
+            location: memberToken.location, // Error is at the field access
+            severity: 'error',
+          });
+        }
+
         expr = {
-          type: "MemberExpression",
+          type: 'MemberExpression',
           object: expr,
           property: {
             type: AST_NODE_TYPES.IDENTIFIER,
@@ -474,10 +529,10 @@ function parseExpression(parser) {
         };
       } else {
         parser.errors.push({
-          code: "EXPECTED_IDENTIFIER",
-          message: "Expected identifier after dot",
+          code: 'EXPECTED_IDENTIFIER',
+          message: 'Expected identifier after dot',
           location: getCurrentLocation(parser),
-          severity: "error",
+          severity: 'error',
         });
         break;
       }
@@ -486,7 +541,7 @@ function parseExpression(parser) {
     // Check if this is a function call after the member expression
     if (check(parser, TOKEN_TYPES.LPAREN)) {
       // Convert member expression to function call
-      if (expr.type === "MemberExpression") {
+      if (expr.type === 'MemberExpression') {
         // We need to construct this as a namespaced function call
         const namespace = expr.object.name;
         const functionName = expr.property.name;
@@ -524,6 +579,23 @@ function parseExpression(parser) {
       }
     }
 
+    // Check for invalid history-referencing on UDT fields, e.g. `state.value[1]`
+    if (expr.type === 'MemberExpression' && check(parser, TOKEN_TYPES.LBRACKET)) {
+      parser.errors.push({
+        code: 'UDT_HISTORY_SYNTAX_ERROR',
+        message:
+          "Cannot use the history-referencing operator on fields of user-defined types. Reference the history of the object first (e.g., '(object[1]).field').",
+        location: getCurrentLocation(parser),
+        severity: 'error',
+      });
+
+      // Consume the invalid sequence to prevent further errors
+      while (!check(parser, TOKEN_TYPES.RBRACKET) && !isAtEnd(parser)) {
+        advance(parser);
+      }
+      advance(parser); // consume ']'
+    }
+
     return expr;
   }
 
@@ -539,10 +611,10 @@ function parseExpression(parser) {
   // Fallback - create error token
   const token = advance(parser);
   parser.warnings.push({
-    code: "UNEXPECTED_EXPRESSION",
+    code: 'UNEXPECTED_EXPRESSION',
     message: `Unexpected token in expression: ${token.value}`,
     location: token.location,
-    severity: "warning",
+    severity: 'warning',
   });
 
   return createLiteralNode(token.value, token.location, token.value);
@@ -558,7 +630,7 @@ function extractParameterValue(parameterValue) {
     const value = parameterValue.value;
 
     // Try to convert numeric strings to numbers
-    if (typeof value === "string" && /^\d+(\.\d+)?$/.test(value)) {
+    if (typeof value === 'string' && /^\d+(\.\d+)?$/.test(value)) {
       return parseFloat(value);
     }
 
@@ -573,18 +645,18 @@ function extractParameterValue(parameterValue) {
   if (
     parameterValue.type === AST_NODE_TYPES.BOOLEAN ||
     (parameterValue.type === AST_NODE_TYPES.LITERAL &&
-      (parameterValue.value === "true" || parameterValue.value === "false"))
+      (parameterValue.value === 'true' || parameterValue.value === 'false'))
   ) {
-    return parameterValue.value === "true";
+    return parameterValue.value === 'true';
   }
 
-  if (parameterValue.type === "MemberExpression") {
+  if (parameterValue.type === 'MemberExpression') {
     // Convert member expression to string (e.g., strategy.percent_of_equity)
     return flattenMemberExpression(parameterValue);
   }
 
   if (parameterValue.type === AST_NODE_TYPES.FUNCTION_CALL) {
-    return `${parameterValue.namespace ? parameterValue.namespace + "." : ""}${parameterValue.name}()`;
+    return `${parameterValue.namespace ? `${parameterValue.namespace}.` : ''}${parameterValue.name}()`;
   }
 
   return null;
@@ -600,11 +672,11 @@ function flattenMemberExpression(memberExpr) {
     return memberExpr.name;
   }
 
-  if (memberExpr.type === "MemberExpression") {
-    return flattenMemberExpression(memberExpr.object) + "." + memberExpr.property.name;
+  if (memberExpr.type === 'MemberExpression') {
+    return `${flattenMemberExpression(memberExpr.object)}.${memberExpr.property.name}`;
   }
 
-  return "unknown";
+  return 'unknown';
 }
 
 /**
@@ -617,7 +689,7 @@ function isAtEnd(parser) {
 
 function peek(parser) {
   if (parser.current >= parser.tokens.length) {
-    return { type: TOKEN_TYPES.EOF, value: "", location: createSourceLocation(0, 0, 0, 0) };
+    return { type: TOKEN_TYPES.EOF, value: '', location: createSourceLocation(0, 0, 0, 0) };
   }
   return parser.tokens[parser.current];
 }
@@ -647,10 +719,10 @@ function consume(parser, type, message) {
   }
 
   parser.errors.push({
-    code: "EXPECTED_TOKEN",
+    code: 'EXPECTED_TOKEN',
     message,
     location: getCurrentLocation(parser),
-    severity: "error",
+    severity: 'error',
   });
 
   throw new Error(message);
@@ -700,7 +772,7 @@ function detectPineScriptVersion(source) {
   }
 
   // Default to v6 if no version specified
-  return "v6";
+  return 'v6';
 }
 
 function countNodes(node) {

@@ -25,27 +25,27 @@ export interface BaseASTNode {
 
 // AST Node types
 export type ASTNodeType =
-  | "Program"
-  | "FunctionCall"
-  | "Parameter"
-  | "Literal"
-  | "Identifier"
-  | "Declaration";
+  | 'Program'
+  | 'FunctionCall'
+  | 'Parameter'
+  | 'Literal'
+  | 'Identifier'
+  | 'Declaration';
 
 // Program root node
 export interface ProgramNode extends BaseASTNode {
-  type: "Program";
+  type: 'Program';
   declarations: DeclarationNode[];
   statements: FunctionCallNode[];
   metadata: {
     version: string;
-    scriptType?: "indicator" | "strategy" | "library";
+    scriptType?: 'indicator' | 'strategy' | 'library';
   };
 }
 
 // Function call node
 export interface FunctionCallNode extends BaseASTNode {
-  type: "FunctionCall";
+  type: 'FunctionCall';
   name: string;
   parameters: ParameterNode[];
   namespace?: string;
@@ -54,7 +54,7 @@ export interface FunctionCallNode extends BaseASTNode {
 
 // Parameter node
 export interface ParameterNode extends BaseASTNode {
-  type: "Parameter";
+  type: 'Parameter';
   name?: string;
   value: LiteralNode | IdentifierNode | FunctionCallNode;
   position: number;
@@ -63,26 +63,26 @@ export interface ParameterNode extends BaseASTNode {
 
 // Literal value node
 export interface LiteralNode extends BaseASTNode {
-  type: "Literal";
+  type: 'Literal';
   value: string | number | boolean;
-  dataType: "string" | "number" | "boolean" | "color";
+  dataType: 'string' | 'number' | 'boolean' | 'color';
   raw: string;
 }
 
 // Identifier node
 export interface IdentifierNode extends BaseASTNode {
-  type: "Identifier";
+  type: 'Identifier';
   name: string;
   namespace?: string;
-  kind: "builtin" | "variable" | "function";
+  kind: 'builtin' | 'variable' | 'function';
 }
 
 // Declaration node
 export interface DeclarationNode extends BaseASTNode {
-  type: "Declaration";
+  type: 'Declaration';
   name: string;
   value?: LiteralNode | IdentifierNode | FunctionCallNode;
-  declarationType: "var" | "const";
+  declarationType: 'var' | 'const';
   dataType?: string;
 }
 
@@ -100,7 +100,7 @@ export interface ParseError {
   code: string;
   message: string;
   location: SourceLocation;
-  severity: "error" | "warning";
+  severity: 'error' | 'warning';
   suggestion?: string;
 }
 
@@ -118,30 +118,30 @@ export interface ASTResult {
 
 // Token types
 export type TokenType =
-  | "STRING"
-  | "NUMBER"
-  | "BOOLEAN"
-  | "COLOR"
-  | "IDENTIFIER"
-  | "KEYWORD"
-  | "ASSIGN"
-  | "ARITHMETIC"
-  | "COMPARISON"
-  | "LOGICAL"
-  | "LPAREN"
-  | "RPAREN"
-  | "LBRACKET"
-  | "RBRACKET"
-  | "COMMA"
-  | "DOT"
-  | "QUESTION"
-  | "COLON"
-  | "NEWLINE"
-  | "INDENT"
-  | "DEDENT"
-  | "COMMENT"
-  | "EOF"
-  | "ERROR";
+  | 'STRING'
+  | 'NUMBER'
+  | 'BOOLEAN'
+  | 'COLOR'
+  | 'IDENTIFIER'
+  | 'KEYWORD'
+  | 'ASSIGN'
+  | 'ARITHMETIC'
+  | 'COMPARISON'
+  | 'LOGICAL'
+  | 'LPAREN'
+  | 'RPAREN'
+  | 'LBRACKET'
+  | 'RBRACKET'
+  | 'COMMA'
+  | 'DOT'
+  | 'QUESTION'
+  | 'COLON'
+  | 'NEWLINE'
+  | 'INDENT'
+  | 'DEDENT'
+  | 'COMMENT'
+  | 'EOF'
+  | 'ERROR';
 
 // Token structure
 export interface Token {
@@ -176,7 +176,7 @@ export interface ValidationViolation {
   line: number;
   column: number;
   rule: string;
-  severity: "error" | "warning" | "suggestion";
+  severity: 'error' | 'warning' | 'suggestion';
   message: string;
   category: string;
   suggested_fix?: string;
@@ -234,7 +234,7 @@ export interface AnalysisResult {
     functionsFound: number;
     errorsFound: number;
   };
-  errors: string[];
+  errors: ParseError[];
 }
 
 // Error handling result pattern
@@ -343,69 +343,69 @@ export interface PerformanceMetrics {
 
 // Error categories and codes for strict typing
 export const ERROR_SEVERITY = {
-  INFO: "info",
-  WARNING: "warning",
-  ERROR: "error",
-  CRITICAL: "critical",
+  INFO: 'info',
+  WARNING: 'warning',
+  ERROR: 'error',
+  CRITICAL: 'critical',
 } as const;
 
 export const ERROR_CATEGORIES = {
-  LEXICAL: "lexical_error",
-  SYNTAX: "syntax_error",
-  SEMANTIC: "semantic_error",
-  VALIDATION: "validation_error",
-  PERFORMANCE: "performance_error",
-  INTEGRATION: "integration_error",
+  LEXICAL: 'lexical_error',
+  SYNTAX: 'syntax_error',
+  SEMANTIC: 'semantic_error',
+  VALIDATION: 'validation_error',
+  PERFORMANCE: 'performance_error',
+  INTEGRATION: 'integration_error',
 } as const;
 
 export const AST_NODE_TYPES = {
-  PROGRAM: "Program",
-  FUNCTION_CALL: "FunctionCall",
-  PARAMETER: "Parameter",
-  LITERAL: "Literal",
-  IDENTIFIER: "Identifier",
-  DECLARATION: "Declaration",
+  PROGRAM: 'Program',
+  FUNCTION_CALL: 'FunctionCall',
+  PARAMETER: 'Parameter',
+  LITERAL: 'Literal',
+  IDENTIFIER: 'Identifier',
+  DECLARATION: 'Declaration',
 } as const;
 
 export const TOKEN_TYPES = {
-  STRING: "STRING",
-  NUMBER: "NUMBER",
-  BOOLEAN: "BOOLEAN",
-  COLOR: "COLOR",
-  IDENTIFIER: "IDENTIFIER",
-  KEYWORD: "KEYWORD",
-  ASSIGN: "ASSIGN",
-  ARITHMETIC: "ARITHMETIC",
-  COMPARISON: "COMPARISON",
-  LOGICAL: "LOGICAL",
-  LPAREN: "LPAREN",
-  RPAREN: "RPAREN",
-  LBRACKET: "LBRACKET",
-  RBRACKET: "RBRACKET",
-  COMMA: "COMMA",
-  DOT: "DOT",
-  QUESTION: "QUESTION",
-  COLON: "COLON",
-  NEWLINE: "NEWLINE",
-  INDENT: "INDENT",
-  DEDENT: "DEDENT",
-  COMMENT: "COMMENT",
-  EOF: "EOF",
-  ERROR: "ERROR",
+  STRING: 'STRING',
+  NUMBER: 'NUMBER',
+  BOOLEAN: 'BOOLEAN',
+  COLOR: 'COLOR',
+  IDENTIFIER: 'IDENTIFIER',
+  KEYWORD: 'KEYWORD',
+  ASSIGN: 'ASSIGN',
+  ARITHMETIC: 'ARITHMETIC',
+  COMPARISON: 'COMPARISON',
+  LOGICAL: 'LOGICAL',
+  LPAREN: 'LPAREN',
+  RPAREN: 'RPAREN',
+  LBRACKET: 'LBRACKET',
+  RBRACKET: 'RBRACKET',
+  COMMA: 'COMMA',
+  DOT: 'DOT',
+  QUESTION: 'QUESTION',
+  COLON: 'COLON',
+  NEWLINE: 'NEWLINE',
+  INDENT: 'INDENT',
+  DEDENT: 'DEDENT',
+  COMMENT: 'COMMENT',
+  EOF: 'EOF',
+  ERROR: 'ERROR',
 } as const;
 
 // Validation rule types for type safety
 export interface ValidationConstraints {
   maxLength?: number;
   minLength?: number;
-  type?: "string" | "number" | "integer" | "boolean";
+  type?: 'string' | 'number' | 'integer' | 'boolean';
   min?: number;
   max?: number;
   pattern?: string;
   required?: boolean;
   errorCode: string;
   errorMessage: string;
-  severity: "error" | "warning";
+  severity: 'error' | 'warning';
   category: string;
 }
 
@@ -437,4 +437,4 @@ export interface ValidationRules {
 }
 
 // Export all types for easy importing
-export * from "./types";
+export * from './types';

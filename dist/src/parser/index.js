@@ -9,18 +9,14 @@
  * and clean architecture with <15ms parsing targets.
  */
 // Core parsing functionality
-// @ts-ignore - JavaScript module during migration phase
-import { extractFunctionParameters as _extractFunctionParameters, parseScript as _parseScript, } from "./parser.js";
+import { extractFunctionParameters as _extractFunctionParameters, parseScript as _parseScript, } from './parser.js';
 export { _parseScript as parseScript, _extractFunctionParameters as extractFunctionParameters };
 // AST type definitions and utilities
-// @ts-ignore - JavaScript module during migration phase
-export { AST_NODE_TYPES, createFunctionCallNode, createLiteralNode, createParameterNode, createSourceLocation, DATA_TYPES, isASTNode, isFunctionCallNode, isParameterNode, } from "./ast-types.js";
+export { AST_NODE_TYPES, createFunctionCallNode, createLiteralNode, createParameterNode, createSourceLocation, DATA_TYPES, isASTNode, isFunctionCallNode, isParameterNode, } from './ast-types.js';
 // Lexical analysis
-// @ts-ignore - JavaScript module during migration phase
-export { createLexer, KEYWORDS, TOKEN_TYPES, tokenize, } from "./lexer.js";
+export { createLexer, KEYWORDS, TOKEN_TYPES, tokenize, } from './lexer.js';
 // Parameter validation
-// @ts-ignore - JavaScript module during migration phase
-import { compareTypes as _compareTypes, extractFunctionCalls as _extractFunctionCalls, getExpectedSignature as _getExpectedSignature, getExpectedTypes as _getExpectedTypes, inferParameterTypes as _inferParameterTypes, loadValidationRules as _loadValidationRules, quickValidateBuiltinNamespace as _quickValidateBuiltinNamespace, quickValidateDrawingObjectCounts as _quickValidateDrawingObjectCounts, quickValidateFunctionSignatures as _quickValidateFunctionSignatures, quickValidateInputTypes as _quickValidateInputTypes, quickValidateLineContinuation as _quickValidateLineContinuation, quickValidateMaxBarsBack as _quickValidateMaxBarsBack, quickValidateMaxBoxesCount as _quickValidateMaxBoxesCount, quickValidateMaxLabelsCount as _quickValidateMaxLabelsCount, quickValidateMaxLinesCount as _quickValidateMaxLinesCount, quickValidatePrecision as _quickValidatePrecision, quickValidateSeriesTypeWhereSimpleExpected as _quickValidateSeriesTypeWhereSimpleExpected, validateBuiltinNamespace as _validateBuiltinNamespace, validateDrawingObjectCounts as _validateDrawingObjectCounts, validateFunctionSignatures as _validateFunctionSignatures, validateInputTypes as _validateInputTypes, validateLineContinuation as _validateLineContinuation, validateMaxBarsBack as _validateMaxBarsBack, validateMaxBoxesCount as _validateMaxBoxesCount, validateMaxLabelsCount as _validateMaxLabelsCount, validateMaxLinesCount as _validateMaxLinesCount, validateParameterCount as _validateParameterCount, validateParameters as _validateParameters, validateParameterTypes as _validateParameterTypes, validatePineScriptParameters as _validatePineScriptParameters, validatePrecision as _validatePrecision, validateSeriesTypeWhereSimpleExpected as _validateSeriesTypeWhereSimpleExpected, validateShortTitle as _validateShortTitle, } from "./validator.js";
+import { compareTypes as _compareTypes, extractFunctionCalls as _extractFunctionCalls, getExpectedSignature as _getExpectedSignature, getExpectedTypes as _getExpectedTypes, inferParameterTypes as _inferParameterTypes, loadValidationRules as _loadValidationRules, quickValidateBuiltinNamespace as _quickValidateBuiltinNamespace, quickValidateDrawingObjectCounts as _quickValidateDrawingObjectCounts, quickValidateFunctionSignatures as _quickValidateFunctionSignatures, quickValidateInputTypes as _quickValidateInputTypes, quickValidateLineContinuation as _quickValidateLineContinuation, quickValidateMaxBarsBack as _quickValidateMaxBarsBack, quickValidateMaxBoxesCount as _quickValidateMaxBoxesCount, quickValidateMaxLabelsCount as _quickValidateMaxLabelsCount, quickValidateMaxLinesCount as _quickValidateMaxLinesCount, quickValidatePrecision as _quickValidatePrecision, quickValidateSeriesTypeWhereSimpleExpected as _quickValidateSeriesTypeWhereSimpleExpected, validateBuiltinNamespace as _validateBuiltinNamespace, validateDrawingObjectCounts as _validateDrawingObjectCounts, validateFunctionSignatures as _validateFunctionSignatures, validateInputTypes as _validateInputTypes, validateLineContinuation as _validateLineContinuation, validateMaxBarsBack as _validateMaxBarsBack, validateMaxBoxesCount as _validateMaxBoxesCount, validateMaxLabelsCount as _validateMaxLabelsCount, validateMaxLinesCount as _validateMaxLinesCount, validateParameterCount as _validateParameterCount, validateParameters as _validateParameters, validateParameterTypes as _validateParameterTypes, validatePineScriptParameters as _validatePineScriptParameters, validatePrecision as _validatePrecision, validateSeriesTypeWhereSimpleExpected as _validateSeriesTypeWhereSimpleExpected, validateShortTitle as _validateShortTitle, } from './validator.js';
 export { _validateParameters as validateParameters, _validatePineScriptParameters as validatePineScriptParameters, _validateShortTitle as validateShortTitle, _loadValidationRules as loadValidationRules, _validatePrecision as validatePrecision, _quickValidatePrecision as quickValidatePrecision, _validateMaxBarsBack as validateMaxBarsBack, _quickValidateMaxBarsBack as quickValidateMaxBarsBack, _validateMaxLinesCount as validateMaxLinesCount, _quickValidateMaxLinesCount as quickValidateMaxLinesCount, _validateMaxLabelsCount as validateMaxLabelsCount, _quickValidateMaxLabelsCount as quickValidateMaxLabelsCount, _validateMaxBoxesCount as validateMaxBoxesCount, _quickValidateMaxBoxesCount as quickValidateMaxBoxesCount, _validateDrawingObjectCounts as validateDrawingObjectCounts, _quickValidateDrawingObjectCounts as quickValidateDrawingObjectCounts, _validateInputTypes as validateInputTypes, _quickValidateInputTypes as quickValidateInputTypes, _extractFunctionCalls as extractFunctionCalls, _inferParameterTypes as inferParameterTypes, _getExpectedTypes as getExpectedTypes, _compareTypes as compareTypes, _validateFunctionSignatures as validateFunctionSignatures, _quickValidateFunctionSignatures as quickValidateFunctionSignatures, _getExpectedSignature as getExpectedSignature, _validateParameterCount as validateParameterCount, _validateSeriesTypeWhereSimpleExpected as validateSeriesTypeWhereSimpleExpected, _quickValidateSeriesTypeWhereSimpleExpected as quickValidateSeriesTypeWhereSimpleExpected, _validateParameterTypes as validateParameterTypes, _validateBuiltinNamespace as validateBuiltinNamespace, _quickValidateBuiltinNamespace as quickValidateBuiltinNamespace, _validateLineContinuation as validateLineContinuation, _quickValidateLineContinuation as quickValidateLineContinuation, };
 /**
  * High-level API for Pine Script analysis
@@ -58,7 +54,7 @@ export async function analyzePineScript(source, validationRules = null) {
                 functionsFound: parseResult.functionCalls.length,
                 errorsFound: violations.length,
             },
-            errors: parseResult.errors.map(err => err instanceof Error ? err.message : String(err)),
+            errors: parseResult.errors,
         };
     }
     catch (error) {
@@ -73,7 +69,14 @@ export async function analyzePineScript(source, validationRules = null) {
                 functionsFound: 0,
                 errorsFound: 1,
             },
-            errors: [error instanceof Error ? error.message : String(error)],
+            errors: [
+                {
+                    code: 'UNHANDLED_EXCEPTION',
+                    message: error instanceof Error ? error.message : String(error),
+                    location: { line: 1, column: 1, offset: 0, length: 0 },
+                    severity: 'error',
+                },
+            ],
         };
     }
 }
@@ -88,8 +91,8 @@ export async function quickValidateShortTitle(source) {
         const endTime = performance.now();
         return {
             success: true,
-            hasShortTitleError: result.violations.some((v) => v.rule === "SHORT_TITLE_TOO_LONG"),
-            violations: result.violations.filter((v) => v.rule === "SHORT_TITLE_TOO_LONG"),
+            hasShortTitleError: result.violations.some((v) => v.rule === 'SHORT_TITLE_TOO_LONG'),
+            violations: result.violations.filter((v) => v.rule === 'SHORT_TITLE_TOO_LONG'),
             metrics: {
                 validationTimeMs: endTime - startTime,
             },
@@ -122,8 +125,7 @@ export async function initializeParser(validationRules) {
         _loadValidationRules(validationRules);
         return true;
     }
-    catch (error) {
-        console.error("Failed to initialize parser:", error);
+    catch (_error) {
         return false;
     }
 }
@@ -133,25 +135,25 @@ export async function initializeParser(validationRules) {
  */
 export function getParserStatus() {
     return {
-        version: "1.0.0",
+        version: '1.0.0',
         capabilities: [
-            "pine_script_parsing",
-            "ast_generation",
-            "parameter_extraction",
-            "function_call_analysis",
-            "shorttitle_validation",
-            "parameter_constraint_validation",
+            'pine_script_parsing',
+            'ast_generation',
+            'parameter_extraction',
+            'function_call_analysis',
+            'shorttitle_validation',
+            'parameter_constraint_validation',
         ],
         performance: {
-            targetParseTime: "<15ms",
-            targetValidationTime: "<5ms",
+            targetParseTime: '<15ms',
+            targetValidationTime: '<5ms',
             memoryEfficient: true,
             streamingSupport: false, // Could be added in future
         },
         integration: {
             mcpServerCompatible: true,
             typescriptReady: true,
-            testFramework: "vitest",
+            testFramework: 'vitest',
         },
     };
 }
@@ -164,9 +166,9 @@ export function getParserStatus() {
 export class PineScriptParseError extends Error {
     location;
     code;
-    constructor(message, location, code = "PARSE_ERROR") {
+    constructor(message, location, code = 'PARSE_ERROR') {
         super(message);
-        this.name = "PineScriptParseError";
+        this.name = 'PineScriptParseError';
         this.location = location;
         this.code = code;
     }
@@ -177,9 +179,9 @@ export class PineScriptParseError extends Error {
 export class PineScriptValidationError extends Error {
     violations;
     code;
-    constructor(message, violations, code = "VALIDATION_ERROR") {
+    constructor(message, violations, code = 'VALIDATION_ERROR') {
         super(message);
-        this.name = "PineScriptValidationError";
+        this.name = 'PineScriptValidationError';
         this.violations = violations;
         this.code = code;
     }

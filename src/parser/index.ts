@@ -9,15 +9,10 @@
  * and clean architecture with <15ms parsing targets.
  */
 
-import type {
-  AnalysisResult,
-  ValidationResult,
-  ParserStatus,
-  SourceLocation,
-} from "./types.js";
+import type { AnalysisResult, ParserStatus, SourceLocation, ValidationResult } from './types.js';
 
 // Export types for external use
-export type { AnalysisResult, ValidationResult, ParserStatus } from "./types.js";
+export type { AnalysisResult, ParserStatus, ValidationResult } from './types.js';
 
 /**
  * Quick validation result interface
@@ -33,16 +28,16 @@ export interface QuickValidationResult {
 }
 
 // Core parsing functionality
-// @ts-ignore - JavaScript module during migration phase
+
 import {
   extractFunctionParameters as _extractFunctionParameters,
   parseScript as _parseScript,
-} from "./parser.js";
+} from './parser.js';
 
 export { _parseScript as parseScript, _extractFunctionParameters as extractFunctionParameters };
 
 // AST type definitions and utilities
-// @ts-ignore - JavaScript module during migration phase
+
 export {
   AST_NODE_TYPES,
   createFunctionCallNode,
@@ -53,19 +48,19 @@ export {
   isASTNode,
   isFunctionCallNode,
   isParameterNode,
-} from "./ast-types.js";
+} from './ast-types.js';
 
 // Lexical analysis
-// @ts-ignore - JavaScript module during migration phase
+
 export {
   createLexer,
   KEYWORDS,
   TOKEN_TYPES,
   tokenize,
-} from "./lexer.js";
+} from './lexer.js';
 
 // Parameter validation
-// @ts-ignore - JavaScript module during migration phase
+
 import {
   compareTypes as _compareTypes,
   extractFunctionCalls as _extractFunctionCalls,
@@ -100,7 +95,7 @@ import {
   validatePrecision as _validatePrecision,
   validateSeriesTypeWhereSimpleExpected as _validateSeriesTypeWhereSimpleExpected,
   validateShortTitle as _validateShortTitle,
-} from "./validator.js";
+} from './validator.js';
 
 export {
   _validateParameters as validateParameters,
@@ -181,7 +176,7 @@ export async function analyzePineScript(
         functionsFound: parseResult.functionCalls.length,
         errorsFound: violations.length,
       },
-      errors: parseResult.errors.map(err => err instanceof Error ? err.message : String(err)),
+      errors: parseResult.errors,
     };
   } catch (error) {
     const endTime = performance.now();
@@ -196,11 +191,17 @@ export async function analyzePineScript(
         functionsFound: 0,
         errorsFound: 1,
       },
-      errors: [error instanceof Error ? error.message : String(error)],
+      errors: [
+        {
+          code: 'UNHANDLED_EXCEPTION',
+          message: error instanceof Error ? error.message : String(error),
+          location: { line: 1, column: 1, offset: 0, length: 0 },
+          severity: 'error',
+        },
+      ],
     };
   }
 }
-
 
 /**
  * Quick validation for SHORT_TITLE_TOO_LONG specifically
@@ -215,8 +216,8 @@ export async function quickValidateShortTitle(source: string): Promise<QuickVali
 
     return {
       success: true,
-      hasShortTitleError: result.violations.some((v: any) => v.rule === "SHORT_TITLE_TOO_LONG"),
-      violations: result.violations.filter((v: any) => v.rule === "SHORT_TITLE_TOO_LONG"),
+      hasShortTitleError: result.violations.some((v: any) => v.rule === 'SHORT_TITLE_TOO_LONG'),
+      violations: result.violations.filter((v: any) => v.rule === 'SHORT_TITLE_TOO_LONG'),
       metrics: {
         validationTimeMs: endTime - startTime,
       },
@@ -240,18 +241,19 @@ export async function quickValidateShortTitle(source: string): Promise<QuickVali
  * Initialize the parser with validation rules
  * Should be called once during MCP server startup
  */
-export async function initializeParser(validationRules: Record<string, unknown> | null): Promise<boolean> {
+export async function initializeParser(
+  validationRules: Record<string, unknown> | null
+): Promise<boolean> {
   try {
     // Quick validation to avoid expensive operations on invalid input
     if (!validationRules || typeof validationRules !== 'object') {
       // Return false gracefully for invalid rules instead of throwing
       return false;
     }
-    
+
     _loadValidationRules(validationRules);
     return true;
-  } catch (error) {
-    console.error("Failed to initialize parser:", error);
+  } catch (_error) {
     return false;
   }
 }
@@ -262,25 +264,25 @@ export async function initializeParser(validationRules: Record<string, unknown> 
  */
 export function getParserStatus(): ParserStatus {
   return {
-    version: "1.0.0",
+    version: '1.0.0',
     capabilities: [
-      "pine_script_parsing",
-      "ast_generation",
-      "parameter_extraction",
-      "function_call_analysis",
-      "shorttitle_validation",
-      "parameter_constraint_validation",
+      'pine_script_parsing',
+      'ast_generation',
+      'parameter_extraction',
+      'function_call_analysis',
+      'shorttitle_validation',
+      'parameter_constraint_validation',
     ],
     performance: {
-      targetParseTime: "<15ms",
-      targetValidationTime: "<5ms",
+      targetParseTime: '<15ms',
+      targetValidationTime: '<5ms',
       memoryEfficient: true,
       streamingSupport: false, // Could be added in future
     },
     integration: {
       mcpServerCompatible: true,
       typescriptReady: true,
-      testFramework: "vitest",
+      testFramework: 'vitest',
     },
   };
 }
@@ -296,9 +298,9 @@ export class PineScriptParseError extends Error {
   public readonly location: SourceLocation | undefined;
   public readonly code: string;
 
-  constructor(message: string, location?: SourceLocation, code = "PARSE_ERROR") {
+  constructor(message: string, location?: SourceLocation, code = 'PARSE_ERROR') {
     super(message);
-    this.name = "PineScriptParseError";
+    this.name = 'PineScriptParseError';
     this.location = location;
     this.code = code;
   }
@@ -311,9 +313,9 @@ export class PineScriptValidationError extends Error {
   public readonly violations: any[];
   public readonly code: string;
 
-  constructor(message: string, violations: any[], code = "VALIDATION_ERROR") {
+  constructor(message: string, violations: any[], code = 'VALIDATION_ERROR') {
     super(message);
-    this.name = "PineScriptValidationError";
+    this.name = 'PineScriptValidationError';
     this.violations = violations;
     this.code = code;
   }

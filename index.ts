@@ -15,7 +15,7 @@ import {
   type Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 // Import proper types
-import type { FunctionCallAnalysis } from './src/parser/types.d.ts';
+import type { FunctionCallAnalysis, ParseError } from './src/parser/types.d.ts';
 // @ts-expect-error - JavaScript module without type definitions
 import { validateSyntaxCompatibility } from './src/parser/validator.js';
 
@@ -269,7 +269,7 @@ interface ParserModule {
       functionsFound: number;
       errorsFound: number;
     };
-    errors: string[];
+    errors: ParseError[];
   }>;
   quickValidateLineContinuation: (code: string) => {
     hasLineContinuationError: boolean;
