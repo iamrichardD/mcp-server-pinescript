@@ -2,6 +2,8 @@
 
 This document is for developers who maintain, contribute to, or need to understand the internal architecture of the PineScript MCP Documentation Server.
 
+This document complements @USER-GUIDE.md (integration examples) and @AGENT.md (AI workflow patterns). For project overview, see @README.md.
+
 ## Development Setup
 
 ### Prerequisites
@@ -17,26 +19,35 @@ npm install
 export FIRECRAWL_API_KEY="your_api_key_here"
 ```
 
-### Testing the Server
+### Development Commands
 ```bash
-# Test server startup
-npm start
+# TypeScript Development
+npm run build        # Compile TypeScript to JavaScript
+npm run type-check   # Validate TypeScript without building
+npm run dev:ts       # Development with TypeScript hot-reload
 
-# Test documentation update
-npm run update-docs
+# Code Quality and Formatting
+npm run lint         # Check code style with Biome
+npm run format:fix   # Format code with Biome
+npm run check:fix    # Auto-fix style issues
+npm run quality:full # Complete quality pipeline
 
-# Test with sample MCP calls
-echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"pinescript_reference","arguments":"{\"query\":\"ta.sma\"}"}}' | npm start
+# Testing
+npm test             # Run all tests with Vitest
+npm run test:atomic  # Run atomic framework tests
+npm run test:parser  # Run parser validation tests
+npm run quality:check # Quality validation pipeline
 
-# Test directory review functionality (v1.3.0+)
-echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"pinescript_review","arguments":"{\"source_type\":\"directory\",\"directory_path\":\"./test_dir\"}"}}' | npm start
+# Server Testing
+npm start            # Start server (TypeScript with ts-node)
+npm run update-docs  # Update documentation from TradingView
 ```
 
 ## Architecture Overview
 
 ### Core Components
 
-#### 1. MCP Server (`index.js`)
+#### 1. MCP Server (`index.ts`)
 - **Purpose**: Main MCP server implementation
 - **Key Functions**:
   - `searchReference()`: Handles pinescript_reference tool calls
@@ -161,9 +172,14 @@ docs/
 
 ## Testing and Validation
 
-### Unit Testing (TODO)
+### Comprehensive Test Suite
 ```bash
-npm test  # Not yet implemented
+# Full Test Suite (617+ tests with Vitest)
+npm test                     # Run all tests
+npm run test:atomic          # Atomic framework tests (<2ms execution)
+npm run test:parser          # Parser validation tests
+npm run test:performance     # Performance benchmark tests
+npm run quality:check        # Quality validation pipeline
 ```
 
 ### Manual Testing

@@ -4,7 +4,7 @@ This guide is for developers who want to integrate the PineScript MCP Documentat
 
 ## What This Does
 
-The PineScript MCP Documentation Server provides two powerful tools for AI assistants:
+The PineScript MCP Documentation Server provides two tools for AI assistants:
 
 - **🔍 pinescript_reference**: Get instant access to PineScript documentation, style guides, and function references
 - **🔧 pinescript_review**: Automatically review PineScript code, files, or entire directories for style and syntax issues
@@ -23,7 +23,7 @@ npm install
 npm start
 ```
 
-That's it! The PineScript v6 documentation is already processed and included in the repository.
+The server is now ready to use. The PineScript v6 documentation is already processed and included in the repository.
 
 ## Integration with AI Tools
 
@@ -403,13 +403,13 @@ claude mcp add node ./node_modules/mcp-server-pinescript/index.js
 
 ### Performance Tips (V1.2 Preloading Optimized)
 
-- **Instant data access**: All documentation preloaded in memory (4,277x faster)
-- **No caching needed**: Data access is now sub-millisecond from memory
-- **Use streaming for large files**: Zero I/O delays between chunks
-- **Any file size supported**: No performance degradation with file size
-- **Unlimited concurrency**: No file system contention
-- **Enhanced search**: Auto-expansion finds more results instantly
-- **Predictable performance**: Consistent response times regardless of load
+- **Preloaded documentation**: All documentation loaded in memory for faster access
+- **Memory-based data access**: Reduced response times through in-memory storage
+- **Streaming support**: Large file processing with chunked delivery
+- **Large file handling**: Streaming optimization for files of varying sizes
+- **Concurrent processing**: Multiple requests handled without file system contention
+- **Semantic search**: Auto-expansion finds more relevant results
+- **Consistent performance**: Stable response times with memory-based architecture
 
 ## Version Management
 
@@ -472,6 +472,6 @@ If you're building custom tools, see `.project/AI-INTEGRATION.md` for detailed A
 
 ---
 
-**Ready to supercharge your PineScript development with AI assistance!** 🚀
+**Ready to enhance your PineScript development with AI assistance!**
 
-With V1.2's preloading optimization delivering 4,277x faster data access and sub-millisecond response times, combined with instant documentation access and automated code review, you'll experience dramatically improved PineScript development speed and code quality.
+With V1.2's preloading optimization improving data access through memory-based documentation, combined with fast documentation lookup and automated code review, you'll experience improved PineScript development workflow and code quality.
