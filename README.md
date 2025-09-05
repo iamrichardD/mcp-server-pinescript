@@ -111,6 +111,20 @@ npm test                     # Run all tests (617+ tests, <2ms atomic execution)
 npm run quality:check        # Quick quality validation
 npm run quality:fix          # Fix all quality issues
 npm run build               # Build TypeScript
+node comprehensive-test.js   # End-to-end integration test
+```
+
+**Integration Testing**:
+```bash
+# Run comprehensive end-to-end validation
+node comprehensive-test.js
+
+# Expected output:
+# ✅ Data Foundation: 457 functions + 427 variables loaded
+# ✅ Search Performance: <15ms (sub-1ms typical)  
+# ✅ Validation Rules: SHORT_TITLE_TOO_LONG, INVALID_PRECISION detection
+# ✅ Syntax Compatibility: Pine Script v6 validation working
+# ✅ Overall Performance: All operations <15ms threshold
 ```
 
 **Version Management**:

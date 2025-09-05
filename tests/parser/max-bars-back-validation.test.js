@@ -7,13 +7,11 @@
  * Based on proven INVALID_PRECISION success pattern achieving 100% test pass rate.
  */
 
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   analyzePineScript,
   extractFunctionParameters,
-  parseScript,
   quickValidateMaxBarsBack,
-  validateMaxBarsBack,
 } from "../../src/parser/index.js";
 
 describe("INVALID_MAX_BARS_BACK Validation", () => {

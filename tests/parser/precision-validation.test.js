@@ -7,13 +7,11 @@
  * Based on proven SHORT_TITLE_TOO_LONG success pattern achieving 100% test pass rate.
  */
 
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   analyzePineScript,
   extractFunctionParameters,
-  parseScript,
   quickValidatePrecision,
-  validatePrecision,
 } from "../../src/parser/index.js";
 
 describe("INVALID_PRECISION Validation", () => {

@@ -23,7 +23,6 @@
  * Performance Target: <2ms validation time for 100+ function calls
  */
 
-import { createValidationError, ERROR_CATEGORIES, ERROR_CODES } from "./error-handler.js";
 
 /**
  * Core class for parameter naming convention validation

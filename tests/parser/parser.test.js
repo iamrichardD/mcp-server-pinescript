@@ -12,7 +12,6 @@ import {
   analyzePineScript,
   extractFunctionParameters,
   initializeParser,
-  parseScript,
   validateShortTitle,
 } from "../../src/parser/index.js";
 

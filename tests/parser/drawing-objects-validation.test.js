@@ -6,7 +6,7 @@
  * Follows proven pattern achieving 100% test pass rate with precision/max_bars_back validations.
  */
 
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   quickValidateDrawingObjectCounts,
   quickValidateMaxBoxesCount,

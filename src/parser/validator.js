@@ -13,7 +13,6 @@
  * - Type-safe architecture designed for TypeScript migration
  */
 
-import { createSourceLocation } from "./ast-types.js";
 import { quickValidateParameterNaming } from "./parameter-naming-validator.js";
 import { extractFunctionParameters, parseScript } from "./parser.js";
 

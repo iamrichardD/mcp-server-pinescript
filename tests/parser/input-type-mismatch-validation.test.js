@@ -8,17 +8,13 @@
  * Uses the same structure as precision-validation.test.js for consistency.
  */
 
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  analyzePineScript,
   compareTypes,
   extractFunctionCalls,
-  extractFunctionParameters,
   getExpectedTypes,
   inferParameterTypes,
-  parseScript,
   quickValidateInputTypes,
-  validateInputTypes,
 } from "../../src/parser/index.js";
 
 describe("INPUT_TYPE_MISMATCH Validation", () => {

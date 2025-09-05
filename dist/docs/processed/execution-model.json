@@ -1,0 +1,1 @@
+{ "version": "1.0.0", "execution_model": { "bar_processing": "sequential", "script_execution": "per_bar" } }

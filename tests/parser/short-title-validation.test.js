@@ -5,13 +5,11 @@
  * Tests the core parsing and validation functionality for shorttitle parameter.
  */
 
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   analyzePineScript,
   extractFunctionParameters,
-  parseScript,
   quickValidateShortTitle,
-  validateShortTitle,
 } from "../../src/parser/index.js";
 
 describe("SHORT_TITLE_TOO_LONG Validation", () => {

@@ -2,7 +2,7 @@
  * Type declarations for lexer.js module
  */
 
-import type { Token, LexerState, TokenType } from './types.js';
+import type { Token, LexerState } from './types.js';
 
 export const TOKEN_TYPES: {
   readonly STRING: "STRING";

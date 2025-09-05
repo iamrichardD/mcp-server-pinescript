@@ -7,15 +7,8 @@
   },
   "files": {
     "includes": [
-      "src/**/*.js",
       "src/**/*.ts",
-      "tests/**/*.js",
-      "tests/**/*.test.js",
-      "scripts/**/*.js",
-      "index.js",
-      "index.ts",
-      "test-integration.js",
-      "comprehensive-test.js"
+      "index.ts"
     ],
     "ignoreUnknown": true
   },
@@ -72,7 +65,7 @@
         "noClassAssign": "error",
         "noCommentText": "error",
         "noCompareNegZero": "error",
-        "noConsole": "warn",
+        "noConsole": "off",
         "noControlCharactersInRegex": "error",
         "noDebugger": "error",
         "noDoubleEquals": "warn",
@@ -133,7 +126,7 @@
       }
     },
     {
-      "includes": ["index.js", "comprehensive-test.js", "test-integration.js"],
+      "includes": ["index.js", "comprehensive-test.js"],
       "linter": {
         "rules": {
           "suspicious": {

@@ -5,7 +5,7 @@
  * Tests the fundamental parsing capabilities and AST node creation.
  */
 
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   AST_NODE_TYPES,
   createFunctionCallNode,

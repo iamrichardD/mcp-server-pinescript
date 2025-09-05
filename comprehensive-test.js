@@ -1,16 +1,13 @@
 #!/usr/bin/env node
 
 // Test all MCP tools directly using the server functionality
-import { readFile } from "fs/promises";
-import path from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { readFile } from "node:fs/promises";
 
 // Load the preloaded data like the server does
 let languageReference = {};
+// biome-ignore lint/correctness/noUnusedVariables: Used for comprehensive testing
 let styleGuide = {};
+// biome-ignore lint/correctness/noUnusedVariables: Used for comprehensive testing
 let executionModel = {};
 
 async function loadData() {
@@ -22,7 +19,7 @@ async function loadData() {
 
   for (const file of files) {
     try {
-      const content = await readFile(file.path, "utf8");
+      const content = await readFile(file.path, { encoding: "utf8" });
       const data = JSON.parse(content);
 
       if (file.name === "language-reference") {
@@ -68,7 +65,7 @@ function testSearch(query, limit = 5) {
 
   // Search functions
   const functionResults = [];
-  for (const [key, func] of Object.entries(languageReference.functions || {})) {
+  for (const [_key, func] of Object.entries(languageReference.functions || {})) {
     if (
       func.name?.toLowerCase().includes(query.toLowerCase()) ||
       func.description?.toLowerCase().includes(query.toLowerCase())
@@ -79,7 +76,7 @@ function testSearch(query, limit = 5) {
 
   // Search variables
   const variableResults = [];
-  for (const [key, variable] of Object.entries(languageReference.variables || {})) {
+  for (const [_key, variable] of Object.entries(languageReference.variables || {})) {
     if (
       variable.name?.toLowerCase().includes(query.toLowerCase()) ||
       variable.description?.toLowerCase().includes(query.toLowerCase())
@@ -114,8 +111,12 @@ function testSearch(query, limit = 5) {
 async function testValidation() {
   console.log("=== TEST 3: VALIDATION FUNCTIONALITY ===");
 
-  // Import the validation function
-  const { validateSyntaxCompatibility } = await import("./src/parser/validator.js");
+  // Import validation functions and load rules
+  const { validatePineScriptParameters, loadValidationRules } = await import("./src/parser/validator.js");
+  const rules = JSON.parse(await readFile("./docs/validation-rules.json", { encoding: "utf8" }));
+  
+  // Load validation rules first
+  loadValidationRules(rules);
 
   const testCases = [
     {
@@ -140,17 +141,17 @@ async function testValidation() {
 
   for (const testCase of testCases) {
     const start = process.hrtime.bigint();
-    const result = validateSyntaxCompatibility(testCase.code);
+    const result = await validatePineScriptParameters(testCase.code);
     const end = process.hrtime.bigint();
 
     const validationTime = Number(end - start) / 1000000;
-    const issueCount = result.issues?.length || 0;
+    const issueCount = result.violations?.length || 0;
 
     console.log(`✅ ${testCase.name}: ${issueCount} issues, ${validationTime.toFixed(3)}ms`);
 
-    if (result.issues?.length > 0) {
-      result.issues.forEach((issue) => {
-        console.log(`   - ${issue.type}: ${issue.message}`);
+    if (result.violations?.length > 0) {
+      result.violations.forEach((violation) => {
+        console.log(`   - ${violation.rule}: ${violation.message}`);
       });
     }
 
@@ -172,7 +173,7 @@ async function testSyntaxCompatibility() {
   const { validateSyntaxCompatibility } = await import("./src/parser/validator.js");
 
   const start = process.hrtime.bigint();
-  const result = validateSyntaxCompatibility(
+  const result = await validateSyntaxCompatibility(
     `//@version=6\nstrategy('Complex Test', shorttitle='CT', overlay=false)`
   );
   const end = process.hrtime.bigint();
@@ -180,11 +181,11 @@ async function testSyntaxCompatibility() {
   const compatibilityTime = Number(end - start) / 1000000;
 
   console.log(`✅ Syntax compatibility check: ${compatibilityTime.toFixed(3)}ms`);
-  console.log(`✅ Pine Script v6 compatible: ${result.issues?.length === 0 ? "YES" : "NO"}`);
+  console.log(`✅ Pine Script v6 compatible: ${result.violations?.length === 0 ? "YES" : "NO"}`);
 
   return {
     compatibilityTime,
-    isCompatible: result.issues?.length === 0,
+    isCompatible: result.violations?.length === 0,
     performanceOk: compatibilityTime < 15,
   };
 }

@@ -8,15 +8,11 @@
  * Uses the same structure as input-type-mismatch-validation.test.js for consistency.
  */
 
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  analyzePineScript,
   extractFunctionCalls,
-  extractFunctionParameters,
   getExpectedSignature,
-  parseScript,
   quickValidateFunctionSignatures,
-  validateFunctionSignatures,
   validateParameterCount,
   validateParameterTypes,
 } from "../../src/parser/index.js";
