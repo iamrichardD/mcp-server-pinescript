@@ -1,0 +1,19 @@
+//@version=6
+strategy("UDT NA Test 2", "UDT_TEST2", overlay = false)
+
+// Test case that will definitely cause UDT na access error
+type MyState
+    bool flag = false
+    int count = 0
+
+// Declare without initialization - this should cause na object
+var MyState myState = na
+
+// This will definitely cause the error
+if myState.flag  // Cannot access field of na object
+    plot(1, title = "Error", color = color.red)
+else 
+    plot(0, title = "No Error", color = color.green)
+
+// Try to access another field
+value = myState.count  // Another na access

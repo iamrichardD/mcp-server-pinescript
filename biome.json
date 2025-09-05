@@ -66,6 +66,7 @@
       },
       "suspicious": {
         "noArrayIndexKey": "warn",
+        "noAssignInExpressions": "off",
         "noAsyncPromiseExecutor": "error",
         "noCatchAssign": "error",
         "noClassAssign": "error",
@@ -123,6 +124,16 @@
     },
     {
       "includes": ["scripts/**/*.js"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["index.js", "comprehensive-test.js", "test-integration.js"],
       "linter": {
         "rules": {
           "suspicious": {

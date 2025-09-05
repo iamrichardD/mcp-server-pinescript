@@ -1,0 +1,177 @@
+//@version=6
+strategy("Comprehensive UDT Bug Test Suite", shorttitle="UDT_BUGS", overlay=true)
+
+//=====================================================================================================================
+// COMPREHENSIVE UDT BUG TEST SUITE
+// This file demonstrates ALL THREE bug categories in the MCP pinescript-docs service
+//=====================================================================================================================
+
+//=====================================================================================================================
+// BUG CATEGORY 1: UDT History-Referencing Syntax Errors (COMPILATION-TIME)
+//=====================================================================================================================
+
+type HistoryTestState
+    float price
+    int volume
+    bool trend
+
+var historyState = HistoryTestState.new(0.0, 0, false)
+
+// ❌ CRITICAL SYNTAX ERRORS - Should prevent compilation (MCP should detect as ERROR)
+var badPrice = historyState.price[1]      // ERROR: Cannot use history-referencing on UDT fields
+var badVolume = historyState.volume[1]    // ERROR: Cannot use history-referencing on UDT fields  
+var badTrend = historyState.trend[1]      // ERROR: Cannot use history-referencing on UDT fields
+
+// ✅ CORRECT SYNTAX (for comparison)
+// var goodPrice = (historyState[1]).price      // Proper history-referencing syntax
+// var goodVolume = (historyState[1]).volume    // Proper history-referencing syntax
+// var goodTrend = (historyState[1]).trend      // Proper history-referencing syntax
+
+//=====================================================================================================================
+// BUG CATEGORY 2: UDT Field Access on Undefined Objects (RUNTIME ERRORS)
+//=====================================================================================================================
+
+type RuntimeTestState
+    bool isActive
+    float multiplier
+    int counter
+    string status
+
+// ❌ UDT created but fields NOT properly initialized
+var runtimeState = RuntimeTestState.new()
+
+// ❌ CRITICAL RUNTIME ERRORS - Should be detected by MCP service as ERROR
+if runtimeState.isActive                              // ERROR: Field access on undefined object
+    strategy.entry("runtime_test", strategy.long)
+
+var calculation = runtimeState.multiplier * close    // ERROR: Math with undefined field
+var totalCount = runtimeState.counter + 1            // ERROR: Math with undefined field
+var message = "Status: " + runtimeState.status       // ERROR: String concat with undefined field
+var condition = runtimeState.isActive and close > open // ERROR: Boolean logic with undefined field
+
+//=====================================================================================================================
+// BUG CATEGORY 3: Complex UDT Pattern Validation Gaps (MULTIPLE ERROR TYPES)
+//=====================================================================================================================
+
+// Nested UDT structure for complex testing
+type InnerState
+    float value1
+    float value2
+    bool flag1
+    bool flag2
+
+type MiddleState
+    InnerState inner
+    float ratio
+    int count
+
+type OuterState
+    MiddleState middle
+    string label
+    bool enabled
+
+// ❌ Multiple uninitialized UDT instances
+var outerState = OuterState.new()
+var innerState = InnerState.new()
+var middleState = MiddleState.new()
+
+// ❌ COMPLEX ERROR PATTERNS - Should be detected by MCP service
+
+// 3.1 Nested undefined access (Multiple levels)
+var nestedValue1 = outerState.middle.inner.value1                    // ERROR: Triple-nested undefined access
+var nestedValue2 = outerState.middle.inner.value2 * 2               // ERROR: Math with triple-nested undefined
+var nestedFlag = outerState.middle.inner.flag1 and outerState.middle.inner.flag2  // ERROR: Boolean with nested undefined
+
+// 3.2 Mixed UDT instance operations
+var mixedCalc = (outerState.middle.ratio * innerState.value1) + middleState.count  // ERROR: Mixed undefined operations
+var crossCondition = outerState.enabled and innerState.flag1        // ERROR: Cross-instance undefined boolean
+
+// 3.3 Complex mathematical expressions with undefined fields
+var complexMath = (outerState.middle.ratio / innerState.value2) * 
+                  (middleState.count + outerState.middle.count) +
+                  (innerState.value1 - innerState.value2)           // ERROR: Complex undefined math chain
+
+// 3.4 Conditional logic with multiple undefined comparisons
+if outerState.middle.inner.value1 > innerState.value2 and 
+   outerState.enabled and middleState.count > 0 and
+   outerState.middle.inner.flag1
+    var dynamicSize = outerState.middle.ratio * (middleState.count + 1)  // ERROR: Conditional with undefined fields
+    strategy.entry("complex_entry", strategy.long, qty=dynamicSize)
+
+// 3.5 Array and collection operations with undefined values
+var valueHistory = array.new<float>()
+array.push(valueHistory, outerState.middle.inner.value1)            // ERROR: Array push with undefined
+array.push(valueHistory, innerState.value2)                         // ERROR: Array push with undefined
+
+var labelArray = array.new<string>()  
+array.push(labelArray, outerState.label)                            // ERROR: Array push with undefined string
+
+// 3.6 String operations with undefined fields
+var statusMessage = "Outer: " + outerState.label + 
+                   " Ratio: " + str.tostring(outerState.middle.ratio) +
+                   " Count: " + str.tostring(middleState.count)      // ERROR: String building with undefined fields
+
+// 3.7 Ternary operations with undefined conditions
+var ternaryResult = outerState.enabled ? outerState.middle.ratio : innerState.value1  // ERROR: Ternary with undefined
+var nestedTernary = outerState.middle.inner.flag1 ? 
+                   (outerState.middle.inner.value1 > innerState.value2 ? 1.0 : 0.5) : 
+                   0.0                                               // ERROR: Nested ternary with undefined
+
+//=====================================================================================================================
+// EXPECTED MCP SERVICE DETECTION RESULTS (What SHOULD be reported)
+//=====================================================================================================================
+
+// BUG CATEGORY 1 EXPECTED ERRORS (History-Referencing):
+// ERROR: Line 16 - udt_history_syntax: "Cannot use history-referencing operator on UDT fields. Use '(object[1]).field' instead of 'object.field[1]'"
+// ERROR: Line 17 - udt_history_syntax: "Cannot use history-referencing operator on UDT fields. Use '(object[1]).field' instead of 'object.field[1]'"  
+// ERROR: Line 18 - udt_history_syntax: "Cannot use history-referencing operator on UDT fields. Use '(object[1]).field' instead of 'object.field[1]'"
+
+// BUG CATEGORY 2 EXPECTED ERRORS (Runtime Safety):
+// ERROR: Line 34 - udt_uninitialized_field_access: "Field access on undefined UDT object"
+// ERROR: Line 37 - udt_math_operation_undefined: "Mathematical operation with undefined UDT field"
+// ERROR: Line 38 - udt_math_operation_undefined: "Mathematical operation with undefined UDT field"
+// ERROR: Line 39 - udt_string_operation_undefined: "String operation with undefined UDT field" 
+// ERROR: Line 40 - udt_boolean_logic_undefined: "Boolean operation with undefined UDT field"
+// WARNING: Line 29 - udt_missing_first_bar_init: "Missing first-bar initialization for UDT"
+
+// BUG CATEGORY 3 EXPECTED ERRORS (Complex Patterns):
+// ERROR: Line 64 - udt_nested_uninitialized_access: "Triple-nested field access on undefined UDT objects"
+// ERROR: Line 65 - udt_complex_math_undefined: "Mathematical operation with nested undefined UDT fields"
+// ERROR: Line 66 - udt_boolean_nested_undefined: "Boolean operation with nested undefined UDT fields"
+// ERROR: Line 69 - udt_mixed_undefined_operations: "Mathematical operations mixing undefined UDT instances"
+// ERROR: Line 70 - udt_cross_instance_undefined: "Boolean operations across undefined UDT instances"
+// ERROR: Line 73-75 - udt_complex_math_chain: "Complex mathematical expression chain with undefined UDT fields"
+// ERROR: Line 78-81 - udt_conditional_undefined: "Conditional logic with multiple undefined UDT field comparisons"
+// ERROR: Line 87 - udt_array_undefined_push: "Array push operation with undefined UDT field"
+// ERROR: Line 88 - udt_array_undefined_push: "Array push operation with undefined UDT field"
+// ERROR: Line 91 - udt_array_undefined_push: "Array push operation with undefined UDT string field"
+// ERROR: Line 94-96 - udt_string_building_undefined: "String concatenation with undefined UDT fields"
+// ERROR: Line 99 - udt_ternary_undefined: "Ternary operation with undefined UDT condition and values"
+// ERROR: Line 100-102 - udt_nested_ternary_undefined: "Nested ternary operations with undefined UDT fields"
+
+//=====================================================================================================================
+// TOTAL EXPECTED ERRORS: 25+ errors across 3 bug categories
+// TOTAL EXPECTED WARNINGS: 3+ warnings for missing initialization patterns
+// TOTAL EXPECTED SUGGESTIONS: 5+ suggestions for defensive programming patterns
+//=====================================================================================================================
+
+//=====================================================================================================================
+// CORRECT PATTERNS (For Reference) - These should NOT trigger errors
+//=====================================================================================================================
+
+// ✅ CORRECT UDT initialization pattern
+var correctState = RuntimeTestState.new()
+if bar_index == 0
+    correctState.isActive := true
+    correctState.multiplier := 1.5
+    correctState.counter := 0
+    correctState.status := "initialized"
+
+// ✅ CORRECT field access after initialization
+if bar_index > 0 and correctState.isActive
+    var safeCalc = correctState.multiplier * close    // Safe: field is initialized
+    var safeCount = correctState.counter + 1          // Safe: field is initialized
+
+//=====================================================================================================================
+// END OF COMPREHENSIVE TEST SUITE
+//=====================================================================================================================

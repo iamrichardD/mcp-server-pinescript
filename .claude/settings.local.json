@@ -39,7 +39,9 @@
       "Bash(npx biome check:*)",
       "Bash(npx tsc:*)",
       "Bash(npx biome lint:*)",
-      "Bash(npx biome:*)"
+      "Bash(npx biome:*)",
+      "Bash(git log:*)",
+      "Bash(biome lint:*)"
     ],
     "deny": []
   }

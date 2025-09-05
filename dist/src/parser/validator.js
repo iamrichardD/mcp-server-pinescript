@@ -13,9 +13,9 @@
  * - Type-safe architecture designed for TypeScript migration
  */
 
-import { createSourceLocation } from "./ast-types.js";
-import { quickValidateParameterNaming } from "./parameter-naming-validator.js";
-import { extractFunctionParameters, parseScript } from "./parser.js";
+import { createSourceLocation } from './ast-types.js';
+import { quickValidateParameterNaming } from './parameter-naming-validator.js';
+import { extractFunctionParameters, parseScript } from './parser.js';
 
 /**
  * Validation Rules Storage
@@ -59,14 +59,14 @@ export async function validatePineScriptParameters(source, rules = null) {
   const rulesToUse = rules || validationRules;
 
   if (!rulesToUse) {
-    throw new Error("Validation rules not loaded. Call loadValidationRules() first.");
+    throw new Error('Validation rules not loaded. Call loadValidationRules() first.');
   }
 
   // Phase 1: Extract function parameters using AST parsing
   const parseResult = extractFunctionParameters(source);
   const parseSucceeded = parseResult.success;
-  
-  // Note: Continue with validation even if parsing fails, as some validators 
+
+  // Note: Continue with validation even if parsing fails, as some validators
   // (like parameter naming) can work independently using text-based parsing
 
   // Phase 2: Run individual validators in parallel for performance
@@ -98,35 +98,35 @@ export async function validatePineScriptParameters(source, rules = null) {
   }
 
   // Short title validation (highest priority)
-  if (hasValidationRule("SHORT_TITLE_TOO_LONG")) {
+  if (hasValidationRule('SHORT_TITLE_TOO_LONG')) {
     validationPromises.push(validateShortTitle(source));
   }
 
   // Parameter naming convention validations
   if (
-    hasValidationRule("DEPRECATED_PARAMETER_NAME") ||
-    hasValidationRule("INVALID_PARAMETER_NAMING_CONVENTION")
+    hasValidationRule('DEPRECATED_PARAMETER_NAME') ||
+    hasValidationRule('INVALID_PARAMETER_NAMING_CONVENTION')
   ) {
     validationPromises.push(quickValidateParameterNaming(source));
   }
   // Parameter constraint validations
-  if (hasValidationRule("INVALID_PRECISION")) {
+  if (hasValidationRule('INVALID_PRECISION')) {
     validationPromises.push(quickValidatePrecision(source));
   }
 
-  if (hasValidationRule("INVALID_MAX_BARS_BACK")) {
+  if (hasValidationRule('INVALID_MAX_BARS_BACK')) {
     validationPromises.push(quickValidateMaxBarsBack(source));
   }
 
-  if (hasValidationRule("INVALID_MAX_LINES_COUNT")) {
+  if (hasValidationRule('INVALID_MAX_LINES_COUNT')) {
     validationPromises.push(quickValidateMaxLinesCount(source));
   }
 
-  if (hasValidationRule("INVALID_MAX_LABELS_COUNT")) {
+  if (hasValidationRule('INVALID_MAX_LABELS_COUNT')) {
     validationPromises.push(quickValidateMaxLabelsCount(source));
   }
 
-  if (hasValidationRule("INVALID_MAX_BOXES_COUNT")) {
+  if (hasValidationRule('INVALID_MAX_BOXES_COUNT')) {
     validationPromises.push(quickValidateMaxBoxesCount(source));
   }
 
@@ -150,7 +150,8 @@ export async function validatePineScriptParameters(source, rules = null) {
     metrics: {
       totalTimeMs: endTime - startTime,
       parseTimeMs: parseResult.metrics ? parseResult.metrics.parseTimeMs : 0,
-      validationTimeMs: endTime - startTime - (parseResult.metrics ? parseResult.metrics.parseTimeMs : 0),
+      validationTimeMs:
+        endTime - startTime - (parseResult.metrics ? parseResult.metrics.parseTimeMs : 0),
       violationsFound: allViolations.length,
       functionsAnalyzed: parseResult.functionCalls ? parseResult.functionCalls.length : 0,
     },
@@ -191,46 +192,46 @@ export async function validateFunctionSignatures(functionCalls, rules) {
 export function validateShortTitle(source) {
   // Synchronous version - implement directly to avoid async issues
   const startTime = performance.now();
-  
+
   if (!source || typeof source !== 'string') {
     return {
       success: true,
       hasShortTitleError: false,
       violations: [],
-      metrics: { validationTimeMs: performance.now() - startTime }
+      metrics: { validationTimeMs: performance.now() - startTime },
     };
   }
 
   const violations = [];
   const maxLength = 10;
-  
+
   // Pattern to match indicator() and strategy() function calls with shorttitle parameter
   const functionPattern = /(indicator|strategy)\s*\(\s*([^)]*)\s*\)/g;
   const lines = source.split('\n');
-  
+
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const line = lines[lineIndex];
     const lineNumber = lineIndex + 1;
-    
+
     // Skip comment lines
     if (line.trim().startsWith('//')) {
       continue;
     }
-    
+
     let match;
     while ((match = functionPattern.exec(line)) !== null) {
       const functionName = match[1];
       const parametersString = match[2];
-      
+
       // Look for shorttitle parameter (named parameter)
       const shortTitleNamedPattern = /shorttitle\s*=\s*["']([^"']*)["']/g;
       let paramMatch;
-      
+
       while ((paramMatch = shortTitleNamedPattern.exec(parametersString)) !== null) {
         const shortTitleValue = paramMatch[1];
         const actualLength = shortTitleValue.length;
         const column = match.index + parametersString.indexOf(paramMatch[0]) + 1;
-        
+
         // Check if short title exceeds maximum length
         if (actualLength > maxLength) {
           violations.push({
@@ -246,22 +247,26 @@ export function validateShortTitle(source) {
               maxLength: maxLength,
               functionName: functionName,
               parameterName: 'shorttitle',
-              violationType: 'length_exceeded'
-            }
+              violationType: 'length_exceeded',
+            },
           });
         }
       }
-      
+
       // Also look for positional parameters (strategy/indicator second parameter)
       const positionalPattern = /["']([^"']*)["']\s*,\s*["']([^"']*)["']/g;
       let posMatch;
-      
+
       while ((posMatch = positionalPattern.exec(parametersString)) !== null) {
         // Second parameter (index 2) is the shorttitle in positional format
         const shortTitleValue = posMatch[2];
         const actualLength = shortTitleValue.length;
-        const column = match.index + parametersString.indexOf(posMatch[0]) + posMatch[0].indexOf(posMatch[2]) + 1;
-        
+        const column =
+          match.index +
+          parametersString.indexOf(posMatch[0]) +
+          posMatch[0].indexOf(posMatch[2]) +
+          1;
+
         // Check if short title exceeds maximum length
         if (actualLength > maxLength) {
           violations.push({
@@ -277,21 +282,21 @@ export function validateShortTitle(source) {
               maxLength: maxLength,
               functionName: functionName,
               parameterName: 'shorttitle',
-              violationType: 'length_exceeded'
-            }
+              violationType: 'length_exceeded',
+            },
           });
         }
       }
     }
   }
-  
+
   const endTime = performance.now();
-  
+
   return {
     success: true,
     hasShortTitleError: violations.length > 0,
     violations: violations,
-    metrics: { validationTimeMs: endTime - startTime }
+    metrics: { validationTimeMs: endTime - startTime },
   };
 }
 
@@ -300,46 +305,46 @@ export function validateShortTitle(source) {
  */
 export async function quickValidateShortTitle(source) {
   const startTime = performance.now();
-  
+
   if (!source || typeof source !== 'string') {
     return {
       success: true,
       hasShortTitleError: false,
       violations: [],
-      metrics: { validationTimeMs: performance.now() - startTime }
+      metrics: { validationTimeMs: performance.now() - startTime },
     };
   }
 
   const violations = [];
   const maxLength = 10;
-  
+
   // Pattern to match indicator() and strategy() function calls with shorttitle parameter
   const functionPattern = /(indicator|strategy)\s*\(\s*([^)]*)\s*\)/g;
   const lines = source.split('\n');
-  
+
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const line = lines[lineIndex];
     const lineNumber = lineIndex + 1;
-    
+
     // Skip comment lines
     if (line.trim().startsWith('//')) {
       continue;
     }
-    
+
     let match;
     while ((match = functionPattern.exec(line)) !== null) {
       const functionName = match[1];
       const parametersString = match[2];
-      
+
       // Look for shorttitle parameter (named parameter)
       const shortTitleNamedPattern = /shorttitle\s*=\s*["']([^"']*)["']/g;
       let paramMatch;
-      
+
       while ((paramMatch = shortTitleNamedPattern.exec(parametersString)) !== null) {
         const shortTitleValue = paramMatch[1];
         const actualLength = shortTitleValue.length;
         const column = match.index + parametersString.indexOf(paramMatch[0]) + 1;
-        
+
         // Check if short title exceeds maximum length
         if (actualLength > maxLength) {
           violations.push({
@@ -355,22 +360,26 @@ export async function quickValidateShortTitle(source) {
               maxLength: maxLength,
               functionName: functionName,
               parameterName: 'shorttitle',
-              violationType: 'length_exceeded'
-            }
+              violationType: 'length_exceeded',
+            },
           });
         }
       }
-      
+
       // Also look for positional parameters (strategy/indicator second parameter)
       const positionalPattern = /["']([^"']*)["']\s*,\s*["']([^"']*)["']/g;
       let posMatch;
-      
+
       while ((posMatch = positionalPattern.exec(parametersString)) !== null) {
         // Second parameter (index 2) is the shorttitle in positional format
         const shortTitleValue = posMatch[2];
         const actualLength = shortTitleValue.length;
-        const column = match.index + parametersString.indexOf(posMatch[0]) + posMatch[0].indexOf(posMatch[2]) + 1;
-        
+        const column =
+          match.index +
+          parametersString.indexOf(posMatch[0]) +
+          posMatch[0].indexOf(posMatch[2]) +
+          1;
+
         // Check if short title exceeds maximum length
         if (actualLength > maxLength) {
           violations.push({
@@ -386,21 +395,21 @@ export async function quickValidateShortTitle(source) {
               maxLength: maxLength,
               functionName: functionName,
               parameterName: 'shorttitle',
-              violationType: 'length_exceeded'
-            }
+              violationType: 'length_exceeded',
+            },
           });
         }
       }
     }
   }
-  
+
   const endTime = performance.now();
-  
+
   return {
     success: true,
     hasShortTitleError: violations.length > 0,
     violations: violations,
-    metrics: { validationTimeMs: endTime - startTime }
+    metrics: { validationTimeMs: endTime - startTime },
   };
 }
 
@@ -409,50 +418,50 @@ export async function quickValidateShortTitle(source) {
  */
 export async function quickValidatePrecision(source) {
   const startTime = performance.now();
-  
+
   if (!source || typeof source !== 'string') {
     return {
       success: true,
       hasPrecisionError: false,
       violations: [],
-      metrics: { validationTimeMs: performance.now() - startTime }
+      metrics: { validationTimeMs: performance.now() - startTime },
     };
   }
 
   const violations = [];
   const minValue = 0;
   const maxValue = 8;
-  
+
   // Pattern to match indicator() and strategy() function calls with precision parameter
   const functionPattern = /(indicator|strategy)\s*\(\s*([^)]*)\s*\)/g;
   const lines = source.split('\n');
-  
+
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const line = lines[lineIndex];
     const lineNumber = lineIndex + 1;
-    
+
     // Skip comment lines
     if (line.trim().startsWith('//')) {
       continue;
     }
-    
+
     let match;
     while ((match = functionPattern.exec(line)) !== null) {
       const functionName = match[1];
       const parametersString = match[2];
-      
+
       // Look for precision parameter
       const precisionPattern = /precision\s*=\s*([^,)]+)/g;
       let paramMatch;
-      
+
       while ((paramMatch = precisionPattern.exec(parametersString)) !== null) {
         const paramValue = paramMatch[1].trim();
         const column = match.index + parametersString.indexOf(paramMatch[0]) + 1;
-        
+
         // Check if it's a valid integer
         const parsedValue = parseInt(paramValue, 10);
         const isInteger = !isNaN(parsedValue) && paramValue === parsedValue.toString();
-        
+
         // Check for various validation issues
         if (!isInteger) {
           violations.push({
@@ -469,8 +478,8 @@ export async function quickValidatePrecision(source) {
               functionName: functionName,
               parameterName: 'precision',
               isNonInteger: true,
-              violationType: 'non_integer'
-            }
+              violationType: 'non_integer',
+            },
           });
         } else if (parsedValue < minValue || parsedValue > maxValue) {
           violations.push({
@@ -487,21 +496,21 @@ export async function quickValidatePrecision(source) {
               functionName: functionName,
               parameterName: 'precision',
               isOutOfRange: true,
-              violationType: 'out_of_range'
-            }
+              violationType: 'out_of_range',
+            },
           });
         }
       }
     }
   }
-  
+
   const endTime = performance.now();
-  
+
   return {
     success: true,
     hasPrecisionError: violations.length > 0,
     violations: violations,
-    metrics: { validationTimeMs: endTime - startTime }
+    metrics: { validationTimeMs: endTime - startTime },
   };
 }
 
@@ -510,50 +519,50 @@ export async function quickValidatePrecision(source) {
  */
 export async function quickValidateMaxBarsBack(source) {
   const startTime = performance.now();
-  
+
   if (!source || typeof source !== 'string') {
     return {
       success: true,
       hasMaxBarsBackError: false,
       violations: [],
-      metrics: { validationTimeMs: performance.now() - startTime }
+      metrics: { validationTimeMs: performance.now() - startTime },
     };
   }
 
   const violations = [];
   const minValue = 1;
   const maxValue = 5000;
-  
+
   // Pattern to match indicator() and strategy() function calls with max_bars_back parameter
   const functionPattern = /(indicator|strategy)\s*\(\s*([^)]*)\s*\)/g;
   const lines = source.split('\n');
-  
+
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const line = lines[lineIndex];
     const lineNumber = lineIndex + 1;
-    
+
     // Skip comment lines
     if (line.trim().startsWith('//')) {
       continue;
     }
-    
+
     let match;
     while ((match = functionPattern.exec(line)) !== null) {
       const functionName = match[1];
       const parametersString = match[2];
-      
+
       // Look for max_bars_back parameter
       const maxBarsBackPattern = /max_bars_back\s*=\s*([^,)]+)/g;
       let paramMatch;
-      
+
       while ((paramMatch = maxBarsBackPattern.exec(parametersString)) !== null) {
         const paramValue = paramMatch[1].trim();
         const column = match.index + parametersString.indexOf(paramMatch[0]) + 1;
-        
+
         // Check if it's a valid integer
         const parsedValue = parseFloat(paramValue);
         const isInteger = Number.isInteger(parsedValue);
-        
+
         // Check for various validation issues
         if (!isInteger) {
           violations.push({
@@ -570,8 +579,8 @@ export async function quickValidateMaxBarsBack(source) {
               functionName: functionName,
               parameterName: 'max_bars_back',
               isNonInteger: true,
-              violationType: 'non_integer'
-            }
+              violationType: 'non_integer',
+            },
           });
         } else if (parsedValue < minValue || parsedValue > maxValue) {
           violations.push({
@@ -588,21 +597,21 @@ export async function quickValidateMaxBarsBack(source) {
               functionName: functionName,
               parameterName: 'max_bars_back',
               isOutOfRange: true,
-              violationType: 'out_of_range'
-            }
+              violationType: 'out_of_range',
+            },
           });
         }
       }
     }
   }
-  
+
   const endTime = performance.now();
-  
+
   return {
     success: true,
     hasMaxBarsBackError: violations.length > 0,
     violations: violations,
-    metrics: { validationTimeMs: endTime - startTime }
+    metrics: { validationTimeMs: endTime - startTime },
   };
 }
 
@@ -611,46 +620,46 @@ export async function quickValidateMaxBarsBack(source) {
  */
 export async function quickValidateMaxLinesCount(source) {
   const startTime = performance.now();
-  
+
   if (!source || typeof source !== 'string') {
     return {
       success: true,
       hasMaxLinesCountError: false,
       violations: [],
-      metrics: { validationTimeMs: performance.now() - startTime }
+      metrics: { validationTimeMs: performance.now() - startTime },
     };
   }
 
   const violations = [];
   const minValue = 1;
   const maxValue = 500;
-  
+
   // Pattern to match indicator() and strategy() function calls with max_lines_count parameter
   const functionPattern = /(indicator|strategy)\s*\(\s*([^)]*)\s*\)/g;
   const lines = source.split('\n');
-  
+
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const line = lines[lineIndex];
     const lineNumber = lineIndex + 1;
-    
+
     // Skip comment lines
     if (line.trim().startsWith('//')) {
       continue;
     }
-    
+
     let match;
     while ((match = functionPattern.exec(line)) !== null) {
       const functionName = match[1];
       const parametersString = match[2];
-      
+
       // Look for max_lines_count parameter
       const maxLinesCountPattern = /max_lines_count\s*=\s*(-?\d+)/g;
       let paramMatch;
-      
+
       while ((paramMatch = maxLinesCountPattern.exec(parametersString)) !== null) {
         const actualValue = parseInt(paramMatch[1], 10);
         const column = match.index + parametersString.indexOf(paramMatch[0]) + 1;
-        
+
         // Check if value is outside valid range
         if (actualValue < minValue || actualValue > maxValue) {
           violations.push({
@@ -666,21 +675,21 @@ export async function quickValidateMaxLinesCount(source) {
               maxValue: maxValue,
               functionName: functionName,
               parameterName: 'max_lines_count',
-              isOutOfRange: true
-            }
+              isOutOfRange: true,
+            },
           });
         }
       }
     }
   }
-  
+
   const endTime = performance.now();
-  
+
   return {
     success: true,
     hasMaxLinesCountError: violations.length > 0,
     violations: violations,
-    metrics: { validationTimeMs: endTime - startTime }
+    metrics: { validationTimeMs: endTime - startTime },
   };
 }
 
@@ -689,46 +698,46 @@ export async function quickValidateMaxLinesCount(source) {
  */
 export async function quickValidateMaxLabelsCount(source) {
   const startTime = performance.now();
-  
+
   if (!source || typeof source !== 'string') {
     return {
       success: true,
       hasMaxLabelsCountError: false,
       violations: [],
-      metrics: { validationTimeMs: performance.now() - startTime }
+      metrics: { validationTimeMs: performance.now() - startTime },
     };
   }
 
   const violations = [];
   const minValue = 1;
   const maxValue = 500;
-  
+
   // Pattern to match indicator() and strategy() function calls with max_labels_count parameter
   const functionPattern = /(indicator|strategy)\s*\(\s*([^)]*)\s*\)/g;
   const lines = source.split('\n');
-  
+
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const line = lines[lineIndex];
     const lineNumber = lineIndex + 1;
-    
+
     // Skip comment lines
     if (line.trim().startsWith('//')) {
       continue;
     }
-    
+
     let match;
     while ((match = functionPattern.exec(line)) !== null) {
       const functionName = match[1];
       const parametersString = match[2];
-      
+
       // Look for max_labels_count parameter
       const maxLabelsCountPattern = /max_labels_count\s*=\s*(-?\d+)/g;
       let paramMatch;
-      
+
       while ((paramMatch = maxLabelsCountPattern.exec(parametersString)) !== null) {
         const actualValue = parseInt(paramMatch[1], 10);
         const column = match.index + parametersString.indexOf(paramMatch[0]) + 1;
-        
+
         // Check if value is outside valid range
         if (actualValue < minValue || actualValue > maxValue) {
           violations.push({
@@ -744,21 +753,21 @@ export async function quickValidateMaxLabelsCount(source) {
               maxValue: maxValue,
               functionName: functionName,
               parameterName: 'max_labels_count',
-              isOutOfRange: true
-            }
+              isOutOfRange: true,
+            },
           });
         }
       }
     }
   }
-  
+
   const endTime = performance.now();
-  
+
   return {
     success: true,
     hasMaxLabelsCountError: violations.length > 0,
     violations: violations,
-    metrics: { validationTimeMs: endTime - startTime }
+    metrics: { validationTimeMs: endTime - startTime },
   };
 }
 
@@ -767,46 +776,46 @@ export async function quickValidateMaxLabelsCount(source) {
  */
 export async function quickValidateMaxBoxesCount(source) {
   const startTime = performance.now();
-  
+
   if (!source || typeof source !== 'string') {
     return {
       success: true,
       hasMaxBoxesCountError: false,
       violations: [],
-      metrics: { validationTimeMs: performance.now() - startTime }
+      metrics: { validationTimeMs: performance.now() - startTime },
     };
   }
 
   const violations = [];
   const minValue = 1;
   const maxValue = 500;
-  
+
   // Pattern to match indicator() and strategy() function calls with max_boxes_count parameter
   const functionPattern = /(indicator|strategy)\s*\(\s*([^)]*)\s*\)/g;
   const lines = source.split('\n');
-  
+
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const line = lines[lineIndex];
     const lineNumber = lineIndex + 1;
-    
+
     // Skip comment lines
     if (line.trim().startsWith('//')) {
       continue;
     }
-    
+
     let match;
     while ((match = functionPattern.exec(line)) !== null) {
       const functionName = match[1];
       const parametersString = match[2];
-      
+
       // Look for max_boxes_count parameter
       const maxBoxesCountPattern = /max_boxes_count\s*=\s*(-?\d+)/g;
       let paramMatch;
-      
+
       while ((paramMatch = maxBoxesCountPattern.exec(parametersString)) !== null) {
         const actualValue = parseInt(paramMatch[1], 10);
         const column = match.index + parametersString.indexOf(paramMatch[0]) + 1;
-        
+
         // Check if value is outside valid range
         if (actualValue < minValue || actualValue > maxValue) {
           violations.push({
@@ -822,21 +831,21 @@ export async function quickValidateMaxBoxesCount(source) {
               maxValue: maxValue,
               functionName: functionName,
               parameterName: 'max_boxes_count',
-              isOutOfRange: true
-            }
+              isOutOfRange: true,
+            },
           });
         }
       }
     }
   }
-  
+
   const endTime = performance.now();
-  
+
   return {
     success: true,
     hasMaxBoxesCountError: violations.length > 0,
     violations: violations,
-    metrics: { validationTimeMs: endTime - startTime }
+    metrics: { validationTimeMs: endTime - startTime },
   };
 }
 
@@ -851,32 +860,32 @@ export async function quickValidateSeriesTypeWhereSimpleExpected(source) {
   try {
     // Define functions that require simple (non-series) parameters
     const functionsRequiringSimpleParams = {
-      'ta.ema': [1],           // length parameter (index 1) must be simple
-      'ta.sma': [1],           // length parameter (index 1) must be simple  
-      'ta.rma': [1],           // length parameter (index 1) must be simple
-      'ta.macd': [1, 2, 3],    // fastlength, slowlength, signallength (indexes 1,2,3) must be simple
-      'ta.stoch': [1, 2, 3],   // %k length, %k smoothing, %d smoothing must be simple
-      'ta.bb': [1, 2],         // length, mult parameters must be simple
-      'ta.rsi': [1],           // length parameter must be simple
-      'ta.atr': [0],           // length parameter must be simple
-      'strategy.entry': [2],   // qty parameter (index 2) must be simple
-      'strategy.exit': [2],    // qty parameter (index 2) must be simple  
-      'int': [0],              // int() conversion requires simple parameter
-      'float': [0],            // float() conversion requires simple parameter
+      'ta.ema': [1], // length parameter (index 1) must be simple
+      'ta.sma': [1], // length parameter (index 1) must be simple
+      'ta.rma': [1], // length parameter (index 1) must be simple
+      'ta.macd': [1, 2, 3], // fastlength, slowlength, signallength (indexes 1,2,3) must be simple
+      'ta.stoch': [1, 2, 3], // %k length, %k smoothing, %d smoothing must be simple
+      'ta.bb': [1, 2], // length, mult parameters must be simple
+      'ta.rsi': [1], // length parameter must be simple
+      'ta.atr': [0], // length parameter must be simple
+      'strategy.entry': [2], // qty parameter (index 2) must be simple
+      'strategy.exit': [2], // qty parameter (index 2) must be simple
+      int: [0], // int() conversion requires simple parameter
+      float: [0], // float() conversion requires simple parameter
     };
 
     // UDT field access pattern: object.field
     const udtFieldPattern = /(\w+)\.(\w+)/g;
-    
+
     // First, handle multi-line function calls by normalizing them
     // This regex finds function calls that might span multiple lines
     const normalizedSource = source.replace(/\n\s*/g, ' ');
-    
+
     // Function call patterns with parameters
     const functionCallPattern = /(\w+(?:\.\w+)?)\s*\(\s*([^)]*)\s*\)/g;
-    
+
     const lines = source.split('\n');
-    
+
     // First pass: detect function calls in the normalized source and map them back to line numbers
     let match;
     const functionCallMatches = [];
@@ -884,41 +893,41 @@ export async function quickValidateSeriesTypeWhereSimpleExpected(source) {
       const functionName = match[1];
       const parametersString = match[2];
       const matchStart = match.index;
-      
+
       // Find the approximate line number by counting newlines up to this point in the original source
       const sourceUpToMatch = source.substring(0, source.indexOf(match[0]));
       const lineNumber = (sourceUpToMatch.match(/\n/g) || []).length + 1;
-      
+
       functionCallMatches.push({
         functionName,
         parametersString,
         lineNumber,
         matchStart,
-        fullMatch: match[0]
+        fullMatch: match[0],
       });
     }
-    
+
     // Process detected function calls
     for (const functionCallMatch of functionCallMatches) {
       const { functionName, parametersString, lineNumber } = functionCallMatch;
-        
+
       // Check if this function requires simple parameters
       const simpleParamIndexes = functionsRequiringSimpleParams[functionName];
       if (!simpleParamIndexes) continue;
-        
+
       // Parse parameters, handling both positional and named parameters
       const rawParameters = parametersString
         .split(',')
-        .map(p => p.trim())
-        .filter(p => p.length > 0);
-      
+        .map((p) => p.trim())
+        .filter((p) => p.length > 0);
+
       const parameters = [];
       const namedParameters = {};
-      
+
       for (const param of rawParameters) {
         if (param.includes('=')) {
           // Named parameter: param_name = value
-          const [name, value] = param.split('=').map(s => s.trim());
+          const [name, value] = param.split('=').map((s) => s.trim());
           namedParameters[name] = value;
           parameters.push(value); // Also add to positional array for index-based checking
         } else {
@@ -926,12 +935,12 @@ export async function quickValidateSeriesTypeWhereSimpleExpected(source) {
           parameters.push(param);
         }
       }
-      
+
       // Check each parameter that should be simple
       for (const paramIndex of simpleParamIndexes) {
         let parameter;
         let actualParamIndex = paramIndex;
-        
+
         // For strategy.entry, also check for named 'qty' parameter
         if (functionName === 'strategy.entry' && namedParameters.qty) {
           parameter = namedParameters.qty;
@@ -941,16 +950,16 @@ export async function quickValidateSeriesTypeWhereSimpleExpected(source) {
         } else {
           parameter = parameters[paramIndex];
         }
-          
+
         // Check if parameter contains UDT field access
         const udtMatch = parameter.match(/(\w+)\.(\w+)/);
         if (udtMatch) {
           const udtObject = udtMatch[1];
           const udtField = udtMatch[2];
-          
+
           // For multi-line function calls, just use line number with column 1
           const column = 1;
-            
+
           // Get parameter name from function signature
           let parameterName;
           if (actualParamIndex === 'qty') {
@@ -959,7 +968,7 @@ export async function quickValidateSeriesTypeWhereSimpleExpected(source) {
             const expectedParams = getExpectedTypesForFunction(functionName);
             parameterName = expectedParams[paramIndex]?.name || `parameter ${paramIndex + 1}`;
           }
-          
+
           // Use different message format for conversion functions
           let message;
           if (functionName === 'int' || functionName === 'float') {
@@ -967,7 +976,7 @@ export async function quickValidateSeriesTypeWhereSimpleExpected(source) {
           } else {
             message = `Cannot call "${functionName}" with argument "${parameterName}" = "${udtObject}.${udtField}". Expected simple int type but got series type`;
           }
-          
+
           violations.push({
             rule: 'SERIES_TYPE_WHERE_SIMPLE_EXPECTED',
             severity: 'error',
@@ -983,23 +992,23 @@ export async function quickValidateSeriesTypeWhereSimpleExpected(source) {
               udtField: udtField,
               expectedType: 'simple int/float',
               actualType: 'series (UDT field)',
-              suggestion: `Use a fixed simple value instead of ${udtObject}.${udtField}`
-            }
+              suggestion: `Use a fixed simple value instead of ${udtObject}.${udtField}`,
+            },
           });
         }
-          
+
         // Check for int() or float() conversion of UDT fields
         const conversionMatch = parameter.match(/(int|float)\s*\(\s*(\w+\.\w+)\s*\)/);
         if (conversionMatch) {
           const conversionType = conversionMatch[1];
           const udtExpression = conversionMatch[2];
           const [udtObject, udtField] = udtExpression.split('.');
-          
+
           const column = 1;
-          
+
           violations.push({
             rule: 'SERIES_TYPE_WHERE_SIMPLE_EXPECTED',
-            severity: 'error', 
+            severity: 'error',
             category: 'type_validation',
             message: `Cannot convert series type to simple type using ${conversionType}(${udtExpression})`,
             line: lineNumber,
@@ -1012,19 +1021,17 @@ export async function quickValidateSeriesTypeWhereSimpleExpected(source) {
               udtField: udtField,
               expectedType: 'simple int/float',
               actualType: 'series (UDT field)',
-              suggestion: `Use conditional logic with fixed simple values instead of trying to convert ${udtExpression}`
-            }
+              suggestion: `Use conditional logic with fixed simple values instead of trying to convert ${udtExpression}`,
+            },
           });
         }
       }
     }
-      
-    
   } catch (error) {
     // If parsing fails, return empty result to avoid breaking the validation pipeline
     console.error('Error in quickValidateSeriesTypeWhereSimpleExpected:', error);
   }
-  
+
   const endTime = performance.now();
   const validationTimeMs = endTime - startTime;
 
@@ -1040,18 +1047,18 @@ export async function quickValidateSeriesTypeWhereSimpleExpected(source) {
  */
 export async function quickValidateInputTypes(source) {
   const startTime = performance.now();
-  
+
   try {
     // Handle null/undefined inputs gracefully
     if (!source || typeof source !== 'string') {
       return {
         success: true,
         violations: [],
-        metrics: { 
+        metrics: {
           validationTimeMs: performance.now() - startTime,
           functionsAnalyzed: 0,
-          typeChecksPerformed: 0
-        }
+          typeChecksPerformed: 0,
+        },
       };
     }
 
@@ -1061,11 +1068,11 @@ export async function quickValidateInputTypes(source) {
       return {
         success: true,
         violations: [],
-        metrics: { 
+        metrics: {
           validationTimeMs: performance.now() - startTime,
           functionsAnalyzed: 0,
-          typeChecksPerformed: 0
-        }
+          typeChecksPerformed: 0,
+        },
       };
     }
 
@@ -1075,14 +1082,14 @@ export async function quickValidateInputTypes(source) {
 
     // Extract function calls from the AST
     const functionCalls = extractFunctionCallsFromAST(parseResult.ast);
-    
+
     // Process each function call
     for (const functionCall of functionCalls) {
       functionsAnalyzed++;
-      
-      const functionName = functionCall.namespace ? 
-        `${functionCall.namespace}.${functionCall.name}` : 
-        functionCall.name;
+
+      const functionName = functionCall.namespace
+        ? `${functionCall.namespace}.${functionCall.name}`
+        : functionCall.name;
 
       // Get expected parameter types for this function
       const expectedTypes = getExpectedTypesForFunction(functionName);
@@ -1092,59 +1099,58 @@ export async function quickValidateInputTypes(source) {
 
       // Validate each parameter
       const parameters = functionCall.parameters || [];
-      
+
       for (let i = 0; i < Math.min(expectedTypes.length, parameters.length); i++) {
         const parameter = parameters[i];
         const expectedType = expectedTypes[i];
-        
+
         typeChecksPerformed++;
 
         // Infer actual type from parameter AST node
         const actualType = inferParameterTypeFromAST(parameter);
-        
+
         // Compare types
         const typeComparison = compareParameterTypes(expectedType.type, actualType);
-        
+
         if (!typeComparison.isValid) {
           violations.push({
-            rule: "INPUT_TYPE_MISMATCH",
+            rule: 'INPUT_TYPE_MISMATCH',
             functionName: functionName,
             parameterName: expectedType.name,
             expectedType: expectedType.type,
             actualType: actualType,
-            severity: "error",
-            category: "type_validation",
+            severity: 'error',
+            category: 'type_validation',
             message: `INPUT_TYPE_MISMATCH: Function '${functionName}' parameter '${expectedType.name}' expects type '${expectedType.type}' but received '${actualType}'`,
-            reason: typeComparison.reason || "type_mismatch",
+            reason: typeComparison.reason || 'type_mismatch',
             line: parameter.location?.line || 1,
-            column: parameter.location?.column || 1
+            column: parameter.location?.column || 1,
           });
         }
       }
     }
 
     const endTime = performance.now();
-    
+
     return {
       success: true,
       violations: violations,
       metrics: {
         validationTimeMs: endTime - startTime,
         functionsAnalyzed: functionsAnalyzed,
-        typeChecksPerformed: typeChecksPerformed
-      }
+        typeChecksPerformed: typeChecksPerformed,
+      },
     };
-
   } catch (error) {
     const endTime = performance.now();
     return {
       success: true, // Even on error, we don't want to break the pipeline
       violations: [],
-      metrics: { 
+      metrics: {
         validationTimeMs: endTime - startTime,
         functionsAnalyzed: 0,
-        typeChecksPerformed: 0
-      }
+        typeChecksPerformed: 0,
+      },
     };
   }
 }
@@ -1156,30 +1162,30 @@ function getExpectedTypesForFunction(functionName) {
   const functionSignatures = {
     'ta.sma': [
       { name: 'source', type: 'series int/float', required: true },
-      { name: 'length', type: 'series int', required: true }
+      { name: 'length', type: 'series int', required: true },
     ],
     'ta.ema': [
       { name: 'source', type: 'series int/float', required: true },
-      { name: 'length', type: 'int', required: true }
+      { name: 'length', type: 'int', required: true },
     ],
     'ta.macd': [
       { name: 'source', type: 'series int/float', required: true },
       { name: 'fastlength', type: 'int', required: true },
       { name: 'slowlength', type: 'int', required: true },
-      { name: 'signallength', type: 'int', required: true }
+      { name: 'signallength', type: 'int', required: true },
     ],
     'str.contains': [
       { name: 'source', type: 'string', required: true },
-      { name: 'substring', type: 'string', required: true }
+      { name: 'substring', type: 'string', required: true },
     ],
     'math.max': [
       { name: 'x1', type: 'int/float', required: true },
-      { name: 'x2', type: 'int/float', required: true }
+      { name: 'x2', type: 'int/float', required: true },
     ],
     'math.min': [
       { name: 'x1', type: 'int/float', required: true },
-      { name: 'x2', type: 'int/float', required: true }
-    ]
+      { name: 'x2', type: 'int/float', required: true },
+    ],
   };
 
   return functionSignatures[functionName] || [];
@@ -1190,11 +1196,11 @@ function getExpectedTypesForFunction(functionName) {
  */
 function extractFunctionCallsFromAST(ast) {
   const functionCalls = [];
-  
+
   // Helper function to recursively extract function calls
   function extractFromNode(node) {
     if (!node) return;
-    
+
     if (Array.isArray(node)) {
       // Handle arrays of nodes
       for (const item of node) {
@@ -1202,11 +1208,11 @@ function extractFunctionCallsFromAST(ast) {
       }
       return;
     }
-    
+
     // Check if this node is a function call
     if (node.type === 'FunctionCall') {
       functionCalls.push(node);
-      
+
       // Recursively search through parameters for nested function calls
       if (node.parameters && Array.isArray(node.parameters)) {
         for (const param of node.parameters) {
@@ -1216,26 +1222,26 @@ function extractFunctionCallsFromAST(ast) {
         }
       }
     }
-    
+
     // Handle different node types
     switch (node.type) {
       case 'Assignment':
         if (node.right) extractFromNode(node.right);
         if (node.left) extractFromNode(node.left);
         break;
-      
+
       case 'Declaration':
         if (node.init) extractFromNode(node.init);
         break;
-      
+
       case 'CallExpression':
         // Handle function calls in expression format
         functionCalls.push({
           type: 'FunctionCall',
           name: node.callee?.name || 'unknown',
           namespace: node.callee?.object?.name,
-          parameters: node.arguments?.map(arg => ({ value: arg })) || [],
-          location: node.location
+          parameters: node.arguments?.map((arg) => ({ value: arg })) || [],
+          location: node.location,
         });
         // Recursively check arguments
         if (node.arguments) {
@@ -1244,28 +1250,28 @@ function extractFunctionCallsFromAST(ast) {
           }
         }
         break;
-      
+
       case 'BinaryExpression':
       case 'LogicalExpression':
         if (node.left) extractFromNode(node.left);
         if (node.right) extractFromNode(node.right);
         break;
-      
+
       case 'UnaryExpression':
         if (node.argument) extractFromNode(node.argument);
         break;
-      
+
       case 'ConditionalExpression':
         if (node.test) extractFromNode(node.test);
         if (node.consequent) extractFromNode(node.consequent);
         if (node.alternate) extractFromNode(node.alternate);
         break;
-      
+
       case 'MemberExpression':
         if (node.object) extractFromNode(node.object);
         if (node.property) extractFromNode(node.property);
         break;
-      
+
       default:
         // Recursively search common properties that might contain function calls
         for (const key of ['body', 'statements', 'expressions', 'elements']) {
@@ -1276,7 +1282,7 @@ function extractFunctionCallsFromAST(ast) {
         break;
     }
   }
-  
+
   // Start extraction from AST root
   if (ast.body && ast.body.length > 0) {
     for (const node of ast.body) {
@@ -1288,7 +1294,7 @@ function extractFunctionCallsFromAST(ast) {
       extractFromNode(statement);
     }
   }
-  
+
   return functionCalls;
 }
 
@@ -1298,7 +1304,7 @@ function extractFunctionCallsFromAST(ast) {
 function inferParameterTypeFromAST(parameter) {
   // Parameter should have a value property with the actual value
   const value = parameter.value;
-  
+
   if (!value) {
     return 'unknown';
   }
@@ -1314,7 +1320,7 @@ function inferParameterTypeFromAST(parameter) {
     if (value.dataType === 'boolean') {
       return 'bool';
     }
-    
+
     // Fallback to value inspection
     if (typeof value.value === 'string') {
       return 'string';
@@ -1326,7 +1332,7 @@ function inferParameterTypeFromAST(parameter) {
       return 'bool';
     }
   }
-  
+
   if (value.type === 'Identifier') {
     // Check if it's a Pine Script built-in variable
     const seriesVariables = ['close', 'open', 'high', 'low', 'volume', 'hl2', 'hlc3', 'ohlc4'];
@@ -1339,12 +1345,12 @@ function inferParameterTypeFromAST(parameter) {
     }
     return 'identifier';
   }
-  
+
   if (value.type === 'FunctionCall') {
     // Function calls typically return series values in Pine Script
     return 'series float';
   }
-  
+
   return 'unknown';
 }
 
@@ -1354,8 +1360,10 @@ function inferParameterTypeFromAST(parameter) {
 function inferParameterType(value) {
   if (typeof value === 'string') {
     // Check if it's a quoted string literal
-    if ((value.startsWith('"') && value.endsWith('"')) || 
-        (value.startsWith("'") && value.endsWith("'"))) {
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
       return 'string';
     }
     // Check if it's a Pine Script built-in variable
@@ -1370,20 +1378,20 @@ function inferParameterType(value) {
     // Default to identifier/variable
     return 'identifier';
   }
-  
+
   if (typeof value === 'number') {
     return Number.isInteger(value) ? 'int' : 'float';
   }
-  
+
   if (typeof value === 'boolean') {
     return 'bool';
   }
-  
+
   // Handle function calls - assume they return series for now
   if (typeof value === 'object' && value.type === 'function_call') {
     return 'series float';
   }
-  
+
   return 'unknown';
 }
 
@@ -1432,11 +1440,11 @@ function compareParameterTypes(expectedType, actualType) {
   }
 
   // Type mismatch
-  return { 
-    isValid: false, 
+  return {
+    isValid: false,
     reason: 'type_mismatch',
     expected: expectedType,
-    actual: actualType
+    actual: actualType,
   };
 }
 
@@ -1446,55 +1454,91 @@ function compareParameterTypes(expectedType, actualType) {
  */
 export async function quickValidateBuiltinNamespace(source) {
   const startTime = performance.now();
-  
+
   if (!source || typeof source !== 'string') {
     return {
       success: true,
       hasNamespaceError: false,
       violations: [],
-      metrics: { validationTimeMs: performance.now() - startTime }
+      metrics: { validationTimeMs: performance.now() - startTime },
     };
   }
 
   const violations = [];
-  
+
   // Built-in namespaces that cannot be used as variable names
   const builtinNamespaces = [
-    'position', 'strategy', 'ta', 'math', 'array', 'color', 
-    'string', 'map', 'matrix', 'request', 'input', 'plot',
-    'plotshape', 'plotbar', 'plotcandle', 'bgcolor', 'fill',
-    'line', 'label', 'box', 'table', 'polyline', 'str', 'alert',
-    'barcolor', 'runtime', 'timeframe', 'ticker', 'hline', 'indicator',
-    'library', 'method', 'type', 'export', 'import', 'time',
-    'barstate', 'session', 'syminfo', 'location', 'shape', 
-    'size', 'scale', 'extend'
+    'position',
+    'strategy',
+    'ta',
+    'math',
+    'array',
+    'color',
+    'string',
+    'map',
+    'matrix',
+    'request',
+    'input',
+    'plot',
+    'plotshape',
+    'plotbar',
+    'plotcandle',
+    'bgcolor',
+    'fill',
+    'line',
+    'label',
+    'box',
+    'table',
+    'polyline',
+    'str',
+    'alert',
+    'barcolor',
+    'runtime',
+    'timeframe',
+    'ticker',
+    'hline',
+    'indicator',
+    'library',
+    'method',
+    'type',
+    'export',
+    'import',
+    'time',
+    'barstate',
+    'session',
+    'syminfo',
+    'location',
+    'shape',
+    'size',
+    'scale',
+    'extend',
   ];
-  
+
   const lines = source.split('\n');
-  
+
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const line = lines[lineIndex];
     const lineNumber = lineIndex + 1;
-    
+
     // Skip comment lines
     if (line.trim().startsWith('//')) {
       continue;
     }
-    
+
     // Check for namespace conflicts using variable assignment patterns
     for (const namespace of builtinNamespaces) {
       // Pattern to match variable assignment: namespace = value
       const assignmentPattern = new RegExp(`\\b${namespace}\\s*=\\s*[^=]`, 'g');
       let match;
-      
+
       while ((match = assignmentPattern.exec(line)) !== null) {
         const column = match.index + 1;
-        
+
         // Check if it's inside a string literal
         if (isInStringLiteral(line, match.index)) {
           continue;
         }
-        
+
         violations.push({
           rule: 'INVALID_OBJECT_NAME_BUILTIN',
           code: 'INVALID_OBJECT_NAME_BUILTIN',
@@ -1506,25 +1550,25 @@ export async function quickValidateBuiltinNamespace(source) {
           location: {
             line: lineNumber,
             column: column,
-            source: line.trim()
+            source: line.trim(),
           },
           metadata: {
             conflictingNamespace: namespace,
             variableAssignment: true,
-            suggestedFix: `Use a different variable name instead of '${namespace}', such as 'my${namespace.charAt(0).toUpperCase() + namespace.slice(1)}', '${namespace}State', or '${namespace}Value'`
-          }
+            suggestedFix: `Use a different variable name instead of '${namespace}', such as 'my${namespace.charAt(0).toUpperCase() + namespace.slice(1)}', '${namespace}State', or '${namespace}Value'`,
+          },
         });
-    }
+      }
     }
   }
-  
+
   const endTime = performance.now();
-  
+
   return {
     success: true,
     hasNamespaceError: violations.length > 0,
     violations: violations,
-    metrics: { validationTimeMs: endTime - startTime }
+    metrics: { validationTimeMs: endTime - startTime },
   };
 }
 
@@ -1535,7 +1579,7 @@ export async function quickValidateBuiltinNamespace(source) {
 export async function quickValidateLineContinuation(source) {
   const startTime = Date.now();
   const violations = [];
-  
+
   if (!source || typeof source !== 'string') {
     return {
       violations: [],
@@ -1544,19 +1588,19 @@ export async function quickValidateLineContinuation(source) {
   }
 
   const lines = source.split('\n');
-  
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const lineNumber = i + 1;
-    
+
     // Skip empty lines and comments
     const trimmedLine = line.trim();
     if (!trimmedLine || trimmedLine.startsWith('//')) {
       continue;
     }
-    
+
     // Check for line continuation issues in several scenarios
-    
+
     // 1. Detect ternary operator ending with '?' at end of line (most common case)
     // This pattern matches '?' followed by optional whitespace and optional comment
     const ternaryPattern = /\?\s*(?:\/\/.*)?$/;
@@ -1569,25 +1613,26 @@ export async function quickValidateLineContinuation(source) {
           errorCode: 'INVALID_LINE_CONTINUATION',
           severity: 'error',
           category: 'syntax_validation',
-          message: 'Syntax error at input \'end of line without line continuation\'. ternary operators (?) must be properly formatted without line breaks at the condition operator.',
+          message:
+            "Syntax error at input 'end of line without line continuation'. ternary operators (?) must be properly formatted without line breaks at the condition operator.",
           line: lineNumber,
           column: questionPos + 1,
           suggestedFix: 'Keep ternary operators on a single line or use proper line continuation',
           details: {
             issue: 'ternary_line_break',
             pattern: 'condition ?',
-            suggestion: 'Keep ternary operators on a single line or use proper line continuation'
-          }
+            suggestion: 'Keep ternary operators on a single line or use proper line continuation',
+          },
         });
       }
     }
-    
+
     // 2. Skip function calls - they are generally allowed to span multiple lines in Pine Script
     // Function calls with parentheses are valid multiline constructs, so we don't flag them
-    
+
     // 3. Skip operator detection - Pine Script allows operators to span lines in many contexts
     // Focus primarily on ternary operator issues which are the main problematic case
-    
+
     // 4. Detect invalid line continuation in string literals
     const stringContinuationPattern = /(['"`]).*\\$/;
     if (stringContinuationPattern.test(line)) {
@@ -1596,16 +1641,17 @@ export async function quickValidateLineContinuation(source) {
         errorCode: 'INVALID_LINE_CONTINUATION',
         severity: 'error',
         category: 'syntax_validation',
-        message: 'Invalid line continuation within string literal. Line continuation is not allowed inside strings.',
+        message:
+          'Invalid line continuation within string literal. Line continuation is not allowed inside strings.',
         line: lineNumber,
         column: line.lastIndexOf('\\') + 1,
         details: {
           issue: 'string_literal_continuation',
-          suggestion: 'Remove line continuation from string literal or use string concatenation'
-        }
+          suggestion: 'Remove line continuation from string literal or use string concatenation',
+        },
       });
     }
-    
+
     // 5. Detect invalid line continuation in comments
     if (line.trim().startsWith('//') && line.endsWith('\\')) {
       violations.push({
@@ -1613,17 +1659,18 @@ export async function quickValidateLineContinuation(source) {
         errorCode: 'INVALID_LINE_CONTINUATION',
         severity: 'error',
         category: 'syntax_validation',
-        message: 'Invalid line continuation in comment. Line continuation is not valid in comments.',
+        message:
+          'Invalid line continuation in comment. Line continuation is not valid in comments.',
         line: lineNumber,
         column: line.lastIndexOf('\\') + 1,
         details: {
           issue: 'comment_continuation',
-          suggestion: 'Remove line continuation from comment'
-        }
+          suggestion: 'Remove line continuation from comment',
+        },
       });
     }
   }
-  
+
   return {
     violations,
     metrics: { validationTimeMs: Date.now() - startTime },
@@ -1637,17 +1684,17 @@ function isInStringOrComment(line, position) {
   let inString = false;
   let stringChar = null;
   let inComment = false;
-  
+
   for (let i = 0; i < position && i < line.length; i++) {
     const char = line[i];
     const nextChar = i + 1 < line.length ? line[i + 1] : '';
-    
+
     // Check for comment start
     if (!inString && char === '/' && nextChar === '/') {
       inComment = true;
       break;
     }
-    
+
     // Check for string literals
     if (!inComment && (char === '"' || char === "'" || char === '`')) {
       if (!inString) {
@@ -1669,7 +1716,7 @@ function isInStringOrComment(line, position) {
       }
     }
   }
-  
+
   return inString || inComment;
 }
 
@@ -1679,38 +1726,38 @@ function isInStringOrComment(line, position) {
  */
 export async function quickValidateFunctionSignatures(source) {
   const startTime = performance.now();
-  
+
   if (!source || typeof source !== 'string') {
     return {
       success: true,
       violations: [],
-      metrics: { 
+      metrics: {
         validationTimeMs: performance.now() - startTime,
-        functionsAnalyzed: 0
-      }
+        functionsAnalyzed: 0,
+      },
     };
   }
 
   const violations = [];
   let functionsAnalyzed = 0;
-  
+
   // Extract function calls from the source
   const functionCalls = extractFunctionCalls(source);
-  
+
   for (const functionCall of functionCalls) {
     functionsAnalyzed++;
-    
+
     // Get expected signature for this function
     const signature = getExpectedSignature(functionCall.name);
-    
+
     // Skip validation for unknown functions (empty signature)
     if (!signature.parameters || signature.parameters.length === 0) {
       continue;
     }
-    
+
     // Validate parameter count
     const countValidation = validateParameterCount(signature, functionCall.parameters);
-    
+
     if (!countValidation.isValid) {
       const violation = {
         rule: 'FUNCTION_SIGNATURE_VALIDATION',
@@ -1725,35 +1772,41 @@ export async function quickValidateFunctionSignatures(source) {
         column: functionCall.position || 1,
         metadata: {
           functionName: functionCall.name,
-          expectedSignature: signature.parameters.map(p => `${p.name}: ${p.type}${p.required ? '' : '?'}`).join(', '),
-          actualParameters: functionCall.parameters || []
-        }
+          expectedSignature: signature.parameters
+            .map((p) => `${p.name}: ${p.type}${p.required ? '' : '?'}`)
+            .join(', '),
+          actualParameters: functionCall.parameters || [],
+        },
       };
-      
+
       // Add specific properties based on the type of violation
       if (countValidation.reason === 'missing_required_parameters') {
-        const requiredParams = signature.parameters.filter(p => p.required);
-        const missingParams = requiredParams.slice(functionCall.parameters ? functionCall.parameters.length : 0).map(p => p.name);
+        const requiredParams = signature.parameters.filter((p) => p.required);
+        const missingParams = requiredParams
+          .slice(functionCall.parameters ? functionCall.parameters.length : 0)
+          .map((p) => p.name);
         violation.missingParams = missingParams;
       } else if (countValidation.reason === 'too_many_parameters') {
-        const extraParams = functionCall.parameters ? functionCall.parameters.slice(signature.parameters.length) : [];
+        const extraParams = functionCall.parameters
+          ? functionCall.parameters.slice(signature.parameters.length)
+          : [];
         violation.extraParams = extraParams;
       }
-      
+
       violations.push(violation);
     }
-    
+
     // Parameter type validation if count validation passed
     if (countValidation.isValid && functionCall.parameters) {
       // Infer types for actual parameters
-      const actualParamsWithTypes = functionCall.parameters.map(param => ({
+      const actualParamsWithTypes = functionCall.parameters.map((param) => ({
         value: param,
-        type: inferParameterTypes(param)
+        type: inferParameterTypes(param),
       }));
-      
+
       // Validate parameter types
       const typeValidation = validateParameterTypes(signature, actualParamsWithTypes);
-      
+
       if (!typeValidation.isValid && typeValidation.violations) {
         for (const typeViolation of typeValidation.violations) {
           const violation = {
@@ -1771,27 +1824,29 @@ export async function quickValidateFunctionSignatures(source) {
             metadata: {
               functionName: functionCall.name,
               parameterIndex: typeViolation.index,
-              expectedSignature: signature.parameters.map(p => `${p.name}: ${p.type}${p.required ? '' : '?'}`).join(', '),
-              actualParameters: functionCall.parameters || []
-            }
+              expectedSignature: signature.parameters
+                .map((p) => `${p.name}: ${p.type}${p.required ? '' : '?'}`)
+                .join(', '),
+              actualParameters: functionCall.parameters || [],
+            },
           };
-          
+
           violations.push(violation);
         }
       }
     }
   }
-  
+
   const endTime = performance.now();
-  
+
   return {
     success: true,
     violations: violations,
-    metrics: { 
+    metrics: {
       validationTimeMs: endTime - startTime,
       functionsAnalyzed: functionsAnalyzed,
-      signatureChecksPerformed: functionsAnalyzed
-    }
+      signatureChecksPerformed: functionsAnalyzed,
+    },
   };
 }
 
@@ -1801,7 +1856,7 @@ export async function quickValidateFunctionSignatures(source) {
  */
 export async function quickValidateDrawingObjectCounts(source) {
   const startTime = performance.now();
-  
+
   if (!source || typeof source !== 'string') {
     return {
       success: true,
@@ -1810,26 +1865,26 @@ export async function quickValidateDrawingObjectCounts(source) {
       hasMaxLabelsCountError: false,
       hasMaxBoxesCountError: false,
       violations: [],
-      metrics: { validationTimeMs: performance.now() - startTime }
+      metrics: { validationTimeMs: performance.now() - startTime },
     };
   }
 
   // Run all individual validations in parallel
   const [linesResult, labelsResult, boxesResult] = await Promise.all([
     quickValidateMaxLinesCount(source),
-    quickValidateMaxLabelsCount(source), 
-    quickValidateMaxBoxesCount(source)
+    quickValidateMaxLabelsCount(source),
+    quickValidateMaxBoxesCount(source),
   ]);
 
   // Combine all violations
   const allViolations = [
     ...linesResult.violations,
     ...labelsResult.violations,
-    ...boxesResult.violations
+    ...boxesResult.violations,
   ];
 
   const endTime = performance.now();
-  
+
   return {
     success: true,
     hasDrawingObjectCountError: allViolations.length > 0,
@@ -1837,7 +1892,7 @@ export async function quickValidateDrawingObjectCounts(source) {
     hasMaxLabelsCountError: labelsResult.hasMaxLabelsCountError,
     hasMaxBoxesCountError: boxesResult.hasMaxBoxesCountError,
     violations: allViolations,
-    metrics: { validationTimeMs: endTime - startTime }
+    metrics: { validationTimeMs: endTime - startTime },
   };
 }
 
@@ -1853,58 +1908,94 @@ export async function validateInputTypes(source) {
 export function validateBuiltinNamespace(source) {
   // For the synchronous version, we need to implement it directly
   const startTime = performance.now();
-  
+
   if (!source || typeof source !== 'string') {
     return {
       success: true,
       hasNamespaceError: false,
       violations: [],
-      metrics: { 
+      metrics: {
         validationTimeMs: performance.now() - startTime,
-        linesAnalyzed: 0
-      }
+        linesAnalyzed: 0,
+      },
     };
   }
 
   const violations = [];
-  
+
   // Built-in namespaces that cannot be used as variable names
   const builtinNamespaces = [
-    'position', 'strategy', 'ta', 'math', 'array', 'color', 
-    'string', 'map', 'matrix', 'request', 'input', 'plot',
-    'plotshape', 'plotbar', 'plotcandle', 'bgcolor', 'fill',
-    'line', 'label', 'box', 'table', 'polyline', 'str', 'alert',
-    'barcolor', 'runtime', 'timeframe', 'ticker', 'hline', 'indicator',
-    'library', 'method', 'type', 'export', 'import', 'time',
-    'barstate', 'session', 'syminfo', 'location', 'shape', 
-    'size', 'scale', 'extend'
+    'position',
+    'strategy',
+    'ta',
+    'math',
+    'array',
+    'color',
+    'string',
+    'map',
+    'matrix',
+    'request',
+    'input',
+    'plot',
+    'plotshape',
+    'plotbar',
+    'plotcandle',
+    'bgcolor',
+    'fill',
+    'line',
+    'label',
+    'box',
+    'table',
+    'polyline',
+    'str',
+    'alert',
+    'barcolor',
+    'runtime',
+    'timeframe',
+    'ticker',
+    'hline',
+    'indicator',
+    'library',
+    'method',
+    'type',
+    'export',
+    'import',
+    'time',
+    'barstate',
+    'session',
+    'syminfo',
+    'location',
+    'shape',
+    'size',
+    'scale',
+    'extend',
   ];
-  
+
   const lines = source.split('\n');
-  
+
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const line = lines[lineIndex];
     const lineNumber = lineIndex + 1;
-    
+
     // Skip comment lines
     if (line.trim().startsWith('//')) {
       continue;
     }
-    
+
     // Check for namespace conflicts using variable assignment patterns
     for (const namespace of builtinNamespaces) {
       // Pattern to match variable assignment: namespace = value
       const assignmentPattern = new RegExp(`\\b${namespace}\\s*=\\s*[^=]`, 'g');
       let match;
-      
+
       while ((match = assignmentPattern.exec(line)) !== null) {
         const column = match.index + 1;
-        
+
         // Check if it's inside a string literal
         if (isInStringLiteral(line, match.index)) {
           continue;
         }
-        
+
         violations.push({
           rule: 'INVALID_OBJECT_NAME_BUILTIN',
           code: 'INVALID_OBJECT_NAME_BUILTIN',
@@ -1916,28 +2007,28 @@ export function validateBuiltinNamespace(source) {
           location: {
             line: lineNumber,
             column: column,
-            source: line.trim()
+            source: line.trim(),
           },
           metadata: {
             conflictingNamespace: namespace,
             variableAssignment: true,
-            suggestedFix: `Use a different variable name instead of '${namespace}', such as 'my${namespace.charAt(0).toUpperCase() + namespace.slice(1)}', '${namespace}State', or '${namespace}Value'`
-          }
+            suggestedFix: `Use a different variable name instead of '${namespace}', such as 'my${namespace.charAt(0).toUpperCase() + namespace.slice(1)}', '${namespace}State', or '${namespace}Value'`,
+          },
         });
-    }
+      }
     }
   }
-  
+
   const endTime = performance.now();
-  
+
   return {
     success: true,
     hasNamespaceError: violations.length > 0,
     violations: violations,
-    metrics: { 
+    metrics: {
       validationTimeMs: endTime - startTime,
-      linesAnalyzed: lines.length
-    }
+      linesAnalyzed: lines.length,
+    },
   };
 }
 
@@ -1989,11 +2080,11 @@ function extractFunctionCallsSync(source) {
 
   // Extract function calls from the AST
   const functionCalls = extractFunctionCallsFromAST(parseResult.ast);
-  
+
   // Convert to the format expected by tests
-  return functionCalls.map(call => ({
+  return functionCalls.map((call) => ({
     name: call.namespace ? `${call.namespace}.${call.name}` : call.name,
-    parameters: (call.parameters || []).map(p => {
+    parameters: (call.parameters || []).map((p) => {
       if (p.value && p.value.type === 'Literal') {
         // Preserve original format for string literals
         if (p.value.dataType === 'string') {
@@ -2011,7 +2102,7 @@ function extractFunctionCallsSync(source) {
       }
       return String(p.value || 'unknown');
     }),
-    position: call.location?.offset || 0
+    position: call.location?.offset || 0,
   }));
 }
 
@@ -2028,7 +2119,7 @@ function inferParameterTypeSync(paramValue) {
       const functionMatch = paramValue.match(/^([a-zA-Z_][a-zA-Z0-9_.]*)\s*\(/);
       if (functionMatch) {
         const functionName = functionMatch[1];
-        
+
         // Determine return type based on function name
         if (functionName.startsWith('ta.')) {
           return 'series float';
@@ -2042,29 +2133,31 @@ function inferParameterTypeSync(paramValue) {
         if (functionName === 'unknown.function') {
           return 'function_result';
         }
-        
+
         // Default function return type
         return 'series float';
       }
     }
-    
+
     // Check if it's a quoted string literal
-    if ((paramValue.startsWith('"') && paramValue.endsWith('"')) || 
-        (paramValue.startsWith("'") && paramValue.endsWith("'"))) {
+    if (
+      (paramValue.startsWith('"') && paramValue.endsWith('"')) ||
+      (paramValue.startsWith("'") && paramValue.endsWith("'"))
+    ) {
       return 'string';
     }
-    
+
     // Check if it's a Pine Script built-in variable
     const seriesVariables = ['close', 'open', 'high', 'low', 'volume', 'hl2', 'hlc3', 'ohlc4'];
     if (seriesVariables.includes(paramValue)) {
       return 'series float';
     }
-    
+
     // Check if it's a boolean literal
     if (paramValue === 'true' || paramValue === 'false') {
       return 'bool';
     }
-    
+
     // Check if it's a number
     if (/^-?\d+$/.test(paramValue)) {
       return 'int';
@@ -2072,19 +2165,19 @@ function inferParameterTypeSync(paramValue) {
     if (/^-?\d*\.\d+$/.test(paramValue)) {
       return 'float';
     }
-    
+
     // Default to identifier/variable
     return 'identifier';
   }
-  
+
   if (typeof paramValue === 'number') {
     return Number.isInteger(paramValue) ? 'int' : 'float';
   }
-  
+
   if (typeof paramValue === 'boolean') {
     return 'bool';
   }
-  
+
   // Handle function calls as objects
   if (typeof paramValue === 'object' && paramValue !== null) {
     if (paramValue.type === 'function_call' || paramValue.type === 'FunctionCall') {
@@ -2094,7 +2187,7 @@ function inferParameterTypeSync(paramValue) {
       return 'series float';
     }
   }
-  
+
   return 'unknown';
 }
 
@@ -2106,7 +2199,7 @@ export function getExpectedTypes(functionName) {
 function getExpectedTypesSync(functionName) {
   const types = getExpectedTypesForFunction(functionName);
   return {
-    params: types || []
+    params: types || [],
   };
 }
 
@@ -2121,7 +2214,7 @@ function compareTypesSync(expectedType, actualType) {
     isValid: result.isValid,
     reason: result.reason,
     expected: expectedType,
-    actual: actualType
+    actual: actualType,
   };
 }
 
@@ -2132,17 +2225,17 @@ export function getExpectedSignature(functionName) {
       name: 'ta.sma',
       parameters: [
         { name: 'source', type: 'series int/float', required: true },
-        { name: 'length', type: 'int', required: true }
-      ]
+        { name: 'length', type: 'int', required: true },
+      ],
     },
-    'alert': {
+    alert: {
       name: 'alert',
       parameters: [
         { name: 'message', type: 'string', required: true },
-        { name: 'freq', type: 'identifier', required: false }
-      ]
+        { name: 'freq', type: 'identifier', required: false },
+      ],
     },
-    'strategy': {
+    strategy: {
       name: 'strategy',
       parameters: [
         { name: 'title', type: 'string', required: true },
@@ -2170,42 +2263,42 @@ export function getExpectedSignature(functionName) {
         { name: 'explicit_plot_zorder', type: 'bool', required: false },
         { name: 'max_lines_count', type: 'int', required: false },
         { name: 'max_labels_count', type: 'int', required: false },
-        { name: 'max_boxes_count', type: 'int', required: false }
-      ]
+        { name: 'max_boxes_count', type: 'int', required: false },
+      ],
     },
     'ta.ema': {
       name: 'ta.ema',
       parameters: [
         { name: 'source', type: 'series int/float', required: true },
-        { name: 'length', type: 'int', required: true }
-      ]
+        { name: 'length', type: 'int', required: true },
+      ],
     },
     'math.max': {
       name: 'math.max',
       parameters: [
         { name: 'x1', type: 'int/float', required: true },
-        { name: 'x2', type: 'int/float', required: true }
-      ]
+        { name: 'x2', type: 'int/float', required: true },
+      ],
     },
     'str.contains': {
       name: 'str.contains',
       parameters: [
         { name: 'source', type: 'string', required: true },
-        { name: 'str', type: 'string', required: true }
-      ]
-    }
+        { name: 'str', type: 'string', required: true },
+      ],
+    },
   };
-  
+
   const signature = functionSignatures[functionName];
-  
+
   if (!signature) {
     // Return empty signature for unknown functions
     return {
       name: functionName,
-      parameters: []
+      parameters: [],
     };
   }
-  
+
   return signature;
 }
 
@@ -2213,14 +2306,14 @@ export function validateParameterCount(signature, actualParams) {
   if (!signature || !signature.parameters) {
     return {
       isValid: true,
-      reason: 'no_signature'
+      reason: 'no_signature',
     };
   }
-  
-  const requiredParams = signature.parameters.filter(p => p.required);
+
+  const requiredParams = signature.parameters.filter((p) => p.required);
   const totalParams = signature.parameters.length;
   const actualCount = actualParams ? actualParams.length : 0;
-  
+
   // Check if too few required parameters
   if (actualCount < requiredParams.length) {
     return {
@@ -2228,10 +2321,10 @@ export function validateParameterCount(signature, actualParams) {
       reason: 'missing_required_parameters',
       expected: requiredParams.length,
       actual: actualCount,
-      message: `Function ${signature.name} requires at least ${requiredParams.length} parameters but got ${actualCount}`
+      message: `Function ${signature.name} requires at least ${requiredParams.length} parameters but got ${actualCount}`,
     };
   }
-  
+
   // Check if too many parameters
   if (actualCount > totalParams) {
     return {
@@ -2239,15 +2332,15 @@ export function validateParameterCount(signature, actualParams) {
       reason: 'too_many_parameters',
       expected: totalParams,
       actual: actualCount,
-      message: `Function ${signature.name} accepts at most ${totalParams} parameters but got ${actualCount}`
+      message: `Function ${signature.name} accepts at most ${totalParams} parameters but got ${actualCount}`,
     };
   }
-  
+
   return {
     isValid: true,
     reason: 'valid_count',
     expected: totalParams,
-    actual: actualCount
+    actual: actualCount,
   };
 }
 
@@ -2263,23 +2356,23 @@ export function validateParameterTypes(signature, actualParams) {
   if (!signature || !signature.parameters || !actualParams) {
     return {
       isValid: true,
-      reason: 'no_signature_or_params'
+      reason: 'no_signature_or_params',
     };
   }
-  
+
   const violations = [];
-  
+
   for (let i = 0; i < Math.min(signature.parameters.length, actualParams.length); i++) {
     const expectedParam = signature.parameters[i];
     const actualParam = actualParams[i];
-    
+
     if (!actualParam || !actualParam.type) {
       continue;
     }
-    
+
     // Compare types using existing type comparison logic
     const typeComparison = compareParameterTypes(expectedParam.type, actualParam.type);
-    
+
     if (!typeComparison.isValid) {
       violations.push({
         parameter: expectedParam.name,
@@ -2288,15 +2381,15 @@ export function validateParameterTypes(signature, actualParams) {
         expectedType: expectedParam.type,
         actualType: actualParam.type,
         index: i,
-        message: `Parameter '${expectedParam.name}' expects type '${expectedParam.type}' but got '${actualParam.type}'`
+        message: `Parameter '${expectedParam.name}' expects type '${expectedParam.type}' but got '${actualParam.type}'`,
       });
     }
   }
-  
+
   return {
     isValid: violations.length === 0,
     violations: violations,
-    reason: violations.length === 0 ? 'types_valid' : 'type_mismatch'
+    reason: violations.length === 0 ? 'types_valid' : 'type_mismatch',
   };
 }
 
@@ -2308,7 +2401,7 @@ export function validateParameterTypes(signature, actualParams) {
 /**
  * Extract deprecated function calls from Pine Script source code
  * Identifies functions that need to be migrated to modern namespaced equivalents
- * 
+ *
  * @param {string} source - Pine Script source code
  * @returns {Array} Array of deprecated function call objects
  */
@@ -2318,15 +2411,15 @@ export function extractDeprecatedFunctionCalls(source) {
   }
 
   const deprecatedFunctions = {
-    'security': 'request.security',
-    'rsi': 'ta.rsi', 
-    'sma': 'ta.sma',
-    'ema': 'ta.ema',
-    'crossover': 'ta.crossover',
-    'crossunder': 'ta.crossunder',
-    'highest': 'ta.highest',
-    'lowest': 'ta.lowest',
-    'tostring': 'str.tostring'
+    security: 'request.security',
+    rsi: 'ta.rsi',
+    sma: 'ta.sma',
+    ema: 'ta.ema',
+    crossover: 'ta.crossover',
+    crossunder: 'ta.crossunder',
+    highest: 'ta.highest',
+    lowest: 'ta.lowest',
+    tostring: 'str.tostring',
   };
 
   const results = [];
@@ -2349,12 +2442,12 @@ export function extractDeprecatedFunctionCalls(source) {
 
       while ((match = pattern.exec(line)) !== null) {
         const column = match.index + 1;
-        
+
         // Check if it's inside a string literal
         if (isInStringLiteral(line, match.index)) {
           continue;
         }
-        
+
         // Check if it's already namespaced (look backward for namespace.)
         const beforeMatch = line.substring(0, match.index);
         if (beforeMatch.match(/\w+\.\s*$/)) {
@@ -2365,9 +2458,9 @@ export function extractDeprecatedFunctionCalls(source) {
           name: deprecatedName,
           line: lineNumber,
           column: column,
-          modernEquivalent: modernEquivalent
+          modernEquivalent: modernEquivalent,
         });
-    }
+      }
     }
   }
 
@@ -2377,7 +2470,7 @@ export function extractDeprecatedFunctionCalls(source) {
 /**
  * Analyze Pine Script version directive
  * Extracts and validates the @version directive
- * 
+ *
  * @param {string} source - Pine Script source code
  * @returns {Object} Version analysis result
  */
@@ -2387,7 +2480,7 @@ export function analyzeVersionDirective(source) {
       version: null,
       line: -1,
       isV6Compatible: true,
-      hasVersionDirective: false
+      hasVersionDirective: false,
     };
   }
 
@@ -2405,7 +2498,7 @@ export function analyzeVersionDirective(source) {
         version: version,
         line: lineNumber,
         isV6Compatible: version >= 6,
-        hasVersionDirective: true
+        hasVersionDirective: true,
       };
     }
   }
@@ -2415,14 +2508,14 @@ export function analyzeVersionDirective(source) {
     version: null,
     line: -1,
     isV6Compatible: true,
-    hasVersionDirective: false
+    hasVersionDirective: false,
   };
 }
 
 /**
  * Validate namespace requirements for function calls
  * Identifies functions that require specific namespaces in modern Pine Script
- * 
+ *
  * @param {string} source - Pine Script source code
  * @returns {Array} Array of namespace requirement violations
  */
@@ -2433,23 +2526,33 @@ export function validateNamespaceRequirements(source) {
 
   // Functions that require namespaces but are not handled as deprecated
   const namespaceRequirements = {
-    'abs': 'math',
-    'max': 'math',
-    'min': 'math',
-    'ceil': 'math',
-    'floor': 'math',
-    'round': 'math',
-    'sqrt': 'math',
-    'pow': 'math',
-    'log': 'math',
-    'exp': 'math',
-    'sin': 'math',
-    'cos': 'math',
-    'tan': 'math'
+    abs: 'math',
+    max: 'math',
+    min: 'math',
+    ceil: 'math',
+    floor: 'math',
+    round: 'math',
+    sqrt: 'math',
+    pow: 'math',
+    log: 'math',
+    exp: 'math',
+    sin: 'math',
+    cos: 'math',
+    tan: 'math',
   };
 
   // Functions that are handled as deprecated - skip these in namespace validation
-  const deprecatedFunctions = ['security', 'rsi', 'sma', 'ema', 'tostring', 'crossover', 'crossunder', 'highest', 'lowest'];
+  const deprecatedFunctions = [
+    'security',
+    'rsi',
+    'sma',
+    'ema',
+    'tostring',
+    'crossover',
+    'crossunder',
+    'highest',
+    'lowest',
+  ];
 
   const results = [];
   const lines = source.split('\n');
@@ -2476,7 +2579,7 @@ export function validateNamespaceRequirements(source) {
 
       while ((match = pattern.exec(line)) !== null) {
         const column = match.index + 1;
-        
+
         // Check if it's inside a string literal
         if (isInStringLiteral(line, match.index)) {
           continue;
@@ -2493,9 +2596,9 @@ export function validateNamespaceRequirements(source) {
           requiredNamespace: requiredNamespace,
           line: lineNumber,
           column: column,
-          modernForm: `${requiredNamespace}.${functionName}`
+          modernForm: `${requiredNamespace}.${functionName}`,
         });
-    }
+      }
     }
   }
 
@@ -2505,7 +2608,7 @@ export function validateNamespaceRequirements(source) {
 /**
  * Comprehensive syntax compatibility validation
  * Main validation function that orchestrates all syntax compatibility checks
- * 
+ *
  * @param {string} source - Pine Script source code
  * @returns {Promise<Object>} Complete validation result
  */
@@ -2520,15 +2623,15 @@ export async function validateSyntaxCompatibility(source) {
       details: {
         versionAnalysis: {},
         deprecatedCalls: [],
-        namespaceViolations: []
+        namespaceViolations: [],
       },
       metrics: {
         executionTime: performance.now() - startTime,
         deprecatedFunctionsFound: 0,
         namespaceViolationsFound: 0,
         versionCompatible: true,
-        totalViolations: 0
-      }
+        totalViolations: 0,
+      },
     };
   }
 
@@ -2555,8 +2658,8 @@ export async function validateSyntaxCompatibility(source) {
       metadata: {
         upgradeRecommended: true,
         currentVersion: versionAnalysis.version,
-        recommendedVersion: 6
-      }
+        recommendedVersion: 6,
+      },
     });
   }
 
@@ -2572,15 +2675,15 @@ export async function validateSyntaxCompatibility(source) {
       metadata: {
         deprecatedFunction: deprecatedCall.name,
         modernReplacement: deprecatedCall.modernEquivalent,
-        migrationRequired: true
-      }
+        migrationRequired: true,
+      },
     });
   }
 
   // Generate violations for namespace requirements
   for (const namespaceViolation of namespaceViolations) {
     violations.push({
-      rule: 'SYNTAX_COMPATIBILITY_VALIDATION', 
+      rule: 'SYNTAX_COMPATIBILITY_VALIDATION',
       severity: 'error',
       category: 'namespace_requirement',
       message: `Function ${namespaceViolation.functionName}() requires ${namespaceViolation.requiredNamespace} namespace. Use ${namespaceViolation.modernForm}() instead.`,
@@ -2590,8 +2693,8 @@ export async function validateSyntaxCompatibility(source) {
         functionName: namespaceViolation.functionName,
         requiredNamespace: namespaceViolation.requiredNamespace,
         modernForm: namespaceViolation.modernForm,
-        namespaceRequired: true
-      }
+        namespaceRequired: true,
+      },
     });
   }
 
@@ -2604,22 +2707,22 @@ export async function validateSyntaxCompatibility(source) {
     details: {
       versionAnalysis: versionAnalysis,
       deprecatedCalls: deprecatedCalls,
-      namespaceViolations: namespaceViolations
+      namespaceViolations: namespaceViolations,
     },
     metrics: {
       executionTime: endTime - startTime,
       deprecatedFunctionsFound: deprecatedCalls.length,
       namespaceViolationsFound: namespaceViolations.length,
       versionCompatible: versionAnalysis.isV6Compatible,
-      totalViolations: violations.length
-    }
+      totalViolations: violations.length,
+    },
   };
 }
 
 /**
- * Quick syntax compatibility validation 
+ * Quick syntax compatibility validation
  * Optimized version for high-performance validation
- * 
+ *
  * @param {string} source - Pine Script source code
  * @returns {Promise<Object>} Validation result (same format as full validation)
  */
@@ -2637,10 +2740,10 @@ export async function quickValidateSyntaxCompatibility(source) {
 function isInStringLiteral(line, position) {
   let inString = false;
   let stringChar = null;
-  
+
   for (let i = 0; i < position && i < line.length; i++) {
     const char = line[i];
-    
+
     if (!inString && (char === '"' || char === "'" || char === '`')) {
       inString = true;
       stringChar = char;
@@ -2659,6 +2762,6 @@ function isInStringLiteral(line, position) {
       }
     }
   }
-  
+
   return inString;
 }

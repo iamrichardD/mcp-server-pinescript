@@ -32,7 +32,7 @@ echo "✅ TypeScript compilation successful"
 
 # Step 2: Test suite execution
 echo "🧪 Step 2: Running test suite..."
-if ! npm test; then
+if ! npm run test:run; then
     echo "❌ Tests failed!"
     echo "   All tests must pass before committing."
     exit 2

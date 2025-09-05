@@ -1,0 +1,21 @@
+//@version=6
+strategy("UDT History Test", shorttitle="UDT_TEST", overlay=true)
+
+// User-defined type for testing
+type TestState
+    float value
+    int count
+    bool active
+
+// Initialize state
+var TestState state = TestState.new(0.0, 0, false)
+
+// PROBLEMATIC CODE - This should cause the compilation error
+// Using object.field[1] instead of (object[1]).field
+badValue = state.value[1]  // ERROR: Cannot use history-referencing on UDT fields
+badCount = state.count[1]  // ERROR: Cannot use history-referencing on UDT fields
+
+// CORRECT CODE - This should work
+// correctValue = (state[1]).value  // CORRECT: Reference object history first
+
+plot(badValue)

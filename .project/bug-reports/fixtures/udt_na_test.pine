@@ -1,0 +1,21 @@
+//@version=6
+strategy("UDT NA Test", "UDT_TEST", overlay = false)
+
+// Test case for UDT na object access error
+type CircuitBreakerState
+    bool volatilityCircuitActive = false
+    bool correlationCircuitActive = false
+    string circuitStatus = "NORMAL"
+
+var CircuitBreakerState circuitState = CircuitBreakerState.new()
+
+// This should cause the same error - accessing field before proper initialization
+// Error: Cannot access the 'CircuitBreakerState.volatilityCircuitActive' field of an undefined object. The object is 'na'.
+if circuitState.volatilityCircuitActive  // This line should trigger the error
+    plot(1, title = "Active", color = color.red)
+else
+    plot(0, title = "Inactive", color = color.green)
+
+// Note: The error occurs because even though we have CircuitBreakerState.new(), 
+// Pine Script might not properly initialize the UDT in certain conditions
+// without explicit first-bar initialization
