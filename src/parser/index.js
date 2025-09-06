@@ -47,7 +47,7 @@ import {
   loadValidationRules as _loadValidationRules,
   quickValidateBuiltinNamespace as _quickValidateBuiltinNamespace,
   quickValidateDrawingObjectCounts as _quickValidateDrawingObjectCounts,
-  quickValidateFunctionSignatures as _quickValidateFunctionSignatures,
+  quickValidateFunctionSignatures as _quickValidateFunctionSignaturesOriginal,
   quickValidateInputTypes as _quickValidateInputTypes,
   quickValidateLineContinuation as _quickValidateLineContinuation,
   quickValidateMaxBarsBack as _quickValidateMaxBarsBack,
@@ -55,6 +55,7 @@ import {
   quickValidateMaxLabelsCount as _quickValidateMaxLabelsCount,
   quickValidateMaxLinesCount as _quickValidateMaxLinesCount,
   quickValidatePrecision as _quickValidatePrecision,
+  quickValidateRuntimeNAObjectAccess as _quickValidateRuntimeNAObjectAccess,
   quickValidateSeriesTypeWhereSimpleExpected as _quickValidateSeriesTypeWhereSimpleExpected,
   quickValidateShortTitle as _quickValidateShortTitle,
   validateBuiltinNamespace as _validateBuiltinNamespace,
@@ -75,6 +76,9 @@ import {
   validateShortTitle as _validateShortTitle,
 } from "./validator.js";
 
+// Import enhanced function signature validation with bug fixes
+import { quickValidateFunctionSignaturesEnhanced } from "./function-signature-enhanced.js";
+
 export {
   _validateParameters as validateParameters,
   _validatePineScriptParameters as validatePineScriptParameters,
@@ -91,6 +95,7 @@ export {
   _quickValidateMaxLabelsCount as quickValidateMaxLabelsCount,
   _validateMaxBoxesCount as validateMaxBoxesCount,
   _quickValidateMaxBoxesCount as quickValidateMaxBoxesCount,
+  _quickValidateRuntimeNAObjectAccess as quickValidateRuntimeNAObjectAccess,
   _validateDrawingObjectCounts as validateDrawingObjectCounts,
   _quickValidateDrawingObjectCounts as quickValidateDrawingObjectCounts,
   _validateInputTypes as validateInputTypes,
@@ -100,7 +105,7 @@ export {
   _getExpectedTypes as getExpectedTypes,
   _compareTypes as compareTypes,
   _validateFunctionSignatures as validateFunctionSignatures,
-  _quickValidateFunctionSignatures as quickValidateFunctionSignatures,
+  quickValidateFunctionSignaturesEnhanced as quickValidateFunctionSignatures,
   _getExpectedSignature as getExpectedSignature,
   _validateParameterCount as validateParameterCount,
   _validateSeriesTypeWhereSimpleExpected as validateSeriesTypeWhereSimpleExpected,

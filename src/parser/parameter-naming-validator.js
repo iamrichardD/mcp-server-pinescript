@@ -561,19 +561,25 @@ export class ParameterNamingValidator {
    * @returns {Object|null} Violation object or null
    */
   checkParameterNamingConvention(functionName, paramName, line, column) {
-    // Skip validation for known correct parameters
+    // Skip validation for known correct parameters (FIXES BUG 2: Built-in parameter false positives)
     if (this.isKnownValidParameter(paramName)) {
       return null;
     }
 
-    // Check for parameter naming convention violations
+    // Context-aware validation: Skip built-in function parameters
+    // This prevents false positives for required snake_case built-in parameters like text_color
+    if (this.isBuiltInFunctionParameter(functionName, paramName)) {
+      return null;
+    }
+
+    // Check for parameter naming convention violations (user-defined variables only)
     const namingIssue = this.detectNamingConventionViolation(paramName);
     if (namingIssue) {
       return {
         errorCode: "INVALID_PARAMETER_NAMING_CONVENTION",
-        severity: "error",
+        severity: "suggestion", // Changed from "error" to "suggestion" for user variables
         category: "parameter_validation",
-        message: `Parameter "${paramName}" in "${functionName}" uses ${namingIssue.detected} naming. Pine Script function parameters should use ${namingIssue.expected}.`,
+        message: `User variable "${paramName}" uses ${namingIssue.detected} naming. Consider using ${namingIssue.expected} for consistency.`,
         suggestedFix: `Consider using "${namingIssue.suggestion}" instead of "${paramName}"`,
         line,
         column,
@@ -601,6 +607,134 @@ export class ParameterNamingValidator {
       this.parameterPatterns.snakeCase.has(paramName) ||
       this.parameterPatterns.hiddenParams.has(paramName)
     );
+  }
+
+  /**
+   * Context-aware check: Determine if parameter belongs to a built-in function
+   * CRITICAL FIX for BUG 2: Prevents false positives on built-in parameters using required snake_case
+   * @param {string} functionName - Full function name (e.g., "table.cell", "strategy.entry")
+   * @param {string} paramName - Parameter name to check
+   * @returns {boolean} True if this is a built-in function parameter that should skip validation
+   */
+  isBuiltInFunctionParameter(functionName, paramName) {
+    // Built-in functions that require snake_case parameters (avoid false positives)
+    const builtInFunctionParameters = {
+      'table.cell': new Set([
+        'table_id', 'column', 'row', 'text', 'text_color', 'text_size', 
+        'text_halign', 'text_valign', 'text_wrap', 'text_font_family', 
+        'text_formatting', 'bgcolor', 'width', 'height', 'tooltip'
+      ]),
+      'table.new': new Set([
+        'position', 'columns', 'rows', 'bgcolor', 'border_color', 
+        'border_width', 'border_style', 'frame_color', 'frame_width'
+      ]),
+      'box.new': new Set([
+        'left', 'top', 'right', 'bottom', 'border_color', 'border_width',
+        'border_style', 'extend', 'xloc', 'bgcolor', 'text', 'text_size',
+        'text_color', 'text_halign', 'text_valign', 'text_wrap', 'text_font_family'
+      ]),
+      'label.new': new Set([
+        'x', 'y', 'text', 'xloc', 'yloc', 'color', 'style', 'textcolor',
+        'size', 'text_align', 'text_font_family', 'tooltip'
+      ]),
+      'line.new': new Set([
+        'x1', 'y1', 'x2', 'y2', 'xloc', 'extend', 'color', 'style', 'width'
+      ]),
+      'strategy.entry': new Set([
+        'id', 'direction', 'qty', 'limit', 'stop', 'oca_name', 'oca_type',
+        'comment', 'alert_message', 'disable_alert'
+      ]),
+      'strategy.exit': new Set([
+        'id', 'from_entry', 'qty', 'qty_percent', 'profit', 'loss', 'trail_price',
+        'trail_points', 'trail_offset', 'oca_name', 'comment', 'alert_message',
+        'disable_alert'
+      ]),
+      'strategy.close': new Set([
+        'id', 'comment', 'qty', 'qty_percent', 'alert_message', 'disable_alert'
+      ]),
+      'strategy.cancel': new Set([
+        'id', 'disable_alert'
+      ]),
+      'indicator': new Set([
+        'title', 'shorttitle', 'overlay', 'format', 'precision', 'scale',
+        'max_bars_back', 'max_lines_count', 'max_labels_count', 'max_boxes_count',
+        'timeframe', 'timeframe_gaps', 'explicit_plot_zorder'
+      ]),
+      'strategy': new Set([
+        'title', 'shorttitle', 'overlay', 'format', 'precision', 'scale',
+        'pyramiding', 'calc_on_order_fills', 'calc_on_every_tick',
+        'max_bars_back', 'backtest_fill_limits_assumption', 'default_qty_type',
+        'default_qty_value', 'initial_capital', 'currency', 'slippage',
+        'commission_type', 'commission_value', 'process_orders_on_close',
+        'close_entries_rule', 'risk_free_rate', 'max_lines_count',
+        'max_labels_count', 'max_boxes_count'
+      ]),
+      'input': new Set([
+        'defval', 'title', 'tooltip', 'inline', 'group', 'confirm',
+        'display', 'minval', 'maxval', 'step', 'options'
+      ]),
+      'input.int': new Set([
+        'defval', 'title', 'tooltip', 'inline', 'group', 'confirm',
+        'display', 'minval', 'maxval', 'step'
+      ]),
+      'input.float': new Set([
+        'defval', 'title', 'tooltip', 'inline', 'group', 'confirm',
+        'display', 'minval', 'maxval', 'step'
+      ]),
+      'input.bool': new Set([
+        'defval', 'title', 'tooltip', 'inline', 'group', 'confirm', 'display'
+      ]),
+      'input.string': new Set([
+        'defval', 'title', 'tooltip', 'inline', 'group', 'confirm',
+        'display', 'options'
+      ]),
+      'input.color': new Set([
+        'defval', 'title', 'tooltip', 'inline', 'group', 'confirm', 'display'
+      ]),
+      'input.source': new Set([
+        'defval', 'title', 'tooltip', 'inline', 'group', 'confirm', 'display'
+      ]),
+      'input.timeframe': new Set([
+        'defval', 'title', 'tooltip', 'inline', 'group', 'confirm', 'display'
+      ]),
+      'input.session': new Set([
+        'defval', 'title', 'tooltip', 'inline', 'group', 'confirm', 'display'
+      ])
+    };
+
+    // Check if this function and parameter combination is a known built-in
+    const functionParams = builtInFunctionParameters[functionName];
+    if (functionParams && functionParams.has(paramName)) {
+      return true;
+    }
+
+    // Additional check for namespaced functions (e.g., ta.sma, math.max)
+    const namespaceParts = functionName.split('.');
+    if (namespaceParts.length === 2) {
+      const [namespace, funcName] = namespaceParts;
+      
+      // Check common namespaced functions
+      if (namespace === 'ta' || namespace === 'math' || namespace === 'array' || 
+          namespace === 'matrix' || namespace === 'map' || namespace === 'str') {
+        // Most technical analysis and math functions use standard parameter names
+        const commonTAParams = new Set([
+          'source', 'length', 'offset', 'mult', 'basis', 'dev', 'stdev',
+          'fastlength', 'slowlength', 'signallength', 'smooth', 'smoothK', 'smoothD'
+        ]);
+        
+        if (commonTAParams.has(paramName)) {
+          return true;
+        }
+      }
+    }
+
+    // For any parameter that's already in our known snake_case set,
+    // it's likely a built-in parameter, so skip validation
+    if (this.parameterPatterns.snakeCase.has(paramName)) {
+      return true;
+    }
+
+    return false;
   }
 
   /**

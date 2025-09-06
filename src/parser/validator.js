@@ -14,6 +14,7 @@
  */
 
 import { quickValidateParameterNaming } from "./parameter-naming-validator.js";
+import { quickValidateNAObjectAccess } from "./runtime-na-object-validator.js";
 import { extractFunctionParameters, parseScript } from "./parser.js";
 
 /**
@@ -101,7 +102,12 @@ export async function validatePineScriptParameters(source, rules = null) {
     validationPromises.push(validateShortTitle(source));
   }
 
-  // Parameter naming convention validations
+  // Runtime NA object access validation (CRITICAL BUG 1 FIX)
+  // This must run ALWAYS to detect runtime-breaking errors (not dependent on rules)
+  // Addresses complete failure to detect na object access violations
+  validationPromises.push(quickValidateRuntimeNAObjectAccess(source));
+
+  // Parameter naming convention validations (INCLUDES BUG 2 FIX)
   if (
     hasValidationRule("DEPRECATED_PARAMETER_NAME") ||
     hasValidationRule("INVALID_PARAMETER_NAMING_CONVENTION")
@@ -837,6 +843,57 @@ export async function quickValidateMaxBoxesCount(source) {
     violations: violations,
     metrics: { validationTimeMs: endTime - startTime }
   };
+}
+
+/**
+ * CRITICAL BUG 1 FIX: Runtime NA Object Access Validation
+ * Comprehensive wrapper that delegates to the specialized RuntimeNAObjectValidator
+ * 
+ * This addresses the complete failure to detect runtime-breaking NA object access patterns:
+ * - Direct access: var UDT obj = na; value = obj.field  
+ * - Historical access: value = (obj[1]).field
+ * - Uninitialized access: UDT obj; value = obj.field
+ * 
+ * SUCCESS CRITERIA: Must detect 3+ runtime errors as "error" severity
+ */
+export async function quickValidateRuntimeNAObjectAccess(source) {
+  try {
+    const result = await quickValidateNAObjectAccess(source);
+    
+    // Ensure violations are properly formatted for MCP integration
+    const formattedViolations = result.violations.map(violation => ({
+      line: violation.line,
+      column: violation.column || 1,
+      rule: violation.rule,
+      severity: violation.severity, // Must be 'error' for runtime violations
+      message: violation.message,
+      category: violation.category || 'runtime_error',
+      suggested_fix: violation.suggested_fix,
+      metadata: violation.metadata
+    }));
+
+    return {
+      success: result.isValid,
+      violations: formattedViolations,
+      hasRuntimeError: formattedViolations.length > 0,
+      metrics: result.metrics
+    };
+  } catch (error) {
+    // Graceful fallback if validation fails
+    return {
+      success: false,
+      violations: [{
+        line: 1,
+        column: 1,
+        rule: 'NA_OBJECT_VALIDATION_ERROR',
+        severity: 'error',
+        message: `Runtime NA object validation failed: ${error.message}`,
+        category: 'validation_error'
+      }],
+      hasRuntimeError: true,
+      metrics: { validationTimeMs: 0, udtTypesFound: 0, objectsTracked: 0, violationsFound: 1 }
+    };
+  }
 }
 
 /**
