@@ -69,6 +69,18 @@ This production-ready MCP server follows a modular TypeScript architecture optim
 - **CI validation**: `npm run ci:validate`
 - **CI build**: `npm run ci:build`
 
+### Development Workflow for New Code
+
+**MANDATORY STEPS for all new development:**
+
+1. **Create TypeScript files**: Use `.ts` extension for all new code
+2. **Write implementation**: Follow strict TypeScript patterns, avoid `any` type
+3. **Check compilation**: `npm run build` must pass without errors
+4. **Lint code**: `npm run lint:fix` to auto-resolve formatting issues  
+5. **Run tests**: `npm run test` to ensure functionality works
+6. **Quality gate**: `npm run quality:check` before commits
+7. **Commit**: Git hooks will enforce all requirements automatically
+
 ### Code Quality & Formatting
 - **Format check**: `npm run format` (Biome formatter)
 - **Format and fix**: `npm run format:fix`
@@ -103,20 +115,43 @@ This production-ready MCP server follows a modular TypeScript architecture optim
 
 ## Code Style
 
-### TypeScript Configuration Standards
+### TypeScript-First Development Standards
+
+**ALL NEW CODE MUST BE WRITTEN IN TYPESCRIPT** with the following requirements:
+
+- **TypeScript Extension**: All new files must use `.ts` extension (never `.js`)
 - **Strict TypeScript**: exactOptionalPropertyTypes, noUncheckedIndexedAccess enabled
 - **Zero compilation errors**: `npm run build` must pass before commits
-- **Discriminated unions**: Compile-time safety for complex type patterns
-- **Branded types**: Prevention of primitive obsession in parameter validation
-- **Result patterns**: Systematic error handling with `Result<T, E>` types
+- **No `any` type**: Biome will flag `noExplicitAny` as warning - use proper types instead
+- **Type-safe patterns**: Use discriminated unions, branded types, Result<T,E> patterns
 - **Interface design**: Clear separation of concerns with readonly constraints
-- **No explicit any**: 100% elimination of `noExplicitAny` violations
+- **Pre-commit validation**: TypeScript compilation is enforced by git hooks
+
+### Biome Linting Requirements
+
+**ALL CODE MUST PASS BIOME LINTING** before commits:
+
+- **Mandatory check**: `npm run lint` must pass with zero warnings/errors
+- **Auto-fix available**: `npm run lint:fix` resolves most issues automatically  
+- **Key rules enforced**:
+  - `noExplicitAny`: Prevents `any` type usage (warning level)
+  - `noBannedTypes`: Blocks problematic type patterns (error level)
+  - Code formatting, import organization, complexity limits
+- **Integration**: Biome runs automatically in git pre-commit hooks
+- **Override**: Use `--no-verify` only for emergencies
 
 ### Documentation Language Guidelines
 - **Avoid marketing terms**: Never use "Enterprise", "Enterprise-grade", "World-class", or similar promotional language
 - **Technical precision**: Use specific metrics (4,277x faster) over vague qualifiers ("blazingly fast")
 - **Clear terminology**: Professional-grade → production-ready, Industry-standard → specification-compliant
 - **Focus on facts**: Performance numbers, test coverage, response times, memory usage
+
+### Date and Time Standards
+- **ALWAYS use bash `date` command**: Never hardcode dates in documentation or code
+- **Get current date**: Use `date` command before writing any timestamps
+- **Consistent format**: Use the exact output from bash `date` command
+- **Example workflow**: Run `date` first, then use the actual output in documents
+- **No assumptions**: Never assume or calculate dates manually
 
 ### PineScript Validation Standards
 - **Parameter validation**: SHORT_TITLE_TOO_LONG, INVALID_PRECISION detection
