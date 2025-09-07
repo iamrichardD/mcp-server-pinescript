@@ -32,7 +32,7 @@ export {
   ValidationConstraints,
   ArgumentConstraints,
   FunctionValidationRules,
-  ValidationRules
+  ValidationRules,
 } from './types.js';
 
 // Re-export all functions from the main index file

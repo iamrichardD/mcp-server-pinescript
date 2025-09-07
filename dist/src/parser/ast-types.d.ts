@@ -102,45 +102,24 @@
  * @property {number} metrics.nodeCount - Total number of AST nodes
  * @property {number} metrics.maxDepth - Maximum AST depth
  */
-// Type validation helpers for runtime type checking
-// These will become proper TypeScript type guards
 /**
  * Type guard for AST nodes
  * @param {any} node - Object to check
  * @returns {node is BaseASTNode} - Type predicate
  */
-export function isASTNode(node) {
-    return Boolean(node &&
-        typeof node === "object" &&
-        typeof node.type === "string" &&
-        Object.values(AST_NODE_TYPES).includes(node.type) &&
-        node.location &&
-        typeof node.location.line === "number" &&
-        typeof node.location.column === "number");
-}
+export function isASTNode(node: any): node is BaseASTNode;
 /**
  * Type guard for function call nodes
  * @param {any} node - Object to check
  * @returns {node is FunctionCallNode} - Type predicate
  */
-export function isFunctionCallNode(node) {
-    return Boolean(isASTNode(node) &&
-        node.type === "FunctionCall" &&
-        typeof node.name === "string" &&
-        Array.isArray(node.parameters));
-}
+export function isFunctionCallNode(node: any): node is FunctionCallNode;
 /**
  * Type guard for parameter nodes
  * @param {any} node - Object to check
  * @returns {node is ParameterNode} - Type predicate
  */
-export function isParameterNode(node) {
-    return Boolean(isASTNode(node) &&
-        node.type === AST_NODE_TYPES.PARAMETER &&
-        node.value !== undefined &&
-        typeof node.position === "number" &&
-        typeof node.isNamed === "boolean");
-}
+export function isParameterNode(node: any): node is ParameterNode;
 /**
  * Factory functions for creating AST nodes with proper typing
  */
@@ -152,16 +131,7 @@ export function isParameterNode(node) {
  * @param {string} [namespace] - Namespace if applicable
  * @returns {FunctionCallNode} - Function call node
  */
-export function createFunctionCallNode(name, parameters, location, namespace) {
-    return {
-        type: "FunctionCall",
-        name,
-        parameters: parameters || [],
-        location,
-        namespace,
-        isBuiltIn: isBuiltInFunction(name, namespace),
-    };
-}
+export function createFunctionCallNode(name: string, parameters: ParameterNode[], location: SourceLocation, namespace?: string): FunctionCallNode;
 /**
  * Create a parameter node
  * @param {LiteralNode|IdentifierNode|FunctionCallNode} value - Parameter value
@@ -170,16 +140,7 @@ export function createFunctionCallNode(name, parameters, location, namespace) {
  * @param {number} position - Parameter position
  * @returns {ParameterNode} - Parameter node
  */
-export function createParameterNode(value, location, name = null, position = 0) {
-    return {
-        type: AST_NODE_TYPES.PARAMETER,
-        value,
-        location,
-        name,
-        position,
-        isNamed: Boolean(name),
-    };
-}
+export function createParameterNode(value: LiteralNode | IdentifierNode | FunctionCallNode, location: SourceLocation, name?: string, position?: number): ParameterNode;
 /**
  * Create a literal node
  * @param {string|number|boolean} value - Literal value
@@ -187,28 +148,7 @@ export function createParameterNode(value, location, name = null, position = 0) 
  * @param {string} raw - Raw source text
  * @returns {LiteralNode} - Literal node
  */
-export function createLiteralNode(value, location, raw) {
-    let dataType;
-    if (typeof value === "string") {
-        dataType = "string";
-    }
-    else if (typeof value === "number") {
-        dataType = "number";
-    }
-    else if (typeof value === "boolean") {
-        dataType = "boolean";
-    }
-    else {
-        dataType = "unknown";
-    }
-    return {
-        type: "Literal",
-        value,
-        location,
-        raw,
-        dataType,
-    };
-}
+export function createLiteralNode(value: string | number | boolean, location: SourceLocation, raw: string): LiteralNode;
 /**
  * Create source location object
  * @param {number} line - Line number (1-based)
@@ -217,74 +157,236 @@ export function createLiteralNode(value, location, raw) {
  * @param {number} length - Token length
  * @returns {SourceLocation} - Source location
  */
-export function createSourceLocation(line, column, offset, length) {
-    return { line, column, offset, length };
+export function createSourceLocation(line: number, column: number, offset: number, length: number): SourceLocation;
+export namespace AST_NODE_TYPES {
+    let PROGRAM: string;
+    let FUNCTION_CALL: string;
+    let PARAMETER: string;
+    let LITERAL: string;
+    let IDENTIFIER: string;
+    let DECLARATION: string;
+}
+export namespace DATA_TYPES {
+    let STRING: string;
+    let NUMBER: string;
+    let BOOLEAN: string;
+    let COLOR: string;
+    let UNKNOWN: string;
 }
 /**
- * Check if a function is a built-in Pine Script function
- * @param {string} name - Function name
- * @param {string} [namespace] - Namespace
- * @returns {boolean} - Whether function is built-in
+ * Base AST Node interface
  */
-function isBuiltInFunction(name, namespace) {
-    // Common built-in functions - this would be populated from language-reference.json
-    const builtIns = new Set([
-        "indicator",
-        "strategy",
-        "library",
-        "plot",
-        "plotshape",
-        "plotchar",
-        "plotbar",
-        "plotcandle",
-        "hline",
-        "fill",
-        "bgcolor",
-        "var",
-        "varip",
-        "if",
-        "for",
-        "while",
-        "switch",
-    ]);
-    const namespacedBuiltIns = new Set([
-        "ta.sma",
-        "ta.ema",
-        "ta.rsi",
-        "ta.macd",
-        "ta.stoch",
-        "math.abs",
-        "math.max",
-        "math.min",
-        "math.round",
-        "str.tostring",
-        "str.tonumber",
-        "str.length",
-        "array.new",
-        "array.push",
-        "array.get",
-        "matrix.new",
-        "matrix.set",
-        "matrix.get",
-    ]);
-    if (namespace) {
-        return namespacedBuiltIns.has(`${namespace}.${name}`);
-    }
-    return builtIns.has(name);
-}
-// Export type information for runtime introspection
-export const AST_NODE_TYPES = {
-    PROGRAM: "Program",
-    FUNCTION_CALL: "FunctionCall",
-    PARAMETER: "Parameter",
-    LITERAL: "Literal",
-    IDENTIFIER: "Identifier",
-    DECLARATION: "Declaration",
+export type BaseASTNode = {
+    /**
+     * - Node type
+     */
+    type: "Program" | "FunctionCall" | "Parameter" | "Literal" | "Identifier" | "Declaration";
+    /**
+     * - Source code location
+     */
+    location: SourceLocation;
+    /**
+     * - Child nodes (if applicable)
+     */
+    children?: ASTNode[];
 };
-export const DATA_TYPES = {
-    STRING: "string",
-    NUMBER: "number",
-    BOOLEAN: "boolean",
-    COLOR: "color",
-    UNKNOWN: "unknown",
+/**
+ * Source location for error reporting and debugging
+ */
+export type SourceLocation = {
+    /**
+     * - Line number (1-based)
+     */
+    line: number;
+    /**
+     * - Column number (0-based)
+     */
+    column: number;
+    /**
+     * - Character offset from start of file
+     */
+    offset: number;
+    /**
+     * - Length of the token
+     */
+    length: number;
+};
+/**
+ * Program root node - represents the entire Pine Script file
+ */
+export type ProgramNode = {
+    type: "Program";
+    location: SourceLocation;
+    /**
+     * - Top-level declarations
+     */
+    declarations: DeclarationNode[];
+    /**
+     * - Function calls and expressions
+     */
+    statements: FunctionCallNode[];
+    /**
+     * - File-level metadata
+     */
+    metadata: {
+        version: string;
+        scriptType?: "indicator" | "strategy" | "library" | undefined;
+    };
+};
+/**
+ * Function call node - critical for parameter extraction
+ */
+export type FunctionCallNode = {
+    type: "FunctionCall";
+    location: SourceLocation;
+    /**
+     * - Function name (e.g., 'indicator', 'strategy', 'ta.sma')
+     */
+    name: string;
+    /**
+     * - Function parameters
+     */
+    parameters: ParameterNode[];
+    /**
+     * - Namespace if applicable (e.g., 'ta' in 'ta.sma')
+     */
+    namespace?: string;
+    /**
+     * - Whether this is a built-in Pine Script function
+     */
+    isBuiltIn: boolean;
+};
+/**
+ * Parameter node - supports both positional and named parameters
+ */
+export type ParameterNode = {
+    type: "Parameter";
+    location: SourceLocation;
+    /**
+     * - Parameter name (for named parameters)
+     */
+    name?: string;
+    /**
+     * - Parameter value
+     */
+    value: LiteralNode | IdentifierNode | FunctionCallNode;
+    /**
+     * - Position in parameter list (0-based)
+     */
+    position: number;
+    /**
+     * - Whether this is a named parameter
+     */
+    isNamed: boolean;
+};
+/**
+ * Literal value node - strings, numbers, booleans
+ */
+export type LiteralNode = {
+    type: "Literal";
+    location: SourceLocation;
+    /**
+     * - The literal value
+     */
+    value: string | number | boolean;
+    /**
+     * - Pine Script data type
+     */
+    dataType: "string" | "number" | "boolean" | "color";
+    /**
+     * - Raw source text
+     */
+    raw: string;
+};
+/**
+ * Identifier node - variable names and references
+ */
+export type IdentifierNode = {
+    type: "Identifier";
+    location: SourceLocation;
+    /**
+     * - Identifier name
+     */
+    name: string;
+    /**
+     * - Namespace if applicable
+     */
+    namespace?: string;
+    /**
+     * - Identifier kind
+     */
+    kind: "builtin" | "variable" | "function";
+};
+/**
+ * Declaration node - variable declarations and assignments
+ */
+export type DeclarationNode = {
+    type: "Declaration";
+    location: SourceLocation;
+    /**
+     * - Variable name
+     */
+    name: string;
+    /**
+     * - Initial value
+     */
+    value?: LiteralNode | IdentifierNode | FunctionCallNode;
+    /**
+     * - Declaration type
+     */
+    declarationType: "var" | "const";
+    /**
+     * - Inferred or explicit data type
+     */
+    dataType?: string;
+};
+/**
+ * Parse error for graceful error handling
+ */
+export type ParseError = {
+    /**
+     * - Error code (e.g., 'SYNTAX_ERROR', 'UNEXPECTED_TOKEN')
+     */
+    code: string;
+    /**
+     * - Human-readable error message
+     */
+    message: string;
+    /**
+     * - Error location
+     */
+    location: SourceLocation;
+    /**
+     * - Error severity
+     */
+    severity: "error" | "warning";
+    /**
+     * - Suggested fix if available
+     */
+    suggestion?: string;
+};
+/**
+ * AST Generation Result - wraps the AST with metadata and errors
+ */
+export type ASTResult = {
+    /**
+     * - The generated AST
+     */
+    ast: ProgramNode;
+    /**
+     * - Parse errors encountered
+     */
+    errors: ParseError[];
+    /**
+     * - Parse warnings
+     */
+    warnings: ParseError[];
+    /**
+     * - Performance metrics
+     */
+    metrics: {
+        parseTimeMs: number;
+        nodeCount: number;
+        maxDepth: number;
+    };
 };

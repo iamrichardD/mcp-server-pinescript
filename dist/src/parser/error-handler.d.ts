@@ -4,7 +4,7 @@
  * TypeScript implementation with discriminated unions and type safety.
  * Designed for graceful error recovery and detailed error reporting.
  */
-import type { SourceLocation } from "./types.js";
+import type { SourceLocation } from './types.js';
 /**
  * Result pattern for type-safe error handling
  * Discriminated union with proper type guards
@@ -25,7 +25,7 @@ export declare const ERROR_SEVERITY: {
     readonly ERROR: "error";
     readonly CRITICAL: "critical";
 };
-export type ErrorSeverity = typeof ERROR_SEVERITY[keyof typeof ERROR_SEVERITY];
+export type ErrorSeverity = (typeof ERROR_SEVERITY)[keyof typeof ERROR_SEVERITY];
 /**
  * Error categories for classification
  */
@@ -37,7 +37,7 @@ export declare const ERROR_CATEGORIES: {
     readonly PERFORMANCE: "performance_error";
     readonly INTEGRATION: "integration_error";
 };
-export type ErrorCategory = typeof ERROR_CATEGORIES[keyof typeof ERROR_CATEGORIES];
+export type ErrorCategory = (typeof ERROR_CATEGORIES)[keyof typeof ERROR_CATEGORIES];
 /**
  * Standard error codes
  */
@@ -60,7 +60,7 @@ export declare const ERROR_CODES: {
     readonly VALIDATION_RULES_NOT_LOADED: "VALIDATION_RULES_NOT_LOADED";
     readonly INVALID_CONFIGURATION: "INVALID_CONFIGURATION";
 };
-export type ErrorCode = typeof ERROR_CODES[keyof typeof ERROR_CODES];
+export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
 /**
  * Structured error information
  */
@@ -94,7 +94,7 @@ export declare const RECOVERY_STRATEGIES: {
     readonly INSERT_MISSING_TOKEN: "insert_missing_token";
     readonly CONTINUE_PARSING: "continue_parsing";
 };
-export type RecoveryStrategy = typeof RECOVERY_STRATEGIES[keyof typeof RECOVERY_STRATEGIES];
+export type RecoveryStrategy = (typeof RECOVERY_STRATEGIES)[keyof typeof RECOVERY_STRATEGIES];
 /**
  * Create a success result
  */

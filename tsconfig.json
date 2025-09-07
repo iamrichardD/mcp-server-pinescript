@@ -18,16 +18,26 @@
     "noImplicitReturns": true,
     "noUncheckedIndexedAccess": true,
     "allowUnusedLabels": false,
-    "allowUnreachableCode": false
+    "allowUnreachableCode": false,
+    "allowJs": true,
+    "checkJs": false
   },
   "include": [
     "*.ts",
     "*.js",
+    "src/**/*.ts",
+    "src/**/*.js",
     "tests/**/*",
     "docs/**/*.json"
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "scripts",
+    "**/*.test.js",
+    "**/*.test.ts",
+    "test-*.js",
+    "comprehensive-*.js",
+    "bug-report-*.js"
   ]
 }

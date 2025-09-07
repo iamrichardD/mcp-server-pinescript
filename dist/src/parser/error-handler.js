@@ -4,66 +4,65 @@
  * TypeScript implementation with discriminated unions and type safety.
  * Designed for graceful error recovery and detailed error reporting.
  */
-// @ts-ignore - JavaScript module without type definitions
-import { createSourceLocation } from "./ast-types.js";
+import { createSourceLocation } from './ast-types.js';
 /**
  * Error severity levels
  */
 export const ERROR_SEVERITY = {
-    INFO: "info",
-    WARNING: "warning",
-    ERROR: "error",
-    CRITICAL: "critical",
+    INFO: 'info',
+    WARNING: 'warning',
+    ERROR: 'error',
+    CRITICAL: 'critical',
 };
 /**
  * Error categories for classification
  */
 export const ERROR_CATEGORIES = {
-    LEXICAL: "lexical_error",
-    SYNTAX: "syntax_error",
-    SEMANTIC: "semantic_error",
-    VALIDATION: "validation_error",
-    PERFORMANCE: "performance_error",
-    INTEGRATION: "integration_error",
+    LEXICAL: 'lexical_error',
+    SYNTAX: 'syntax_error',
+    SEMANTIC: 'semantic_error',
+    VALIDATION: 'validation_error',
+    PERFORMANCE: 'performance_error',
+    INTEGRATION: 'integration_error',
 };
 /**
  * Standard error codes
  */
 export const ERROR_CODES = {
     // Lexical errors
-    INVALID_TOKEN: "INVALID_TOKEN",
-    UNTERMINATED_STRING: "UNTERMINATED_STRING",
-    INVALID_NUMBER: "INVALID_NUMBER",
+    INVALID_TOKEN: 'INVALID_TOKEN',
+    UNTERMINATED_STRING: 'UNTERMINATED_STRING',
+    INVALID_NUMBER: 'INVALID_NUMBER',
     // Syntax errors
-    UNEXPECTED_TOKEN: "UNEXPECTED_TOKEN",
-    EXPECTED_TOKEN: "EXPECTED_TOKEN",
-    MISSING_CLOSING_PAREN: "MISSING_CLOSING_PAREN",
-    INVALID_FUNCTION_CALL: "INVALID_FUNCTION_CALL",
+    UNEXPECTED_TOKEN: 'UNEXPECTED_TOKEN',
+    EXPECTED_TOKEN: 'EXPECTED_TOKEN',
+    MISSING_CLOSING_PAREN: 'MISSING_CLOSING_PAREN',
+    INVALID_FUNCTION_CALL: 'INVALID_FUNCTION_CALL',
     // Semantic errors
-    UNDEFINED_FUNCTION: "UNDEFINED_FUNCTION",
-    INVALID_PARAMETER_COUNT: "INVALID_PARAMETER_COUNT",
-    TYPE_MISMATCH: "TYPE_MISMATCH",
+    UNDEFINED_FUNCTION: 'UNDEFINED_FUNCTION',
+    INVALID_PARAMETER_COUNT: 'INVALID_PARAMETER_COUNT',
+    TYPE_MISMATCH: 'TYPE_MISMATCH',
     // Validation errors
-    SHORT_TITLE_TOO_LONG: "SHORT_TITLE_TOO_LONG",
-    PARAMETER_OUT_OF_RANGE: "PARAMETER_OUT_OF_RANGE",
-    REQUIRED_PARAMETER_MISSING: "REQUIRED_PARAMETER_MISSING",
+    SHORT_TITLE_TOO_LONG: 'SHORT_TITLE_TOO_LONG',
+    PARAMETER_OUT_OF_RANGE: 'PARAMETER_OUT_OF_RANGE',
+    REQUIRED_PARAMETER_MISSING: 'REQUIRED_PARAMETER_MISSING',
     // Performance errors
-    PARSE_TIMEOUT: "PARSE_TIMEOUT",
-    MEMORY_LIMIT_EXCEEDED: "MEMORY_LIMIT_EXCEEDED",
+    PARSE_TIMEOUT: 'PARSE_TIMEOUT',
+    MEMORY_LIMIT_EXCEEDED: 'MEMORY_LIMIT_EXCEEDED',
     // Integration errors
-    VALIDATION_RULES_NOT_LOADED: "VALIDATION_RULES_NOT_LOADED",
-    INVALID_CONFIGURATION: "INVALID_CONFIGURATION",
+    VALIDATION_RULES_NOT_LOADED: 'VALIDATION_RULES_NOT_LOADED',
+    INVALID_CONFIGURATION: 'INVALID_CONFIGURATION',
 };
 /**
  * Error recovery strategies
  */
 export const RECOVERY_STRATEGIES = {
-    SKIP_TOKEN: "skip_token",
-    SKIP_TO_SEMICOLON: "skip_to_semicolon",
-    SKIP_TO_NEWLINE: "skip_to_newline",
-    SKIP_TO_CLOSING_PAREN: "skip_to_closing_paren",
-    INSERT_MISSING_TOKEN: "insert_missing_token",
-    CONTINUE_PARSING: "continue_parsing",
+    SKIP_TOKEN: 'skip_token',
+    SKIP_TO_SEMICOLON: 'skip_to_semicolon',
+    SKIP_TO_NEWLINE: 'skip_to_newline',
+    SKIP_TO_CLOSING_PAREN: 'skip_to_closing_paren',
+    INSERT_MISSING_TOKEN: 'insert_missing_token',
+    CONTINUE_PARSING: 'continue_parsing',
 };
 /**
  * Create a success result
@@ -155,7 +154,7 @@ export function createShortTitleError(actualTitle, actualLength, maxLength, loca
         actualTitle,
         actualLength,
         maxLength,
-        functionType: "indicator/strategy",
+        functionType: 'indicator/strategy',
     });
 }
 /**
@@ -183,7 +182,7 @@ export class ErrorCollector {
     addRecovery(_strategy, location) {
         this.recoveryAttempts++;
         if (this.recoveryAttempts > this.maxRecoveryAttempts) {
-            this.addError(createError(ERROR_CODES.PARSE_TIMEOUT, "Too many parse errors, stopping recovery attempts", location, {
+            this.addError(createError(ERROR_CODES.PARSE_TIMEOUT, 'Too many parse errors, stopping recovery attempts', location, {
                 severity: ERROR_SEVERITY.CRITICAL,
                 category: ERROR_CATEGORIES.PERFORMANCE,
                 metadata: { recoveryAttempts: this.recoveryAttempts },
@@ -253,7 +252,7 @@ export function tryParse(fn, context = {}) {
         const errorInfo = createError(ERROR_CODES.UNEXPECTED_TOKEN, err instanceof Error ? err.message : String(err), context.location || createSourceLocation(0, 0, 0, 0), {
             category: ERROR_CATEGORIES.SYNTAX,
             metadata: {
-                originalError: err instanceof Error ? err.name : "Unknown",
+                originalError: err instanceof Error ? err.name : 'Unknown',
                 context,
             },
         });
@@ -272,7 +271,7 @@ export async function tryParseAsync(fn, context = {}) {
         const errorInfo = createError(ERROR_CODES.UNEXPECTED_TOKEN, err instanceof Error ? err.message : String(err), context.location || createSourceLocation(0, 0, 0, 0), {
             category: ERROR_CATEGORIES.SYNTAX,
             metadata: {
-                originalError: err instanceof Error ? err.name : "Unknown",
+                originalError: err instanceof Error ? err.name : 'Unknown',
                 context,
             },
         });

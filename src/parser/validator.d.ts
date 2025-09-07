@@ -12,16 +12,19 @@ export function quickValidatePrecision(source: string): ValidationResult;
 export function quickValidateMaxBarsBack(source: string): ValidationResult;
 export function quickValidateDrawingObjectCounts(source: string): ValidationResult;
 export function quickValidateInputTypes(source: string): ValidationResult;
-export function quickValidateLineContinuation(source: string): { hasLineContinuationError: boolean; violations: any[] };
+export function quickValidateLineContinuation(source: string): {
+  hasLineContinuationError: boolean;
+  violations: any[];
+};
 export function quickValidateFunctionSignatures(source: string): { violations: any[] };
 export function validateSeriesTypeWhereSimpleExpected(source: string): ValidationResult;
 export function quickValidateSeriesTypeWhereSimpleExpected(source: string): ValidationResult;
 export function quickValidateBuiltinNamespace(source: string): ValidationResult;
 
-export function extractFunctionCalls(line: string): Array<{ 
-  name: string; 
-  parameters: string[]; 
-  position: number; 
+export function extractFunctionCalls(line: string): Array<{
+  name: string;
+  parameters: string[];
+  position: number;
 }>;
 export function inferParameterTypes(paramValue: string): string;
 export function getExpectedTypes(functionName: string): {

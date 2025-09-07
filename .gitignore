@@ -49,3 +49,13 @@ logs
 
 # Articles directory
 .project/.articles/
+# Backup files and development artifacts
+*.backup
+*.bak
+*.backup-*
+*-backup-*
+build-failure-*.md
+build-report-*.md
+final-e2e-validation.js
+temp_*.pine
+test_manual_*.pine

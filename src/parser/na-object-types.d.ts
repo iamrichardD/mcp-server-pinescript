@@ -1,20 +1,20 @@
 /**
  * TypeScript Type Definitions for NA Object Access Detection
- * 
+ *
  * Comprehensive type system for detecting and preventing runtime errors
  * related to accessing fields of undefined (na) user-defined type objects.
- * 
+ *
  * Designed to integrate with existing validation system while maintaining
  * strict TypeScript compliance and avoiding `any` type usage.
  */
 
-import type { 
-  SourceLocation, 
-  ValidationViolation, 
+import type {
+  SourceLocation,
+  ValidationViolation,
   ErrorSeverity,
   ASTNode,
   IdentifierNode,
-  DeclarationNode 
+  DeclarationNode,
 } from './types.js';
 
 // ============================================================================
@@ -26,36 +26,38 @@ import type {
  */
 export const ENHANCED_ERROR_CATEGORIES = {
   RUNTIME_ERROR: 'runtime_error',
-  NA_OBJECT_ACCESS: 'na_object_access', 
+  NA_OBJECT_ACCESS: 'na_object_access',
   NA_OBJECT_HISTORY_ACCESS: 'na_object_history_access',
   UDT_LIFECYCLE_ERROR: 'udt_lifecycle_error',
 } as const;
 
-export type EnhancedErrorCategory = typeof ENHANCED_ERROR_CATEGORIES[keyof typeof ENHANCED_ERROR_CATEGORIES];
+export type EnhancedErrorCategory =
+  (typeof ENHANCED_ERROR_CATEGORIES)[keyof typeof ENHANCED_ERROR_CATEGORIES];
 
 /**
  * Extended error codes for NA object detection
  */
 export const NA_OBJECT_ERROR_CODES = {
   NA_OBJECT_FIELD_ACCESS: 'NA_OBJECT_FIELD_ACCESS',
-  NA_OBJECT_HISTORY_ACCESS: 'NA_OBJECT_HISTORY_ACCESS', 
+  NA_OBJECT_HISTORY_ACCESS: 'NA_OBJECT_HISTORY_ACCESS',
   UDT_UNINITIALIZED_ACCESS: 'UDT_UNINITIALIZED_ACCESS',
   POTENTIAL_NA_ACCESS: 'POTENTIAL_NA_ACCESS',
   RUNTIME_ACCESS_VIOLATION: 'RUNTIME_ACCESS_VIOLATION',
 } as const;
 
-export type NAObjectErrorCode = typeof NA_OBJECT_ERROR_CODES[keyof typeof NA_OBJECT_ERROR_CODES];
+export type NAObjectErrorCode = (typeof NA_OBJECT_ERROR_CODES)[keyof typeof NA_OBJECT_ERROR_CODES];
 
 /**
  * Severity levels specific to runtime errors
  */
 export const RUNTIME_ERROR_SEVERITY = {
   RUNTIME_CRITICAL: 'error' as const, // Runtime breaking - must be 'error' severity
-  RUNTIME_WARNING: 'warning' as const,  // Potential runtime issue
+  RUNTIME_WARNING: 'warning' as const, // Potential runtime issue
   RUNTIME_SUGGESTION: 'suggestion' as const, // Best practice recommendation
 } as const;
 
-export type RuntimeErrorSeverity = typeof RUNTIME_ERROR_SEVERITY[keyof typeof RUNTIME_ERROR_SEVERITY];
+export type RuntimeErrorSeverity =
+  (typeof RUNTIME_ERROR_SEVERITY)[keyof typeof RUNTIME_ERROR_SEVERITY];
 
 // ============================================================================
 // UDT OBJECT STATE TRACKING TYPES
@@ -66,12 +68,13 @@ export type RuntimeErrorSeverity = typeof RUNTIME_ERROR_SEVERITY[keyof typeof RU
  */
 export const UDT_INITIALIZATION_STATE = {
   UNINITIALIZED: 'uninitialized', // var UDT obj = na
-  INITIALIZED: 'initialized',     // var UDT obj = UDT.new()
+  INITIALIZED: 'initialized', // var UDT obj = UDT.new()
   CONDITIONALLY_INITIALIZED: 'conditional', // Initialized in some branches
-  UNKNOWN: 'unknown',             // Cannot determine state
+  UNKNOWN: 'unknown', // Cannot determine state
 } as const;
 
-export type UDTInitializationState = typeof UDT_INITIALIZATION_STATE[keyof typeof UDT_INITIALIZATION_STATE];
+export type UDTInitializationState =
+  (typeof UDT_INITIALIZATION_STATE)[keyof typeof UDT_INITIALIZATION_STATE];
 
 /**
  * UDT object declaration tracking information
@@ -103,7 +106,7 @@ export interface UDTFieldAccess {
 export interface HistoricalObjectAccess extends UDTFieldAccess {
   readonly accessType: 'historical';
   readonly historicalIndex: number; // Always defined for historical access
-  readonly baseObjectName: string;  // Object being accessed historically
+  readonly baseObjectName: string; // Object being accessed historically
 }
 
 // ============================================================================
@@ -158,7 +161,10 @@ export interface NAObjectFixSuggestion {
  */
 export interface RuntimeRiskAssessment {
   readonly riskLevel: 'low' | 'medium' | 'high' | 'critical';
-  readonly riskType: 'potential_na_access' | 'unvalidated_historical_access' | 'initialization_race';
+  readonly riskType:
+    | 'potential_na_access'
+    | 'unvalidated_historical_access'
+    | 'initialization_race';
   readonly affectedObjects: readonly string[];
   readonly recommendedActions: readonly string[];
   readonly location: SourceLocation;
@@ -177,7 +183,7 @@ export interface NAAnalysisMetrics {
 }
 
 // ============================================================================
-// VALIDATION RULE CONFIGURATION TYPES  
+// VALIDATION RULE CONFIGURATION TYPES
 // ============================================================================
 
 /**
@@ -304,7 +310,7 @@ export interface NAObjectViolationFactory {
     fieldName: string,
     historicalIndex: number,
     location: SourceLocation,
-    udtType?: string  
+    udtType?: string
   ): NAObjectViolation;
 
   createUninitializedAccessViolation(
@@ -340,23 +346,17 @@ export interface NAObjectDetectionAPI {
   /**
    * Detect direct field access on NA objects (obj.field where obj = na)
    */
-  detectDirectNAAccess(
-    source: string
-  ): Promise<readonly NAObjectViolation[]>;
+  detectDirectNAAccess(source: string): Promise<readonly NAObjectViolation[]>;
 
   /**
    * Detect historical field access on potentially NA objects (obj[n].field)
    */
-  detectHistoricalNAAccess(
-    source: string
-  ): Promise<readonly NAObjectViolation[]>;
+  detectHistoricalNAAccess(source: string): Promise<readonly NAObjectViolation[]>;
 
   /**
    * Track UDT object initialization states throughout script
    */
-  trackUDTInitializationStates(
-    source: string
-  ): Promise<readonly UDTObjectDeclaration[]>;
+  trackUDTInitializationStates(source: string): Promise<readonly UDTObjectDeclaration[]>;
 
   /**
    * Assess runtime safety risks for UDT object operations
@@ -391,9 +391,7 @@ export interface ValidationIntegrationAPI {
   /**
    * Convert NA object analysis to standard validation format
    */
-  convertToStandardViolations(
-    analysis: NAObjectAnalysisResult
-  ): readonly ValidationViolation[];
+  convertToStandardViolations(analysis: NAObjectAnalysisResult): readonly ValidationViolation[];
 }
 
 // ============================================================================
@@ -457,7 +455,7 @@ declare global {
   namespace NAObjectDetection {
     // Re-export key types for global access
     type Violation = NAObjectViolation;
-    type Analysis = NAObjectAnalysisResult; 
+    type Analysis = NAObjectAnalysisResult;
     type Configuration = NAObjectDetectionConfiguration;
     type API = NAObjectDetectionAPI;
   }

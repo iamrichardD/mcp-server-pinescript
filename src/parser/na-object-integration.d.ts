@@ -1,10 +1,10 @@
 /**
  * Integration Strategy for NA Object Detection with Existing MCP Service
- * 
+ *
  * Defines how the new NA object detection system integrates seamlessly
  * with the existing validation infrastructure while maintaining strict
  * TypeScript compliance and avoiding breaking changes.
- * 
+ *
  * Provides backward compatibility and incremental adoption strategies.
  */
 
@@ -14,7 +14,7 @@ import type {
   IntegrationAPI,
   AnalysisResult,
   ParserAPI,
-  ValidatorAPI
+  ValidatorAPI,
 } from './types.js';
 
 import type {
@@ -22,18 +22,12 @@ import type {
   NAObjectViolation,
   EnhancedValidationResult,
   NAObjectDetectionConfiguration,
-  RuntimeSafetyReport
+  RuntimeSafetyReport,
 } from './na-object-types.js';
 
-import type {
-  EnhancedValidationRules,
-  RuntimeValidationRule
-} from './runtime-validation-rules.js';
+import type { EnhancedValidationRules, RuntimeValidationRule } from './runtime-validation-rules.js';
 
-import type {
-  PatternDetectionEngine,
-  DetectionResult
-} from './pattern-detection-engine.js';
+import type { PatternDetectionEngine, DetectionResult } from './pattern-detection-engine.js';
 
 // ============================================================================
 // INTEGRATION ARCHITECTURE
@@ -46,27 +40,23 @@ export interface NAObjectIntegrationService {
   readonly version: string;
   readonly compatibility: IntegrationCompatibility;
   readonly configuration: IntegrationConfiguration;
-  
+
   // Core integration methods
-  integrateWithExistingValidator(
-    existingValidator: ValidatorAPI
-  ): Promise<EnhancedValidatorAPI>;
-  
+  integrateWithExistingValidator(existingValidator: ValidatorAPI): Promise<EnhancedValidatorAPI>;
+
   enhanceAnalysisResult(
     existingResult: AnalysisResult,
     naAnalysis: NAObjectAnalysisResult
   ): Promise<EnhancedAnalysisResult>;
-  
+
   migrateValidationRules(
     existingRules: unknown,
     enhancedRules: EnhancedValidationRules
   ): Promise<MigrationResult>;
-  
+
   // Backward compatibility
-  provideLegacySupport(
-    legacyRequest: LegacyValidationRequest
-  ): Promise<LegacyValidationResponse>;
-  
+  provideLegacySupport(legacyRequest: LegacyValidationRequest): Promise<LegacyValidationResponse>;
+
   // Performance monitoring
   getIntegrationMetrics(): IntegrationMetrics;
   validateIntegration(): Promise<IntegrationValidationResult>;
@@ -109,18 +99,18 @@ export interface EnhancedValidatorAPI extends ValidatorAPI {
     source: string,
     rules?: EnhancedValidationRules
   ): Promise<EnhancedValidationResult>;
-  
+
   quickValidateNAObjectAccess(source: string): Promise<AnalysisResult>;
   quickValidateRuntimeSafety(source: string): Promise<RuntimeSafetyReport>;
-  
+
   // Configuration methods
   loadEnhancedValidationRules(rules: EnhancedValidationRules): Promise<void>;
   configureNAObjectDetection(config: NAObjectDetectionConfiguration): Promise<void>;
-  
+
   // Analysis methods
   analyzeObjectLifecycles(source: string): Promise<ObjectLifecycleReport>;
   detectRuntimeViolations(source: string): Promise<readonly NAObjectViolation[]>;
-  
+
   // Reporting methods
   generateRuntimeSafetyReport(source: string): Promise<RuntimeSafetyReport>;
   generateIntegrationDiagnostics(): Promise<IntegrationDiagnosticReport>;
@@ -214,14 +204,14 @@ export interface IntegrationConfiguration {
  * Integration mode options
  */
 export const INTEGRATION_MODES = {
-  ENHANCED: 'enhanced',           // Full enhancement with new features
-  HYBRID: 'hybrid',               // Mix of old and new validation
-  GRADUAL: 'gradual',             // Gradual replacement of existing features
-  PARALLEL: 'parallel',           // Run both systems in parallel
+  ENHANCED: 'enhanced', // Full enhancement with new features
+  HYBRID: 'hybrid', // Mix of old and new validation
+  GRADUAL: 'gradual', // Gradual replacement of existing features
+  PARALLEL: 'parallel', // Run both systems in parallel
   LEGACY_PRESERVE: 'legacy_preserve', // Preserve all legacy behavior
 } as const;
 
-export type IntegrationMode = typeof INTEGRATION_MODES[keyof typeof INTEGRATION_MODES];
+export type IntegrationMode = (typeof INTEGRATION_MODES)[keyof typeof INTEGRATION_MODES];
 
 /**
  * Validation integration strategy
@@ -469,7 +459,7 @@ export interface PerformanceBenchmark {
  */
 export interface PerformanceChange {
   readonly timeChange: number; // Percentage change
-  readonly memoryChange: number; // Percentage change  
+  readonly memoryChange: number; // Percentage change
   readonly throughputChange: number; // Percentage change
   readonly overallTrend: 'improved' | 'similar' | 'degraded';
   readonly significantChanges: readonly string[];
@@ -1099,7 +1089,7 @@ export interface MigrationPlan {
   readonly estimatedDuration: number; // Minutes
   readonly riskAssessment: MigrationRiskAssessment;
   readonly rollbackPlan: RollbackPlan;
-  
+
   execute(): Promise<MigrationResult>;
   validate(): readonly string[];
   generateReport(): MigrationPlanReport;
@@ -1114,7 +1104,7 @@ export interface MigrationStep {
   readonly stepType: 'preparation' | 'migration' | 'validation' | 'cleanup';
   readonly dependencies: readonly string[];
   readonly estimatedDuration: number; // Minutes
-  
+
   execute(): Promise<StepResult>;
   rollback(): Promise<StepResult>;
   validate(): Promise<boolean>;
@@ -1182,7 +1172,7 @@ export interface RollbackPlan {
   readonly rollbackSteps: readonly RollbackStep[];
   readonly estimatedRollbackTime: number; // Minutes
   readonly rollbackRisks: readonly RollbackRisk[];
-  
+
   execute(): Promise<RollbackResult>;
   validate(): readonly string[];
 }
@@ -1223,7 +1213,7 @@ export type {
   IntegrationConfiguration,
   MigrationResult,
   IntegrationMetrics,
-  IntegrationValidationResult
+  IntegrationValidationResult,
 };
 
 /**

@@ -1,9 +1,9 @@
 /**
  * Runtime Validation Rules Configuration
- * 
+ *
  * Extends the existing validation rule system with comprehensive
  * runtime error detection capabilities for NA object access patterns.
- * 
+ *
  * Maintains strict TypeScript compliance and integrates seamlessly
  * with existing ValidationRules interface.
  */
@@ -12,7 +12,7 @@ import type {
   ValidationRules,
   ValidationConstraints,
   FunctionValidationRules,
-  ArgumentConstraints
+  ArgumentConstraints,
 } from './types.js';
 
 import type {
@@ -20,7 +20,7 @@ import type {
   EnhancedErrorCategory,
   RuntimeErrorSeverity,
   NAObjectDetectionRules,
-  RuntimeSafetyConstraints
+  RuntimeSafetyConstraints,
 } from './na-object-types.js';
 
 // ============================================================================
@@ -260,26 +260,32 @@ export const CRITICAL_NA_OBJECT_RULES: readonly RuntimeValidationRule[] = [
     detectionPattern: {
       patternType: 'semantic_analysis',
       pattern: /(\w+)\s*=\s*na[\s\S]*?(\w+)\s*=\s*\1\.(\w+)/,
-      contextRequirements: [{
-        requirementType: 'preceding_declaration',
-        specification: 'var_declaration_with_na_initialization',
-        optional: false
-      }],
+      contextRequirements: [
+        {
+          requirementType: 'preceding_declaration',
+          specification: 'var_declaration_with_na_initialization',
+          optional: false,
+        },
+      ],
       multilineSupport: true,
-      caseSensitive: true
+      caseSensitive: true,
     },
-    violationMessage: 'Cannot access field of undefined (na) object. Initialize object before accessing fields.',
+    violationMessage:
+      'Cannot access field of undefined (na) object. Initialize object before accessing fields.',
     suggestedFix: 'Initialize object with constructor call or add na validation check',
-    documentation: 'https://www.tradingview.com/pine-script-docs/en/v6/language/User-defined_types.html#na-values',
-    examples: [{
-      exampleType: 'violation',
-      code: 'var MyType obj = na\nvalue = obj.field',
-      description: 'Direct access to field of na object',
-      expectedResult: 'Runtime error: Cannot access field of undefined object'
-    }]
+    documentation:
+      'https://www.tradingview.com/pine-script-docs/en/v6/language/User-defined_types.html#na-values',
+    examples: [
+      {
+        exampleType: 'violation',
+        code: 'var MyType obj = na\nvalue = obj.field',
+        description: 'Direct access to field of na object',
+        expectedResult: 'Runtime error: Cannot access field of undefined object',
+      },
+    ],
   },
   {
-    ruleId: 'NA_OBJECT_HISTORICAL_ACCESS', 
+    ruleId: 'NA_OBJECT_HISTORICAL_ACCESS',
     ruleName: 'Historical NA Object Field Access',
     category: 'na_object_history_access' as const,
     severity: 'error' as const,
@@ -288,23 +294,29 @@ export const CRITICAL_NA_OBJECT_RULES: readonly RuntimeValidationRule[] = [
     detectionPattern: {
       patternType: 'regex',
       pattern: /\((\w+)\[(\d+)\]\)\.(\w+)/,
-      contextRequirements: [{
-        requirementType: 'object_initialization',
-        specification: 'may_contain_na_values',
-        optional: false
-      }],
+      contextRequirements: [
+        {
+          requirementType: 'object_initialization',
+          specification: 'may_contain_na_values',
+          optional: false,
+        },
+      ],
       multilineSupport: false,
-      caseSensitive: true
+      caseSensitive: true,
     },
-    violationMessage: 'Cannot access field of potentially undefined historical object. Add na check.',
+    violationMessage:
+      'Cannot access field of potentially undefined historical object. Add na check.',
     suggestedFix: 'Add na validation: not na(object[n]) ? (object[n]).field : defaultValue',
-    documentation: 'https://www.tradingview.com/pine-script-docs/en/v6/language/User-defined_types.html#history-referencing',
-    examples: [{
-      exampleType: 'violation', 
-      code: 'historicalValue = (myObject[1]).field',
-      description: 'Historical access without na validation',
-      expectedResult: 'Runtime error if historical object is na'
-    }]
+    documentation:
+      'https://www.tradingview.com/pine-script-docs/en/v6/language/User-defined_types.html#history-referencing',
+    examples: [
+      {
+        exampleType: 'violation',
+        code: 'historicalValue = (myObject[1]).field',
+        description: 'Historical access without na validation',
+        expectedResult: 'Runtime error if historical object is na',
+      },
+    ],
   },
   {
     ruleId: 'UDT_UNINITIALIZED_ACCESS',
@@ -316,24 +328,29 @@ export const CRITICAL_NA_OBJECT_RULES: readonly RuntimeValidationRule[] = [
     detectionPattern: {
       patternType: 'ast_traversal',
       pattern: 'object_field_access_without_initialization',
-      contextRequirements: [{
-        requirementType: 'scope_analysis',
-        specification: 'track_object_initialization_state',
-        optional: false
-      }],
+      contextRequirements: [
+        {
+          requirementType: 'scope_analysis',
+          specification: 'track_object_initialization_state',
+          optional: false,
+        },
+      ],
       multilineSupport: true,
-      caseSensitive: true
+      caseSensitive: true,
     },
     violationMessage: 'Object accessed before proper initialization. Runtime error likely.',
     suggestedFix: 'Initialize object with constructor or add initialization check',
-    documentation: 'https://www.tradingview.com/pine-script-docs/en/v6/language/User-defined_types.html',
-    examples: [{
-      exampleType: 'violation',
-      code: 'type Data\n    float value\nvar Data d\nresult = d.value',
-      description: 'Access to uninitialized object field',
-      expectedResult: 'Runtime error: Cannot access field of undefined object'
-    }]
-  }
+    documentation:
+      'https://www.tradingview.com/pine-script-docs/en/v6/language/User-defined_types.html',
+    examples: [
+      {
+        exampleType: 'violation',
+        code: 'type Data\n    float value\nvar Data d\nresult = d.value',
+        description: 'Access to uninitialized object field',
+        expectedResult: 'Runtime error: Cannot access field of undefined object',
+      },
+    ],
+  },
 ] as const;
 
 // ============================================================================
@@ -405,9 +422,7 @@ export interface RuntimeValidationRuleFactory {
     customMessage?: string
   ): RuntimeValidationRule;
 
-  buildRuleSet(
-    rules: readonly Partial<RuntimeValidationRule>[]
-  ): readonly RuntimeValidationRule[];
+  buildRuleSet(rules: readonly Partial<RuntimeValidationRule>[]): readonly RuntimeValidationRule[];
 }
 
 /**
@@ -432,12 +447,13 @@ export interface EnhancedValidationRulesBuilder {
  */
 export const VALIDATION_RULE_PRESETS = {
   STRICT_RUNTIME_SAFETY: 'strict_runtime_safety',
-  BALANCED_DEVELOPMENT: 'balanced_development', 
+  BALANCED_DEVELOPMENT: 'balanced_development',
   PERMISSIVE_MIGRATION: 'permissive_migration',
   INSTITUTIONAL_GRADE: 'institutional_grade',
 } as const;
 
-export type ValidationRulePreset = typeof VALIDATION_RULE_PRESETS[keyof typeof VALIDATION_RULE_PRESETS];
+export type ValidationRulePreset =
+  (typeof VALIDATION_RULE_PRESETS)[keyof typeof VALIDATION_RULE_PRESETS];
 
 /**
  * Factory function for creating preset configurations
@@ -457,9 +473,7 @@ export declare function mergeValidationRules(
 /**
  * Configuration validation utility
  */
-export declare function validateRuntimeRulesConfiguration(
-  config: EnhancedValidationRules
-): {
+export declare function validateRuntimeRulesConfiguration(config: EnhancedValidationRules): {
   readonly isValid: boolean;
   readonly errors: readonly string[];
   readonly warnings: readonly string[];
@@ -477,7 +491,7 @@ export type {
   DetectionPattern,
   RuntimeValidationConstraints,
   UDTPatternValidationRules,
-  ValidationIntegrationConfig
+  ValidationIntegrationConfig,
 };
 
 /**

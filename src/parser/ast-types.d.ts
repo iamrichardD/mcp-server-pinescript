@@ -2,28 +2,28 @@
  * Type declarations for ast-types.js module
  */
 
-import type { 
-  SourceLocation, 
-  FunctionCallNode, 
-  LiteralNode, 
+import type {
+  SourceLocation,
+  FunctionCallNode,
+  LiteralNode,
   ParameterNode,
-  BaseASTNode
+  BaseASTNode,
 } from './types.js';
 
 export const AST_NODE_TYPES: {
-  readonly PROGRAM: "Program";
-  readonly FUNCTION_CALL: "FunctionCall";
-  readonly PARAMETER: "Parameter";
-  readonly LITERAL: "Literal";
-  readonly IDENTIFIER: "Identifier";
-  readonly DECLARATION: "Declaration";
+  readonly PROGRAM: 'Program';
+  readonly FUNCTION_CALL: 'FunctionCall';
+  readonly PARAMETER: 'Parameter';
+  readonly LITERAL: 'Literal';
+  readonly IDENTIFIER: 'Identifier';
+  readonly DECLARATION: 'Declaration';
 };
 
 export const DATA_TYPES: {
-  readonly STRING: "string";
-  readonly NUMBER: "number";
-  readonly BOOLEAN: "boolean";
-  readonly COLOR: "color";
+  readonly STRING: 'string';
+  readonly NUMBER: 'number';
+  readonly BOOLEAN: 'boolean';
+  readonly COLOR: 'color';
 };
 
 export function createSourceLocation(

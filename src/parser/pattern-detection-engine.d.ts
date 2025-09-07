@@ -1,27 +1,21 @@
 /**
  * Pattern Detection Engine for NA Object Runtime Errors
- * 
+ *
  * Advanced TypeScript interfaces for detecting complex Pine Script patterns
  * that lead to runtime NA object access violations.
- * 
+ *
  * Implements semantic analysis, AST traversal, and pattern matching
  * with strict type safety and performance optimization.
  */
 
-import type { 
-  ASTNode, 
-  SourceLocation, 
-  Token, 
-  DeclarationNode, 
-  IdentifierNode 
-} from './types.js';
+import type { ASTNode, SourceLocation, Token, DeclarationNode, IdentifierNode } from './types.js';
 
 import type {
   UDTObjectDeclaration,
   UDTFieldAccess,
   UDTInitializationState,
   NAObjectViolation,
-  RuntimeRiskAssessment
+  RuntimeRiskAssessment,
 } from './na-object-types.js';
 
 // ============================================================================
@@ -35,20 +29,20 @@ export interface PatternDetectionEngine {
   readonly version: string;
   readonly capabilities: readonly PatternDetectionCapability[];
   readonly configuration: PatternDetectionConfiguration;
-  
+
   // Core detection methods
   detectNAObjectPatterns(source: string, ast: ASTNode): Promise<DetectionResult>;
   detectUDTDeclarations(source: string, ast: ASTNode): Promise<readonly UDTObjectDeclaration[]>;
   detectFieldAccessPatterns(source: string, ast: ASTNode): Promise<readonly UDTFieldAccess[]>;
   analyzeObjectLifecycles(
-    declarations: readonly UDTObjectDeclaration[], 
+    declarations: readonly UDTObjectDeclaration[],
     accesses: readonly UDTFieldAccess[]
   ): Promise<readonly ObjectLifecycleAnalysis[]>;
-  
+
   // Pattern matching utilities
   matchPattern(pattern: DetectionPattern, source: string): Promise<readonly PatternMatch[]>;
   validatePatternResult(result: PatternMatch, context: AnalysisContext): ValidationOutcome;
-  
+
   // Performance and optimization
   getPerformanceMetrics(): PatternDetectionMetrics;
   optimizeForLargeFiles(enabled: boolean): void;
@@ -60,7 +54,7 @@ export interface PatternDetectionEngine {
  */
 export const PATTERN_DETECTION_CAPABILITIES = {
   REGEX_MATCHING: 'regex_matching',
-  AST_TRAVERSAL: 'ast_traversal', 
+  AST_TRAVERSAL: 'ast_traversal',
   SEMANTIC_ANALYSIS: 'semantic_analysis',
   MULTILINE_PATTERNS: 'multiline_patterns',
   CONTEXT_AWARENESS: 'context_awareness',
@@ -69,7 +63,8 @@ export const PATTERN_DETECTION_CAPABILITIES = {
   PATTERN_CACHING: 'pattern_caching',
 } as const;
 
-export type PatternDetectionCapability = typeof PATTERN_DETECTION_CAPABILITIES[keyof typeof PATTERN_DETECTION_CAPABILITIES];
+export type PatternDetectionCapability =
+  (typeof PATTERN_DETECTION_CAPABILITIES)[keyof typeof PATTERN_DETECTION_CAPABILITIES];
 
 /**
  * Configuration for pattern detection engine
@@ -162,20 +157,20 @@ export const PATTERN_TYPES = {
   COMPOSITE: 'composite',
 } as const;
 
-export type PatternType = typeof PATTERN_TYPES[keyof typeof PATTERN_TYPES];
+export type PatternType = (typeof PATTERN_TYPES)[keyof typeof PATTERN_TYPES];
 
 /**
  * Pattern priority for processing order
  */
 export const PATTERN_PRIORITIES = {
   CRITICAL: 'critical',
-  HIGH: 'high', 
+  HIGH: 'high',
   MEDIUM: 'medium',
   LOW: 'low',
   INFORMATIONAL: 'informational',
 } as const;
 
-export type PatternPriority = typeof PATTERN_PRIORITIES[keyof typeof PATTERN_PRIORITIES];
+export type PatternPriority = (typeof PATTERN_PRIORITIES)[keyof typeof PATTERN_PRIORITIES];
 
 /**
  * Detailed pattern specification
@@ -200,7 +195,7 @@ export const PATTERN_FLAGS = {
   DOT_ALL: 'dot_all',
 } as const;
 
-export type PatternFlag = typeof PATTERN_FLAGS[keyof typeof PATTERN_FLAGS];
+export type PatternFlag = (typeof PATTERN_FLAGS)[keyof typeof PATTERN_FLAGS];
 
 /**
  * Constraints for pattern matching
@@ -327,12 +322,12 @@ export interface PatternMatch {
 export const MATCH_CONFIDENCE = {
   CERTAIN: 'certain',
   HIGH: 'high',
-  MEDIUM: 'medium', 
+  MEDIUM: 'medium',
   LOW: 'low',
   UNCERTAIN: 'uncertain',
 } as const;
 
-export type MatchConfidence = typeof MATCH_CONFIDENCE[keyof typeof MATCH_CONFIDENCE];
+export type MatchConfidence = (typeof MATCH_CONFIDENCE)[keyof typeof MATCH_CONFIDENCE];
 
 /**
  * Context information for pattern matches
@@ -947,7 +942,11 @@ export interface ObjectLifecycleRisk {
  * Risk factor in object lifecycle
  */
 export interface RiskFactor {
-  readonly factorType: 'uninitialized_access' | 'null_reference' | 'race_condition' | 'resource_leak';
+  readonly factorType:
+    | 'uninitialized_access'
+    | 'null_reference'
+    | 'race_condition'
+    | 'resource_leak';
   readonly severity: 'low' | 'medium' | 'high' | 'critical';
   readonly probability: number;
   readonly locations: readonly SourceLocation[];
@@ -1011,7 +1010,11 @@ export interface UsagePattern {
  * Lifecycle recommendation
  */
 export interface LifecycleRecommendation {
-  readonly recommendationType: 'best_practice' | 'optimization' | 'safety_improvement' | 'refactoring';
+  readonly recommendationType:
+    | 'best_practice'
+    | 'optimization'
+    | 'safety_improvement'
+    | 'refactoring';
   readonly priority: 'low' | 'medium' | 'high' | 'critical';
   readonly description: string;
   readonly codeExample: string;
@@ -1057,7 +1060,11 @@ export interface DetectionDiagnostic {
  */
 export interface DetectionError {
   readonly errorId: string;
-  readonly errorType: 'pattern_compilation' | 'analysis_failure' | 'resource_exhaustion' | 'timeout';
+  readonly errorType:
+    | 'pattern_compilation'
+    | 'analysis_failure'
+    | 'resource_exhaustion'
+    | 'timeout';
   readonly errorMessage: string;
   readonly location?: SourceLocation;
   readonly stackTrace?: string;
@@ -1130,8 +1137,12 @@ export interface PatternDetectionFactory {
  * Builder for pattern detection configuration
  */
 export interface PatternDetectionConfigurationBuilder {
-  withCapabilities(capabilities: readonly PatternDetectionCapability[]): PatternDetectionConfigurationBuilder;
-  withPerformanceSettings(settings: PatternPerformanceSettings): PatternDetectionConfigurationBuilder;
+  withCapabilities(
+    capabilities: readonly PatternDetectionCapability[]
+  ): PatternDetectionConfigurationBuilder;
+  withPerformanceSettings(
+    settings: PatternPerformanceSettings
+  ): PatternDetectionConfigurationBuilder;
   withAnalysisSettings(settings: PatternAnalysisSettings): PatternDetectionConfigurationBuilder;
   withCachingSettings(settings: PatternCachingSettings): PatternDetectionConfigurationBuilder;
   withDebugSettings(settings: PatternDebugSettings): PatternDetectionConfigurationBuilder;
@@ -1171,7 +1182,7 @@ export type {
   ObjectLifecycleAnalysis,
   PatternDetectionMetrics,
   AnalysisContext,
-  ValidationOutcome
+  ValidationOutcome,
 };
 
 /**

@@ -18,6 +18,8 @@ import {
 import type { FunctionCallAnalysis, ParseError } from './src/parser/types.d.ts';
 // @ts-expect-error - JavaScript module without type definitions
 import { validateSyntaxCompatibility } from './src/parser/validator.js';
+// Import version tool
+import { getServiceVersionInfo } from './src/version/mcp-version-tool.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -755,6 +757,16 @@ server.setRequestHandler(ListToolsRequestSchema, async (): Promise<ListToolsResu
         required: ['code'],
       },
     },
+    {
+      name: 'mcp_service_version',
+      description:
+        'Get authoritative version information from package.json plus deployment diagnostics including build status, git commit, and bug fix resolution status.',
+      inputSchema: {
+        type: 'object',
+        properties: {},
+        required: [],
+      },
+    },
   ];
 
   return { tools };
@@ -778,6 +790,8 @@ async function handleToolRequest(request: CallToolRequest): Promise<CallToolResu
       return await handleReviewRequest(args as unknown as PineScriptReviewArgs);
     case 'syntax_compatibility_validation':
       return await handleSyntaxValidationRequest(args as unknown as SyntaxCompatibilityArgs);
+    case 'mcp_service_version':
+      return await handleVersionRequest();
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
@@ -819,6 +833,30 @@ async function handleSyntaxValidationRequest(
     syntaxArgs.format || 'json',
     syntaxArgs.migration_guide || false
   );
+}
+
+// Handle version request
+async function handleVersionRequest(): Promise<CallToolResult> {
+  try {
+    const versionInfo = await getServiceVersionInfo();
+    return {
+      content: [
+        {
+          type: 'text',
+          text: versionInfo,
+        },
+      ],
+    };
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Version retrieval failed: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
+    };
+  }
 }
 
 // ========================================

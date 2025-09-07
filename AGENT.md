@@ -104,6 +104,12 @@ This production-ready MCP server follows a modular TypeScript architecture optim
 - **Release dry run**: `npm run release:dry-run`
 - **Release status**: `npm run release:status`
 
+### Deployment Management
+- **Prepare deployment**: `npm run deploy:prepare` (build + validate)
+- **Deployment validation**: `npm run deploy:validate`
+- **E2E validation**: `node final-e2e-validation.js`
+- **Deployment testing**: `npm run deploy:test`
+
 ### Documentation Maintenance (Maintainers Only)
 - **Update documentation**: `npm run update-docs`
 
@@ -152,6 +158,67 @@ This production-ready MCP server follows a modular TypeScript architecture optim
 - **Consistent format**: Use the exact output from bash `date` command
 - **Example workflow**: Run `date` first, then use the actual output in documents
 - **No assumptions**: Never assume or calculate dates manually
+
+### Bug Report Documentation Standards
+
+**ALL BUG REPORTS AND RESOLUTIONS MUST BE COLOCATED** for traceability:
+
+#### Directory Structure
+```
+.project/bug-reports/
+├── BUG_REPORT_NAME.md                    # Original bug report
+├── resolutions/
+│   └── BUG_REPORT_NAME_RESOLUTION.md     # Resolution document  
+└── TEAM_HANDOFF_SUMMARY.md               # External team coordination
+```
+
+#### Naming Convention
+- **Bug Report**: `[SYSTEM]_[COMPONENT]_[ISSUE_TYPE]_BUG_REPORT[_##].md`
+- **Resolution**: `[SAME_NAME]_RESOLUTION.md` (in `resolutions/` subdirectory)
+- **Team Handoff**: `[TEAM]_HANDOFF_SUMMARY.md` (references all bug/resolution pairs)
+
+#### Required Content Mapping
+- **Resolution files MUST reference** the original bug report filename
+- **Team handoff MUST list** all bug report → resolution file pairs  
+- **File colocation** enables easy tracking and external team validation
+- **No scattered documentation** across multiple directories
+
+#### Example Implementation
+```
+# In resolution file header:
+**Bug Report**: `MCP_PINESCRIPT_RUNTIME_NA_OBJECT_BUG_REPORT_02.md`
+**Resolution Date**: [use `date` command output]
+**Status**: RESOLVED - Ready for Production
+```
+
+### Deployment Documentation Standards
+
+**ALL DEPLOYMENT COORDINATION MUST BE COMPREHENSIVE** for external team handoff:
+
+#### Deployment Documentation Structure
+```
+Root Level Deployment Documentation:
+├── TRADINGVIEW_TEAM_DEPLOYMENT_COORDINATION.md    # Executive summary + instructions
+├── DEPLOYMENT_VALIDATION_FRAMEWORK.md             # Validation procedures + checklist
+├── TRADINGVIEW_HANDOFF_DOCUMENTATION.md           # Technical handoff + operations
+├── SUCCESS_CRITERIA_CONFIRMATION.md               # Success validation process
+├── E2E-VALIDATION-REPORT.md                       # Latest validation results
+└── final-e2e-validation.js                        # Automated validation script
+```
+
+#### Required Deployment Content
+- **Executive Summary**: Clear problem/solution/status for external teams
+- **Step-by-step Instructions**: Exact commands with expected outputs
+- **Validation Framework**: Systematic testing procedures with pass/fail criteria
+- **Troubleshooting Guide**: Common issues and specific resolution steps
+- **Success Criteria**: Measurable outcomes with confirmation process
+- **Performance Baselines**: Memory, response time, and throughput targets
+
+#### Deployment Process Integration
+- **Document deployment process** in AGENT.md for future reference
+- **Add deployment validation** to quality gates and pre-commit hooks
+- **Create automated deployment testing** with clear success/failure indicators
+- **Establish deployment checklist** for consistent execution across deployments
 
 ### PineScript Validation Standards
 - **Parameter validation**: SHORT_TITLE_TOO_LONG, INVALID_PRECISION detection
@@ -324,6 +391,42 @@ This production-ready MCP server follows a modular TypeScript architecture optim
 - **Quality assurance**: Documentation changes validated through testing
 - **Accessibility**: Multiple formats (Markdown, JSON, streaming) supported
 
+## Deployment Management
+
+### Production Deployment Process
+- **Deployment preparation**: `npm run deploy:prepare` (build + validate)
+- **E2E validation**: `node final-e2e-validation.js` for comprehensive testing
+- **Service startup**: `node index.js` for production service
+- **Health monitoring**: Version tool and MCP integration verification
+- **Performance validation**: Response time and memory usage confirmation
+
+### Critical Bug Resolution Framework
+**Bug 1: Runtime NA Object Access Detection**
+- **Issue**: Missing detection of runtime-breaking `na` object access patterns
+- **Resolution**: Implemented `RuntimeNAObjectValidator` with comprehensive pattern detection
+- **Location**: `src/parser/runtime-na-object-validator.js`
+- **Integration**: `src/parser/validator.js:93`
+- **Validation**: Detects 3+ violations for UDT patterns like `var TestType obj = na; result = obj.field`
+
+**Bug 2: Naming Convention False Positives**
+- **Issue**: False positive errors for valid function parameter names
+- **Resolution**: Enhanced parameter naming validation with improved pattern matching
+- **Location**: `src/parser/parameter-naming-validator.js`
+- **Integration**: `src/parser/validator.js:95-98`
+- **Validation**: Zero false positives for valid names like `inputValue`, `outputResult`
+
+### Deployment Validation Framework
+- **5 Test Categories**: Deployment path, bug fixes, version tool, MCP integration, import resolution
+- **Success Criteria**: 4/5 tests minimum for deployment readiness
+- **Automated Testing**: E2E validation suite with comprehensive reporting
+- **Manual Verification**: Step-by-step confirmation procedures for critical functionality
+
+### Future Prevention Measures
+- **Automated deployment validation** integrated into CI/CD pipeline
+- **Pre-deployment checklist** with systematic validation requirements  
+- **Monitoring integration** with deployment status tracking
+- **Documentation automation** for deployment process maintenance
+
 ## Git Workflow
 
 ### Development Session Management
@@ -420,6 +523,9 @@ ln -s AGENT.md CLAUDE.md         # Claude Code (legacy)
 - @src/parser/index.js - Core parser implementation
 - @tests/atomic/ - Atomic testing framework
 - @.claude/agents/ - Specialized agent configurations
+- @TRADINGVIEW_TEAM_DEPLOYMENT_COORDINATION.md - External team deployment guide
+- @DEPLOYMENT_VALIDATION_FRAMEWORK.md - Validation procedures and framework
+- @final-e2e-validation.js - Automated deployment validation script
 
 **AGENT.md Specification Compliance:** ✅ 100%
 
