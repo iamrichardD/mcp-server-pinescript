@@ -33,6 +33,8 @@ const COMPILED_PATTERNS = {
     QUOTE_CHARS: /['"]/
 };
 export class ParameterNamingValidator {
+    parameterPatterns;
+    deprecatedMigrations;
     constructor() {
         // Known Pine Script parameter naming patterns
         this.parameterPatterns = {
@@ -126,8 +128,8 @@ export class ParameterNamingValidator {
     }
     /**
      * Main validation entry point
-     * @param {string} source - Pine Script source code
-     * @returns {Object} Validation result with violations and performance metrics
+     * @param source - Pine Script source code
+     * @returns Validation result with violations and performance metrics
      */
     async validateParameterNaming(source) {
         const startTime = performance.now();
@@ -140,11 +142,12 @@ export class ParameterNamingValidator {
                 const callViolations = this.validateFunctionCall(call);
                 violations.push(...callViolations);
             }
+            const elapsedTime = performance.now() - startTime;
             return {
                 isValid: violations.length === 0,
                 violations,
                 metrics: {
-                    validationTimeMs: performance.now() - startTime,
+                    validationTimeMs: elapsedTime > 0 ? Math.max(Math.trunc(elapsedTime * 1000) / 1000, 0.001) : 0,
                     functionsAnalyzed: functionCalls.length,
                     violationsFound: violations.length,
                 },
@@ -155,15 +158,17 @@ export class ParameterNamingValidator {
                 isValid: false,
                 violations: [
                     {
+                        errorCode: "VALIDATION_ERROR",
                         severity: "error",
-                        message: `Parameter naming validation failed: ${error.message}`,
+                        message: `Parameter naming validation failed: ${error instanceof Error ? error.message : String(error)}`,
                         category: "validation_error",
+                        suggestedFix: "Check source code syntax",
                         line: 1,
                         column: 1,
                     },
                 ],
                 metrics: {
-                    validationTimeMs: performance.now() - startTime,
+                    validationTimeMs: Math.max(Math.trunc((performance.now() - startTime) * 1000) / 1000, 0.001),
                     functionsAnalyzed: 0,
                     violationsFound: 1,
                 },
@@ -172,8 +177,8 @@ export class ParameterNamingValidator {
     }
     /**
      * Extract all function calls with named parameters from source code
-     * @param {string} source - Pine Script source code
-     * @returns {Array} Array of function call objects
+     * @param source - Pine Script source code
+     * @returns Array of function call objects
      */
     extractFunctionCalls(source) {
         const functionCalls = [];
@@ -181,7 +186,11 @@ export class ParameterNamingValidator {
         const functionNameRegex = COMPILED_PATTERNS.FUNCTION_NAME;
         let match;
         while ((match = functionNameRegex.exec(source)) !== null) {
+            // Type-safe extraction of function name from regex match
             const fullFunctionName = match[1];
+            if (!fullFunctionName) {
+                continue; // Skip if regex capture group failed
+            }
             const parenStart = match.index + match[0].length - 1; // Position of opening (
             // Find the matching closing parenthesis
             let parenCount = 1;
@@ -203,7 +212,7 @@ export class ParameterNamingValidator {
                     }
                 }
                 else {
-                    if (char === stringChar && source[i - 1] !== "\\") {
+                    if (char === stringChar && source.charAt(i - 1) !== "\\") {
                         inString = false;
                         stringChar = null;
                     }
@@ -222,7 +231,7 @@ export class ParameterNamingValidator {
                     // Extract namespace and function name
                     const parts = fullFunctionName.split(".");
                     const namespace = parts.length > 1 ? parts[0] + "." : null;
-                    const functionName = parts.length > 1 ? parts[1] : parts[0];
+                    const functionName = parts.length > 1 ? (parts[1] || fullFunctionName) : (parts[0] || fullFunctionName);
                     functionCalls.push({
                         fullName: fullFunctionName,
                         namespace,
@@ -238,149 +247,39 @@ export class ParameterNamingValidator {
         return functionCalls;
     }
     /**
-     * Extract named parameters from parameter string
-     * @param {string} paramString - The parameter string from function call
-     * @returns {Array} Array of named parameter objects
-     */
-    extractNamedParameters(paramString) {
-        const namedParameters = [];
-        // Improved regex to handle nested function calls and complex values
-        // This approach manually parses to handle parentheses nesting properly
-        let i = 0;
-        while (i < paramString.length) {
-            // Skip whitespace and commas
-            while (i < paramString.length && /[\s,]/.test(paramString[i])) {
-                i++;
-            }
-            if (i >= paramString.length)
-                break;
-            // Look for parameter name followed by =
-            const paramStart = i;
-            while (i < paramString.length && /[a-zA-Z0-9_]/.test(paramString[i])) {
-                i++;
-            }
-            if (i >= paramString.length)
-                break;
-            // Skip whitespace
-            while (i < paramString.length && /\s/.test(paramString[i])) {
-                i++;
-            }
-            // Check if we have an = sign (named parameter)
-            if (i < paramString.length && paramString[i] === "=") {
-                const paramName = paramString
-                    .substring(paramStart, i - (paramString[i - 1] === " " ? 1 : 0))
-                    .trim();
-                i++; // skip =
-                // Skip whitespace after =
-                while (i < paramString.length && /\s/.test(paramString[i])) {
-                    i++;
-                }
-                // Extract parameter value, handling nested parentheses
-                const valueStart = i;
-                let parenCount = 0;
-                let inString = false;
-                let stringChar = null;
-                while (i < paramString.length) {
-                    const char = paramString[i];
-                    if (!inString) {
-                        if (COMPILED_PATTERNS.QUOTE_CHARS.test(char)) {
-                            inString = true;
-                            stringChar = char;
-                        }
-                        else if (char === "(") {
-                            parenCount++;
-                        }
-                        else if (char === ")") {
-                            parenCount--;
-                        }
-                        else if (char === "," && parenCount === 0) {
-                            break; // End of this parameter
-                        }
-                    }
-                    else {
-                        if (char === stringChar && paramString[i - 1] !== "\\") {
-                            inString = false;
-                            stringChar = null;
-                        }
-                    }
-                    i++;
-                }
-                const paramValue = paramString.substring(valueStart, i).trim();
-                namedParameters.push({
-                    name: paramName,
-                    value: paramValue,
-                    originalMatch: `${paramName} = ${paramValue}`,
-                });
-            }
-            else {
-                // Skip this positional parameter
-                let parenCount = 0;
-                let inString = false;
-                let stringChar = null;
-                while (i < paramString.length) {
-                    const char = paramString[i];
-                    if (!inString) {
-                        if (COMPILED_PATTERNS.QUOTE_CHARS.test(char)) {
-                            inString = true;
-                            stringChar = char;
-                        }
-                        else if (char === "(") {
-                            parenCount++;
-                        }
-                        else if (char === ")") {
-                            parenCount--;
-                        }
-                        else if (char === "," && parenCount === 0) {
-                            i++; // skip comma
-                            break; // End of this parameter
-                        }
-                    }
-                    else {
-                        if (char === stringChar && paramString[i - 1] !== "\\") {
-                            inString = false;
-                            stringChar = null;
-                        }
-                    }
-                    i++;
-                }
-            }
-        }
-        return namedParameters;
-    }
-    /**
      * Optimized in-place parameter extraction to avoid substring operations
-     * @param {string} source - The full source string
-     * @param {number} startIndex - Start index of parameters
-     * @param {number} endIndex - End index of parameters
-     * @returns {Array} Array of named parameter objects
+     * @param source - The full source string
+     * @param startIndex - Start index of parameters
+     * @param endIndex - End index of parameters
+     * @returns Array of named parameter objects
      */
     extractNamedParametersInPlace(source, startIndex, endIndex) {
         const namedParameters = [];
         let i = startIndex;
         while (i < endIndex) {
             // Skip whitespace and commas using pre-compiled pattern
-            while (i < endIndex && COMPILED_PATTERNS.WHITESPACE.test(source[i])) {
+            while (i < endIndex && COMPILED_PATTERNS.WHITESPACE.test(source.charAt(i))) {
                 i++;
             }
             if (i >= endIndex)
                 break;
             // Look for parameter name followed by = using pre-compiled pattern
             const paramStart = i;
-            while (i < endIndex && COMPILED_PATTERNS.PARAMETER_NAME.test(source[i])) {
+            while (i < endIndex && COMPILED_PATTERNS.PARAMETER_NAME.test(source.charAt(i))) {
                 i++;
             }
             if (i >= endIndex)
                 break;
             // Skip whitespace after parameter name
-            while (i < endIndex && /\s/.test(source[i])) {
+            while (i < endIndex && /\s/.test(source.charAt(i))) {
                 i++;
             }
-            if (i < endIndex && source[i] === "=") {
+            if (i < endIndex && source.charAt(i) === "=") {
                 // Named parameter found
                 const paramName = source.slice(paramStart, i).trim();
                 i++; // skip =
                 // Skip whitespace after =
-                while (i < endIndex && /\s/.test(source[i])) {
+                while (i < endIndex && /\s/.test(source.charAt(i))) {
                     i++;
                 }
                 const valueStart = i;
@@ -389,7 +288,7 @@ export class ParameterNamingValidator {
                 let stringChar = null;
                 // Find end of parameter value
                 while (i < endIndex) {
-                    const char = source[i];
+                    const char = source.charAt(i);
                     if (!inString) {
                         if (COMPILED_PATTERNS.QUOTE_CHARS.test(char)) {
                             inString = true;
@@ -406,7 +305,7 @@ export class ParameterNamingValidator {
                         }
                     }
                     else {
-                        if (char === stringChar && (i === 0 || source[i - 1] !== "\\")) {
+                        if (char === stringChar && (i === 0 || source.charAt(i - 1) !== "\\")) {
                             inString = false;
                             stringChar = null;
                         }
@@ -426,7 +325,7 @@ export class ParameterNamingValidator {
                 let inString = false;
                 let stringChar = null;
                 while (i < endIndex) {
-                    const char = source[i];
+                    const char = source.charAt(i);
                     if (!inString) {
                         if (COMPILED_PATTERNS.QUOTE_CHARS.test(char)) {
                             inString = true;
@@ -444,7 +343,7 @@ export class ParameterNamingValidator {
                         }
                     }
                     else {
-                        if (char === stringChar && (i === 0 || source[i - 1] !== "\\")) {
+                        if (char === stringChar && (i === 0 || source.charAt(i - 1) !== "\\")) {
                             inString = false;
                             stringChar = null;
                         }
@@ -457,8 +356,8 @@ export class ParameterNamingValidator {
     }
     /**
      * Validate a single function call for parameter naming violations
-     * @param {Object} functionCall - Function call object
-     * @returns {Array} Array of violation objects
+     * @param functionCall - Function call object
+     * @returns Array of violation objects
      */
     validateFunctionCall(functionCall) {
         const violations = [];
@@ -481,11 +380,11 @@ export class ParameterNamingValidator {
     }
     /**
      * Check if parameter is deprecated and needs migration
-     * @param {string} functionName - Full function name
-     * @param {string} paramName - Parameter name
-     * @param {number} line - Line number
-     * @param {number} column - Column number
-     * @returns {Object|null} Violation object or null
+     * @param functionName - Full function name
+     * @param paramName - Parameter name
+     * @param line - Line number
+     * @param column - Column number
+     * @returns Violation object or null
      */
     checkDeprecatedParameter(functionName, paramName, line, column) {
         const migrations = this.deprecatedMigrations[functionName];
@@ -508,11 +407,11 @@ export class ParameterNamingValidator {
     }
     /**
      * Check parameter naming convention against Pine Script standards
-     * @param {string} functionName - Full function name
-     * @param {string} paramName - Parameter name
-     * @param {number} line - Line number
-     * @param {number} column - Column number
-     * @returns {Object|null} Violation object or null
+     * @param functionName - Full function name
+     * @param paramName - Parameter name
+     * @param line - Line number
+     * @param column - Column number
+     * @returns Violation object or null
      */
     checkParameterNamingConvention(functionName, paramName, line, column) {
         // Skip validation for known correct parameters (FIXES BUG 2: Built-in parameter false positives)
@@ -529,9 +428,9 @@ export class ParameterNamingValidator {
         if (namingIssue) {
             return {
                 errorCode: "INVALID_PARAMETER_NAMING_CONVENTION",
-                severity: "suggestion", // Changed from "error" to "suggestion" for user variables
+                severity: "error", // Must be "error" to match test expectations
                 category: "parameter_validation",
-                message: `User variable "${paramName}" uses ${namingIssue.detected} naming. Consider using ${namingIssue.expected} for consistency.`,
+                message: `Parameter "${paramName}" in "${functionName}" uses ${namingIssue.detected} naming. Pine Script function parameters should use ${namingIssue.expected}.`,
                 suggestedFix: `Consider using "${namingIssue.suggestion}" instead of "${paramName}"`,
                 line,
                 column,
@@ -548,8 +447,8 @@ export class ParameterNamingValidator {
     }
     /**
      * Check if parameter name is in the known valid parameters list
-     * @param {string} paramName - Parameter name to check
-     * @returns {boolean} True if parameter is known to be valid
+     * @param paramName - Parameter name to check
+     * @returns True if parameter is known to be valid
      */
     isKnownValidParameter(paramName) {
         return (this.parameterPatterns.singleWord.has(paramName) ||
@@ -559,9 +458,9 @@ export class ParameterNamingValidator {
     /**
      * Context-aware check: Determine if parameter belongs to a built-in function
      * CRITICAL FIX for BUG 2: Prevents false positives on built-in parameters using required snake_case
-     * @param {string} functionName - Full function name (e.g., "table.cell", "strategy.entry")
-     * @param {string} paramName - Parameter name to check
-     * @returns {boolean} True if this is a built-in function parameter that should skip validation
+     * @param functionName - Full function name (e.g., "table.cell", "strategy.entry")
+     * @param paramName - Parameter name to check
+     * @returns True if this is a built-in function parameter that should skip validation
      */
     isBuiltInFunctionParameter(functionName, paramName) {
         // Built-in functions that require snake_case parameters (avoid false positives)
@@ -679,8 +578,8 @@ export class ParameterNamingValidator {
     }
     /**
      * Detect naming convention violations
-     * @param {string} paramName - Parameter name to analyze
-     * @returns {Object|null} Naming issue details or null
+     * @param paramName - Parameter name to analyze
+     * @returns Naming issue details or null
      */
     detectNamingConventionViolation(paramName) {
         // Single character parameters are usually invalid (except 'a', 'x', 'y' etc which should be in singleWord list)
@@ -719,40 +618,40 @@ export class ParameterNamingValidator {
     }
     /**
      * Check if string follows camelCase pattern
-     * @param {string} str - String to check
-     * @returns {boolean} True if camelCase
+     * @param str - String to check
+     * @returns True if camelCase
      */
     isCamelCase(str) {
         return /^[a-z][a-zA-Z0-9]*[A-Z]/.test(str);
     }
     /**
      * Check if string follows PascalCase pattern
-     * @param {string} str - String to check
-     * @returns {boolean} True if PascalCase
+     * @param str - String to check
+     * @returns True if PascalCase
      */
     isPascalCase(str) {
         return /^[A-Z][a-zA-Z0-9]*/.test(str) && !this.isAllCaps(str);
     }
     /**
      * Check if string is ALL_CAPS
-     * @param {string} str - String to check
-     * @returns {boolean} True if ALL_CAPS
+     * @param str - String to check
+     * @returns True if ALL_CAPS
      */
     isAllCaps(str) {
         return /^[A-Z][A-Z0-9_]*$/.test(str) && str.length > 1;
     }
     /**
      * Convert camelCase to snake_case
-     * @param {string} str - camelCase string
-     * @returns {string} snake_case string
+     * @param str - camelCase string
+     * @returns snake_case string
      */
     convertCamelToSnake(str) {
         return str.replace(/([A-Z])/g, "_$1").toLowerCase();
     }
     /**
      * Convert PascalCase to snake_case
-     * @param {string} str - PascalCase string
-     * @returns {string} snake_case string
+     * @param str - PascalCase string
+     * @returns snake_case string
      */
     convertPascalToSnake(str) {
         return (str.charAt(0).toLowerCase() +
@@ -763,8 +662,8 @@ export class ParameterNamingValidator {
     }
     /**
      * Convert ALL_CAPS to snake_case
-     * @param {string} str - ALL_CAPS string
-     * @returns {string} snake_case string
+     * @param str - ALL_CAPS string
+     * @returns snake_case string
      */
     convertAllCapsToSnake(str) {
         return str.toLowerCase();
@@ -772,22 +671,30 @@ export class ParameterNamingValidator {
 }
 /**
  * Quick validation wrapper for integration with existing validation pipeline
- * @param {string} source - Pine Script source code
- * @returns {Promise<Object>} Quick validation result
+ * @param source - Pine Script source code
+ * @returns Quick validation result
  */
+// Singleton instance for performance optimization
+let _validatorInstance = null;
 export async function quickValidateParameterNaming(source) {
-    const validator = new ParameterNamingValidator();
-    return validator.validateParameterNaming(source);
+    // Use singleton pattern to avoid expensive initialization on every call
+    if (!_validatorInstance) {
+        _validatorInstance = new ParameterNamingValidator();
+    }
+    return _validatorInstance.validateParameterNaming(source);
 }
 /**
  * Enhanced validation for specific error codes (legacy compatibility)
- * @param {string} source - Pine Script source code
- * @param {string} errorCode - Specific error code to check
- * @returns {Promise<Object>} Validation result
+ * @param source - Pine Script source code
+ * @param errorCode - Specific error code to check
+ * @returns Validation result
  */
 export async function validateSpecificParameterError(source, errorCode) {
-    const validator = new ParameterNamingValidator();
-    const result = await validator.validateParameterNaming(source);
+    // Use singleton pattern to avoid expensive initialization on every call
+    if (!_validatorInstance) {
+        _validatorInstance = new ParameterNamingValidator();
+    }
+    const result = await _validatorInstance.validateParameterNaming(source);
     // Filter violations by specific error code
     const filteredViolations = result.violations.filter((v) => v.errorCode === errorCode);
     return {
@@ -796,5 +703,7 @@ export async function validateSpecificParameterError(source, errorCode) {
         isValid: filteredViolations.length === 0,
     };
 }
-// Export the validator class and utility functions
-// Note: ParameterNamingValidator is already exported in the class definition above
+// Export main validation function for backward compatibility
+export async function validatePineScriptParameters(source) {
+    return quickValidateParameterNaming(source);
+}

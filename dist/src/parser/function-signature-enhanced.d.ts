@@ -8,5 +8,6 @@ export function quickValidateFunctionSignaturesEnhanced(source: any): Promise<{
     metrics: {
         validationTimeMs: number;
         functionsAnalyzed: number;
+        signatureChecksPerformed: number;
     };
 }>;
