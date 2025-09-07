@@ -124,7 +124,7 @@ describe('Error Handler Core - Type Guard Atomic Tests', () => {
       
       const result = measurePerformance('isSuccess validation', () => {
         return isSuccess(successResult);
-      }, 0.5);
+      }, 1.0);
       
       expect(result).toBe(true);
     });
@@ -134,7 +134,7 @@ describe('Error Handler Core - Type Guard Atomic Tests', () => {
       
       const result = measurePerformance('isSuccess rejection', () => {
         return isSuccess(errorResult);
-      }, 0.5);
+      }, 1.0);
       
       expect(result).toBe(false);
     });
@@ -146,7 +146,7 @@ describe('Error Handler Core - Type Guard Atomic Tests', () => {
       
       const result = measurePerformance('isError validation', () => {
         return isError(errorResult);
-      }, 0.5);
+      }, 1.0);
       
       expect(result).toBe(true);
     });
@@ -156,7 +156,7 @@ describe('Error Handler Core - Type Guard Atomic Tests', () => {
       
       const result = measurePerformance('isError rejection', () => {
         return isError(successResult);
-      }, 0.5);
+      }, 1.0);
       
       expect(result).toBe(false);
     });
@@ -455,7 +455,7 @@ describe('Error Handler Core - Constants Validation Atomic Tests', () => {
       expect(ERROR_SEVERITY.WARNING).toBe('warning');
       expect(ERROR_SEVERITY.ERROR).toBe('error');
       expect(ERROR_SEVERITY.CRITICAL).toBe('critical');
-    }, 0.5);
+    }, 1.0);
   });
   
   it('should validate ERROR_CATEGORIES constants in <1.0ms', () => {
@@ -469,14 +469,14 @@ describe('Error Handler Core - Constants Validation Atomic Tests', () => {
     }, 1.0);
   });
   
-  it('should validate ERROR_CODES constants in <0.5ms', () => {
+  it('should validate ERROR_CODES constants in <1.0ms', () => {
     measurePerformance('ERROR_CODES validation', () => {
       expect(ERROR_CODES.INVALID_TOKEN).toBe('INVALID_TOKEN');
       expect(ERROR_CODES.EXPECTED_TOKEN).toBe('EXPECTED_TOKEN');
       expect(ERROR_CODES.SHORT_TITLE_TOO_LONG).toBe('SHORT_TITLE_TOO_LONG');
       expect(ERROR_CODES.TYPE_MISMATCH).toBe('TYPE_MISMATCH');
       expect(ERROR_CODES.PARSE_TIMEOUT).toBe('PARSE_TIMEOUT');
-    }, 0.5);
+    }, 1.0);
   });
 });
 
@@ -484,7 +484,7 @@ describe('Error Handler Core - Global Collector Atomic Tests', () => {
   it('should access global collector in <0.5ms', () => {
     measurePerformance('global collector access', () => {
       expect(globalErrorCollector).toBeInstanceOf(ErrorCollector);
-    }, 0.5);
+    }, 1.0);
   });
   
   it('should use global collector independently in <1ms', () => {

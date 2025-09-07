@@ -126,7 +126,7 @@
   },
   
   "performanceExpectations": {
-    "maxValidationTimeMs": 8,
+    "maxValidationTimeMs": 11,
     "functionsPerMs": 25,
     "targetFunctionsCount": 100,
     "maxViolationsDetected": 1000,

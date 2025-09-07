@@ -23,13 +23,15 @@ export async function quickValidateFunctionSignaturesEnhanced(source) {
       violations: [],
       metrics: { 
         validationTimeMs: performance.now() - startTime,
-        functionsAnalyzed: 0
+        functionsAnalyzed: 0,
+        signatureChecksPerformed: 0
       }
     };
   }
 
   const violations = [];
   let functionsAnalyzed = 0;
+  let signatureChecksPerformed = 0;
   
   // ORIGINAL FUNCTION SIGNATURE VALIDATION: Run the core validation logic
   // This maintains compatibility with existing tests and functionality
@@ -38,8 +40,16 @@ export async function quickValidateFunctionSignaturesEnhanced(source) {
     if (originalResult.violations) {
       violations.push(...originalResult.violations);
     }
-    if (originalResult.metrics && originalResult.metrics.functionsAnalyzed) {
+    if (originalResult.metrics) {
+    if (originalResult.metrics.functionsAnalyzed) {
       functionsAnalyzed = originalResult.metrics.functionsAnalyzed;
+    }
+    if (originalResult.metrics.signatureChecksPerformed) {
+      signatureChecksPerformed = originalResult.metrics.signatureChecksPerformed;
+    } else {
+      // If not available from original, calculate based on functions analyzed
+      signatureChecksPerformed = functionsAnalyzed;
+    }
     }
   } catch (originalError) {
     console.warn('Original function signature validation failed:', originalError.message);
@@ -79,7 +89,8 @@ export async function quickValidateFunctionSignaturesEnhanced(source) {
     violations,
     metrics: { 
       validationTimeMs: endTime - startTime,
-      functionsAnalyzed // Now includes count from original validation
+      functionsAnalyzed, // Now includes count from original validation
+      signatureChecksPerformed // Track signature validation operations
     }
   };
 }
