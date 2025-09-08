@@ -57,5 +57,6 @@ logs
 build-failure-*.md
 build-report-*.md
 final-e2e-validation.js
+final-e2e-validation.d.ts
 temp_*.pine
 test_manual_*.pine
