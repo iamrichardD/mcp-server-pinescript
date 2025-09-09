@@ -6,9 +6,9 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, } from '@modelcontextprotocol/sdk/types.js';
 // @ts-expect-error - JavaScript module without type definitions
-import { validateSyntaxCompatibility } from './src/parser/validator.js';
+import { validateSyntaxCompatibility } from './dist/src/parser/validator.js';
 // Import version tool
-import { getServiceVersionInfo } from './src/version/mcp-version-tool.js';
+import { getServiceVersionInfo } from './dist/src/version/mcp-version-tool.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 // ========================================
@@ -750,7 +750,7 @@ function checkVersionDeclaration(code) {
 // Extract AST validation logic
 async function runAstValidation(validatorName, completeFunctionText, lineNumber) {
     try {
-        const parser = await import('./src/parser/index.js');
+        const parser = await import('./dist/src/parser/index.js');
         const validator = parser[validatorName];
         if (!validator) {
             return [];
@@ -833,7 +833,7 @@ class DeclarationProcessor {
 // Extract line continuation validation
 async function runLineContinuationValidation(code) {
     try {
-        const { quickValidateLineContinuation } = await import('./src/parser/index.js');
+        const { quickValidateLineContinuation } = await import('./dist/src/parser/index.js');
         const lineContinuationResult = await quickValidateLineContinuation(code);
         if (lineContinuationResult.hasLineContinuationError) {
             return lineContinuationResult.violations.map((violation) => ({
@@ -951,7 +951,7 @@ function checkLineLength(line, lineNumber) {
 // Extract function signature validation
 async function runFunctionSignatureValidation(code) {
     try {
-        const { quickValidateFunctionSignatures } = await import('./src/parser/index.js');
+        const { quickValidateFunctionSignatures } = await import('./dist/src/parser/index.js');
         const functionSignatureValidationResult = await quickValidateFunctionSignatures(code);
         if (functionSignatureValidationResult.violations.length > 0) {
             return functionSignatureValidationResult.violations.map((violation) => ({
