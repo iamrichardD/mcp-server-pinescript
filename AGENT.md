@@ -495,11 +495,66 @@ Root Level Deployment Documentation:
 - **Systematic coordination**: Proven patterns for multi-agent collaboration
 
 ### Mob Programming Practices
+
+#### Core Principles
 - **Working meetings**: Collaborative sessions for complex technical decisions
 - **Single-piece flow**: Complete one work item before starting the next
 - **Continuous collaboration**: Agent-to-agent communication style for alignment
 - **Shared ownership**: Whole AI agent team responsibility for technical excellence
 - **Kindness and respect**: Core values for effective team collaboration
+
+#### **MANDATORY Mob Programming Workflow**
+
+**ALL COMPLEX TECHNICAL SESSIONS MUST FOLLOW THIS PROCESS:**
+
+1. **Context Gathering Phase**
+   - **ALWAYS use context-manager agent first** to read all files in scope
+   - **Comprehensive analysis** of current state, dependencies, and impact
+   - **Risk assessment** of proposed changes before implementation
+   - **Clear documentation** of findings for team decision-making
+
+2. **Session Facilitation Phase**
+   - **ALWAYS use agile-coach agent** to facilitate the mob session
+   - **Structured planning** with specific steps and validation checkpoints
+   - **Risk mitigation strategy** with rollback plans if needed
+   - **Testing strategy** established before making any changes
+
+3. **TypeScript Development Workflow**
+   - **MANDATORY sequence**: `npm run build` → `npm run test:run` → modify source → `npm run build` → `npm run test:run`
+   - **Never modify transcoded files** (compiled JavaScript from TypeScript)
+   - **Always modify TypeScript source files** (.ts) when they exist
+   - **Verify compilation success** before proceeding to testing
+
+4. **Incremental Change Process**
+   - **One change at a time** with validation at each step
+   - **Test before and after** every change to detect regressions
+   - **Document decisions** and rationale for future team members
+   - **Rollback immediately** if any step fails validation
+
+5. **Documentation Requirements**
+   - **Update AGENT.md** to capture new processes discovered during sessions
+   - **Record lessons learned** from complex technical decisions
+   - **Maintain process compliance** for all future similar scenarios
+
+#### **Session Documentation Template**
+
+Every mob programming session must create:
+```
+## Mob Session: [ISSUE_NAME]
+- **Context Gathering**: [Context-manager findings summary]
+- **Facilitation Plan**: [Agile-coach session structure]
+- **Changes Made**: [Specific files and modifications]
+- **Validation Results**: [Test outcomes and verification]
+- **Lessons Learned**: [Process improvements for future]
+```
+
+#### **Quality Gates for Mob Sessions**
+- **Pre-session**: Context completely understood by all team members
+- **During session**: Each change validated before proceeding to next
+- **Post-session**: All tests pass and documentation updated
+- **Follow-up**: Process improvements incorporated into AGENT.md
+
+**THIS PROCESS IS MANDATORY** - No exceptions for any complex technical work involving multiple files, import changes, build process modifications, or external team coordination.
 
 ---
 
