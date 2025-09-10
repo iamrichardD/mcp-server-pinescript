@@ -1,6 +1,6 @@
 {
   "name": "mcp-server-pinescript",
-  "version": "3.3.10",
+  "version": "3.3.11",
   "description": "AI-optimized MCP server for PineScript documentation and code review",
   "main": "index.js",
   "type": "module",

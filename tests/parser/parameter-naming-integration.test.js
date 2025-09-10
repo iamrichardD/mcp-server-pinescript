@@ -27,6 +27,7 @@ import {
   loadValidationRules,
   validatePineScriptParameters,
 } from "../../src/parser/validator.js";
+import { initializeDocumentationLoader } from "../../src/parser/documentation-loader.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -40,7 +41,8 @@ const expectedResults = JSON.parse(
 );
 
 describe("Parameter Naming Validation - Integration Suite", () => {
-  beforeAll(() => {
+  beforeAll(async () => {
+    await initializeDocumentationLoader();
     loadValidationRules(validationRules);
   });
 

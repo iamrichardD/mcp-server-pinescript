@@ -23,6 +23,7 @@ import {
   quickValidateParameterNaming,
 } from "../../src/parser/parameter-naming-validator.js";
 import { loadValidationRules } from "../../src/parser/validator.js";
+import { initializeDocumentationLoader } from "../../src/parser/documentation-loader.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -32,7 +33,8 @@ const validationRules = JSON.parse(
 );
 
 describe("Parameter Naming Validation - Performance Suite", () => {
-  beforeAll(() => {
+  beforeAll(async () => {
+    await initializeDocumentationLoader();
     loadValidationRules(validationRules);
   });
 

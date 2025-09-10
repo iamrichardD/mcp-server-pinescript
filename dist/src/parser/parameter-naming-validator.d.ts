@@ -1,30 +1,31 @@
 /**
  * Pine Script Parameter Naming Convention Validation System
  *
+ * FORWARD-COMPATIBLE ARCHITECTURE (v4.0)
+ * Uses documentation-based parameter detection for zero-maintenance validation.
+ *
  * This module provides comprehensive validation for parameter naming conventions
- * across ALL Pine Script functions, replacing the limited table.cell textColor
- * validation with a robust, extensible system.
+ * across ALL Pine Script functions by dynamically loading function definitions
+ * from processed TradingView documentation.
  *
  * Core Functionality:
  * - Detects function calls with named parameters using `paramName = value` pattern
  * - Validates parameter naming conventions against Pine Script standards
+ * - Uses documentation-based registry for built-in function parameter detection
  * - Supports both deprecated parameter detection and general naming convention enforcement
- * - Works with any built-in function call, not just specific cases
+ * - Works with any built-in function call, automatically supporting new TradingView functions
  *
- * Naming Convention Rules:
- * 1. Pine Script built-ins use mixed conventions:
- *    - Single words: linewidth, defval, bgcolor
- *    - Snake_case: text_color, text_size, border_width, oca_name
- *    - Hidden params: minval, maxval, step (not in formal signatures)
- *
- * 2. User variables follow camelCase (per style guide)
- * 3. Function parameters should match the built-in function's expected naming
+ * Architecture Benefits:
+ * 1. ZERO MAINTENANCE: New functions automatically supported when docs update
+ * 2. ALWAYS ACCURATE: Uses official TradingView documentation as source of truth
+ * 3. FALSE POSITIVE ELIMINATION: Built-in parameters never flagged as violations
+ * 4. FORWARD COMPATIBLE: Supports future PineScript API changes without code updates
  *
  * Performance Target: <2ms validation time for 100+ function calls
  */
 export interface ValidationViolation {
     errorCode: string;
-    severity: "error" | "warning" | "suggestion";
+    severity: 'error' | 'warning' | 'suggestion';
     category: string;
     message: string;
     suggestedFix: string;
@@ -123,12 +124,21 @@ export declare class ParameterNamingValidator {
     isKnownValidParameter(paramName: string): boolean;
     /**
      * Context-aware check: Determine if parameter belongs to a built-in function
-     * CRITICAL FIX for BUG 2: Prevents false positives on built-in parameters using required snake_case
+     *
+     * PERFORMANCE-OPTIMIZED IMPLEMENTATION (v4.0):
+     * Uses pre-loaded documentation registry for ultra-fast synchronous lookups.
+     * Documentation must be initialized at service startup via initializeDocumentationLoader().
+     *
      * @param functionName - Full function name (e.g., "table.cell", "strategy.entry")
      * @param paramName - Parameter name to check
      * @returns True if this is a built-in function parameter that should skip validation
      */
     isBuiltInFunctionParameter(functionName: string, paramName: string): boolean;
+    /**
+     * Legacy hardcoded parameter detection (FALLBACK ONLY)
+     * Used only when documentation loading fails
+     */
+    private isBuiltInFunctionParameterLegacy;
     /**
      * Detect naming convention violations
      * @param paramName - Parameter name to analyze

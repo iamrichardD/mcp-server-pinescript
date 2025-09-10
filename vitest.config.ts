@@ -6,9 +6,10 @@ export default defineConfig({
     environment: 'node',
     include: ['tests/**/*.{test,spec}.{js,ts}'],
     exclude: ['node_modules', 'dist'],
-    timeout: 10000,
+    testTimeout: 10000,
     hookTimeout: 10000,
-    teardownTimeout: 10000
+    teardownTimeout: 10000,
+    globalSetup: './tests/test-setup.ts'
   },
   esbuild: {
     target: 'node18'

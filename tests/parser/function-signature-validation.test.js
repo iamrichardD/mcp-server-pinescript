@@ -8,7 +8,7 @@
  * Uses the same structure as input-type-mismatch-validation.test.js for consistency.
  */
 
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import {
   extractFunctionCalls,
   getExpectedSignature,
@@ -16,8 +16,13 @@ import {
   validateParameterCount,
   validateParameterTypes,
 } from "../../src/parser/index.js";
+import { initializeDocumentationLoader } from "../../src/parser/documentation-loader.js";
 
 describe("FUNCTION_SIGNATURE_VALIDATION", () => {
+  beforeAll(async () => {
+    await initializeDocumentationLoader();
+  });
+
   describe("Atomic Function Tests - Phase 1 Core Functions", () => {
     describe("getExpectedSignature", () => {
       it("should return signature for ta.sma", () => {

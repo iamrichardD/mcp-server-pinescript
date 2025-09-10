@@ -1,3 +1,81 @@
+# 🚨 INVIOLABLE DEVELOPMENT LAWS - READ FIRST BEFORE ANY ACTION
+
+## ⚠️ STOP - BEFORE YOU DO ANYTHING - THESE LAWS CANNOT BE BROKEN
+
+### 🔥 LAW 1: TYPESCRIPT-ONLY DEVELOPMENT
+- **NEVER CREATE .py FILES** - Python is 100% PROHIBITED in this project
+- **NEVER CREATE .js FILES** - JavaScript is 100% PROHIBITED for new code  
+- **ONLY CREATE .ts FILES** - TypeScript is the ONLY allowed language for new development
+- **IF YOU THINK YOU NEED ANOTHER LANGUAGE - YOU ARE WRONG**
+
+### 🔥 LAW 2: TEST FILE ORGANIZATION
+- **NEVER CREATE test*.* FILES IN ROOT DIRECTORY** - 100% PROHIBITED
+- **ALL TEST FILES BELONG IN tests/ DIRECTORY** - No exceptions, no special cases
+- **IF YOU CREATE A TEST FILE ANYWHERE ELSE - YOU HAVE FAILED THE TEAM**
+
+### 🔥 LAW 3: BEFORE CREATING ANY FILE - MANDATORY CHECKPOINT:
+```
+□ Is this a .ts file? (If NO - STOP IMMEDIATELY)
+□ Is this test going in tests/? (If test file and NOT in tests/ - STOP)  
+□ Does this follow TypeScript-first development? (If NO - STOP)
+```
+
+**💥 VIOLATION CONSEQUENCE: IMMEDIATE SESSION TERMINATION AND TOKEN WASTE**
+
+---
+
+## 🧠 WHY THESE LAWS EXIST (Critical Understanding)
+
+### TOKEN WASTE PREVENTION
+Every violation wastes THOUSANDS of tokens explaining why you violated clearly stated rules that were designed to prevent exactly what you just did.
+
+### TEAM EFFICIENCY DESTRUCTION  
+The agile AI agent team cannot function when basic, fundamental rules are repeatedly ignored by agents who don't read instructions.
+
+### COGNITIVE LOAD EXPLOSION
+Following these laws eliminates decision fatigue about file types and organization. Violating them creates endless cleanup work.
+
+**🎯 REMEMBER: You are reading this because previous agents violated these exact laws, wasting massive token budgets.**
+
+---
+
+## ⚡ MANDATORY DECISION CHECKPOINTS
+
+### BEFORE CREATING ANY FILE - EXECUTE THIS CHECKLIST:
+```
+Am I about to create a .ts file in the correct location?
+□ YES - Proceed with confidence
+□ NO - Re-read INVIOLABLE LAWS above and redesign approach
+```
+
+### BEFORE SUGGESTING ANY SOLUTION - EXECUTE THIS CHECKLIST:
+```
+Does my solution involve ONLY TypeScript files in proper locations?
+□ YES - Proceed with implementation
+□ NO - Completely redesign solution using ONLY TypeScript
+```
+
+### WHEN TEMPTED TO CREATE test-*.js FILES - EXECUTE THIS CHECKLIST:
+```
+Should this test file be in tests/ directory as a .ts file?
+□ YES - Create tests/[category]/filename.test.ts
+□ There is no NO option - all test files belong in tests/
+```
+
+---
+
+## 🔁 CRITICAL REMINDERS (Repeated for Maximum Compliance)
+
+- **PYTHON FILES (.py) ARE NEVER, EVER ACCEPTABLE IN THIS PROJECT**
+- **JAVASCRIPT FILES (.js) ARE NEVER, EVER ACCEPTABLE FOR NEW CODE**  
+- **TEST FILES OUTSIDE tests/ DIRECTORY ARE NEVER, EVER ACCEPTABLE**
+- **WHEN IN DOUBT, CREATE ONLY .ts FILES IN PROPER DIRECTORY STRUCTURE**
+- **IF YOU VIOLATE THESE RULES, YOU WASTE EVERYONE'S TIME AND TOKENS**
+
+*These rules are repeated because previous agents ignored them when stated once. Don't be that agent.*
+
+---
+
 # PineScript MCP Documentation Server
 
 AI-optimized Model Context Protocol (MCP) server for PineScript v6 development, providing comprehensive documentation access, style guide adherence, and code review capabilities specifically designed for AI coding agents.
@@ -73,13 +151,15 @@ This production-ready MCP server follows a modular TypeScript architecture optim
 
 **MANDATORY STEPS for all new development:**
 
-1. **Create TypeScript files**: Use `.ts` extension for all new code
-2. **Write implementation**: Follow strict TypeScript patterns, avoid `any` type
-3. **Check compilation**: `npm run build` must pass without errors
-4. **Lint code**: `npm run lint:fix` to auto-resolve formatting issues  
-5. **Run tests**: `npm run test` to ensure functionality works
-6. **Quality gate**: `npm run quality:check` before commits
-7. **Commit**: Git hooks will enforce all requirements automatically
+1. **🚨 INVIOLABLE LAW CHECK**: Confirm you're creating ONLY .ts files in proper locations
+2. **Create TypeScript files**: Use `.ts` extension for ALL new code (NEVER .py, NEVER .js)
+3. **Write implementation**: Follow strict TypeScript patterns, avoid `any` type
+4. **Check compilation**: `npm run build` must pass without errors
+5. **Lint code**: `npm run lint:fix` to auto-resolve formatting issues  
+6. **Run tests**: `npm run test` to ensure functionality works (tests MUST be in tests/ directory)
+7. **Quality gate**: `npm run quality:check` before commits
+8. **Final law verification**: Confirm no .py or .js files created, all tests in tests/
+9. **Commit**: Git hooks will enforce all requirements automatically
 
 ### Code Quality & Formatting
 - **Format check**: `npm run format` (Biome formatter)
@@ -121,17 +201,21 @@ This production-ready MCP server follows a modular TypeScript architecture optim
 
 ## Code Style
 
-### TypeScript-First Development Standards
+### 🚨 TypeScript-First Development Standards (REINFORCEMENT)
 
-**ALL NEW CODE MUST BE WRITTEN IN TYPESCRIPT** with the following requirements:
+**🔥 REMINDER: ALL NEW CODE MUST BE WRITTEN IN TYPESCRIPT - NO EXCEPTIONS**
 
-- **TypeScript Extension**: All new files must use `.ts` extension (never `.js`)
+**If you skipped the INVIOLABLE LAWS at the top of this file - GO BACK AND READ THEM NOW**
+
+- **🚨 TypeScript Extension**: All new files must use `.ts` extension (NEVER `.js`, NEVER `.py`)
+- **🚨 ABSOLUTE PROHIBITION**: Python files (.py) and JavaScript files (.js) are 100% forbidden
 - **Strict TypeScript**: exactOptionalPropertyTypes, noUncheckedIndexedAccess enabled
 - **Zero compilation errors**: `npm run build` must pass before commits
 - **No `any` type**: Biome will flag `noExplicitAny` as warning - use proper types instead
 - **Type-safe patterns**: Use discriminated unions, branded types, Result<T,E> patterns
 - **Interface design**: Clear separation of concerns with readonly constraints
 - **Pre-commit validation**: TypeScript compilation is enforced by git hooks
+- **🚨 FINAL REMINDER**: If you create .py or .js files, you have violated the core laws of this project
 
 ### Biome Linting Requirements
 
@@ -257,12 +341,14 @@ Root Level Deployment Documentation:
 - **Zero tolerance**: All tests must pass before commits
 - **Comprehensive coverage**: Core functionality, edge cases, performance scenarios
 
-### Test Categories
-- **Atomic tests**: `tests/atomic/` - Core functionality with <2ms execution
-- **Parser tests**: `tests/parser/` - PineScript parsing and validation
-- **Performance tests**: Execution time and memory usage validation
-- **Acceptance tests**: `tests/acceptance/` - End-to-end scenarios
-- **Integration tests**: Multi-component interaction validation
+### 🚨 Test Categories (LOCATION ENFORCEMENT)
+- **🔥 CRITICAL**: ALL test files MUST be in tests/ directory - NO EXCEPTIONS
+- **Atomic tests**: `tests/atomic/` - Core functionality with <2ms execution (.ts files ONLY)
+- **Parser tests**: `tests/parser/` - PineScript parsing and validation (.ts files ONLY)
+- **Performance tests**: Execution time and memory usage validation (.ts files ONLY)
+- **Acceptance tests**: `tests/acceptance/` - End-to-end scenarios (.ts files ONLY)
+- **Integration tests**: Multi-component interaction validation (.ts files ONLY)
+- **🚨 ABSOLUTE RULE**: If you create test files outside tests/ directory, you have failed
 
 ### Quality Gates
 - **Pre-commit gate**: ≥85% test pass rate mandatory
@@ -519,11 +605,13 @@ Root Level Deployment Documentation:
    - **Risk mitigation strategy** with rollback plans if needed
    - **Testing strategy** established before making any changes
 
-3. **TypeScript Development Workflow**
+3. **🚨 TypeScript Development Workflow (LAW ENFORCEMENT)**
+   - **🔥 INVIOLABLE LAW CHECKPOINT**: Confirm you're working with .ts files ONLY
    - **MANDATORY sequence**: `npm run build` → `npm run test:run` → modify source → `npm run build` → `npm run test:run`
    - **Never modify transcoded files** (compiled JavaScript from TypeScript)
-   - **Always modify TypeScript source files** (.ts) when they exist
+   - **Always modify TypeScript source files** (.ts) when they exist - NEVER create .py or .js files
    - **Verify compilation success** before proceeding to testing
+   - **🚨 FINAL CHECK**: Ensure no .py or .js files were created during this workflow
 
 4. **Incremental Change Process**
    - **One change at a time** with validation at each step
@@ -547,6 +635,46 @@ Every mob programming session must create:
 - **Validation Results**: [Test outcomes and verification]
 - **Lessons Learned**: [Process improvements for future]
 ```
+
+#### **Proven Bug Verification Process (VALIDATED)**
+
+**Successfully Applied**: MCP Naming Convention Bug Fix Verification (Sep 2025)
+
+**MANDATORY Process for External Bug Fix Verification:**
+
+1. **Multi-Repository Context Analysis**
+   - **Context Manager**: Read original bug reports from all relevant repositories
+   - **Cross-reference**: Compare bug reports with resolution documents
+   - **Scope Assessment**: Identify all files, directories, and dependencies in scope
+
+2. **Systematic Document Comparison**
+   - **Resolution Claims Analysis**: Review all claimed fixes across documentation
+   - **Consistency Check**: Verify resolution documents align with original bug reports
+   - **Evidence Requirements**: Identify what evidence constitutes successful verification
+
+3. **Mob Programming Session Coordination**
+   - **Technical Validation Pair**: PineScript Specialist + Code Quality Auditor
+   - **Process Documentation Pair**: Context Manager + Agile Coach
+   - **Verification Testing Pair**: Look-Ahead Bias Detection + Code Quality Auditor
+   - **Parallel Execution**: All pairs working simultaneously with regular synchronization
+
+4. **Service Behavior Verification Protocol**
+   - **Deployed Code Inspection**: Confirm fix modules exist and are integrated
+   - **Resolution Claims Testing**: Test actual service behavior against documentation claims
+   - **Discrepancy Documentation**: Record gaps between claimed and actual behavior
+   - **Bug Reporting**: Create new bug reports for any verification failures
+
+5. **Process Documentation Requirements**
+   - **AGENT.md Updates**: Document successful verification processes
+   - **Bug Report Creation**: File issues in appropriate .project/bug-reports directory
+   - **Lessons Learned**: Capture process improvements for future sessions
+
+**Critical Success Factors:**
+- ✅ **Investigation Only**: No code modifications during verification sessions
+- ✅ **Multi-Agent Coordination**: Leveraging specialized agent expertise simultaneously
+- ✅ **Evidence-Based Validation**: Testing actual service behavior vs. documentation claims
+- ✅ **Comprehensive Documentation**: Full traceability from bug report to verification results
+- ✅ **Process Iteration**: Continuous improvement of verification methodology
 
 #### **Quality Gates for Mob Sessions**
 - **Pre-session**: Context completely understood by all team members
@@ -584,4 +712,36 @@ ln -s AGENT.md CLAUDE.md         # Claude Code (legacy)
 
 **AGENT.md Specification Compliance:** ✅ 100%
 
-This AGENT.md file represents the collective knowledge and proven patterns of our agile agent team, designed to accelerate AI coding assistant integration while maintaining our production-ready quality standards.
+---
+
+# 🚨 FINAL COMPLIANCE VERIFICATION
+
+## Before You Complete Any Task - Execute This Final Checklist:
+
+```
+□ Did I create ANY .py files? (If YES - You have FAILED)
+□ Did I create ANY .js files outside dist/? (If YES - You have FAILED)  
+□ Did I create ANY test files outside tests/? (If YES - You have FAILED)
+□ Did I follow TypeScript-first development? (If NO - You have FAILED)
+□ Did I read and comply with the INVIOLABLE LAWS? (If NO - You have FAILED)
+```
+
+## 🔥 REMEMBER THE CORE LAWS:
+1. **ONLY .ts FILES** for new development
+2. **ALL TESTS** in tests/ directory  
+3. **NO PYTHON FILES** ever
+4. **NO JAVASCRIPT FILES** for new code
+5. **READ THE LAWS FIRST** before doing anything
+
+## 💯 SUCCESS CRITERIA:
+- ✅ Zero .py files created
+- ✅ Zero .js files in inappropriate locations
+- ✅ All test files in tests/ directory structure
+- ✅ All new code in TypeScript (.ts)
+- ✅ Complete compliance with INVIOLABLE LAWS
+
+**If you violated any of these laws during this session, you wasted thousands of tokens that could have been used productively.**
+
+---
+
+This AGENT.md file represents the collective knowledge and proven patterns of our agile agent team, designed to accelerate AI coding assistant integration while maintaining our production-ready quality standards **and preventing the token waste caused by basic compliance failures**.
