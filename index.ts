@@ -20,6 +20,8 @@ import type { FunctionCallAnalysis, ParseError } from './src/parser/types.d.ts';
 import { validateSyntaxCompatibility } from './src/parser/validator.js';
 // Import version tool
 import { getServiceVersionInfo } from './src/version/mcp-version-tool.js';
+// Import documentation loader initialization
+import { initializeDocumentationLoader } from './src/parser/documentation-loader.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -2392,6 +2394,9 @@ async function main(): Promise<void> {
     await preloadDocumentation();
 
     // Validate preloaded data integrity
+
+    // CRITICAL FIX: Initialize documentation loader for parameter naming validation
+    await initializeDocumentationLoader();
     const _validation = validatePreloadedData();
 
     // Start the server
