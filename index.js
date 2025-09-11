@@ -1405,7 +1405,7 @@ function getSeverityIcon(severity) {
 // ========================================
 async function validateSyntaxCompatibilityTool(code, format = 'json', migrationGuide = false) {
     try {
-        const result = validateSyntaxCompatibility(code);
+        const result = await validateSyntaxCompatibility(code);
         if (format === 'markdown') {
             return {
                 content: [

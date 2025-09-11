@@ -90,12 +90,10 @@ export async function validatePineScriptParameters(source, rules = null) {
     // Runtime NA object access validation (CRITICAL BUG 1 FIX)
     // This must run ALWAYS to detect runtime-breaking errors (not dependent on rules)
     // Addresses complete failure to detect na object access violations
-    validationPromises.push(quickValidateRuntimeNAObjectAccess(source));
+    validationPromises.push(quickValidateNAObjectAccess(source));
     // Parameter naming convention validations (INCLUDES BUG 2 FIX)
-    if (hasValidationRule("DEPRECATED_PARAMETER_NAME") ||
-        hasValidationRule("INVALID_PARAMETER_NAMING_CONVENTION")) {
-        validationPromises.push(quickValidateParameterNaming(source));
-    }
+    // CRITICAL: Always validate parameter naming - Bug Fix #2
+    validationPromises.push(quickValidateParameterNaming(source));
     // Parameter constraint validations
     if (hasValidationRule("INVALID_PRECISION")) {
         validationPromises.push(quickValidatePrecision(source));
