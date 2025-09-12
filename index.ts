@@ -1550,6 +1550,50 @@ function checkNamingConvention(
     const varMatch = line.match(/(\w+)\s*=/);
     if (varMatch) {
       const varName = varMatch[1] ?? '';
+      
+      
+      // COMPREHENSIVE FIX: Skip all built-in parameters + function call context detection
+      // Built-in TradingView parameters that MUST use snake_case
+      const isBuiltInParam = (
+        varName === 'table_id' || varName === 'text_color' || varName === 'text_size' ||
+        varName === 'text_halign' || varName === 'text_valign' || varName === 'text_wrap' ||
+        varName === 'text_font_family' || varName === 'text_formatting' ||
+        varName === 'border_color' || varName === 'border_width' || varName === 'border_style' ||
+        varName === 'oca_name' || varName === 'alert_message' || varName === 'show_last' ||
+        varName === 'force_overlay' || varName === 'max_bars_back' ||
+        varName === 'max_lines_count' || varName === 'max_labels_count' || varName === 'max_boxes_count'
+      );
+      
+      // Enhanced context detection: check if this appears to be a function parameter
+      const beforeVar = originalLine.substring(0, originalLine.indexOf(varName));
+      const isInFunctionCall = (
+        beforeVar.includes('(') && !beforeVar.includes(')') &&
+        (beforeVar.includes('table.') || beforeVar.includes('strategy.') || 
+         beforeVar.includes('plot(') || beforeVar.includes('input.'))
+      );
+      
+      // Skip validation if it's a built-in parameter OR appears to be in a function call
+      if (isBuiltInParam || isInFunctionCall) {
+        return null; // Skip validation
+      }
+      
+      // Check if this looks like a function call parameter
+      // Pattern: function_name(param1=value, param2=value)
+      const beforeAssignment = originalLine.substring(0, originalLine.indexOf(varName));
+      const afterAssignment = originalLine.substring(originalLine.indexOf(varName));
+      
+      // Enhanced detection: look for function call pattern or known parameter context
+      if (
+        // Direct function parameter pattern: func(param=
+        /\w+\s*\([^)]*$/.test(beforeAssignment.trim()) ||
+        // Parameter in function call: ,param= or (param=
+        /[,(]\s*$/.test(beforeAssignment.trim()) ||
+        // Parameter assignment with function-like context
+        (beforeAssignment.includes('(') && !beforeAssignment.includes(')') && afterAssignment.includes('='))
+      ) {
+        return null;
+      }
+      
       if (
         !/^[a-z][a-zA-Z0-9]*$/.test(varName) &&
         !['ta', 'math', 'array', 'str'].includes(varName)

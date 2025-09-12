@@ -1,0 +1,4 @@
+//@version=6
+indicator("Test Parameter Bug Fix")
+table_id = table.new(position.top_right, 1, 1)
+text_color = color.black

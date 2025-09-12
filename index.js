@@ -6,9 +6,11 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, } from '@modelcontextprotocol/sdk/types.js';
 // @ts-expect-error - JavaScript module without type definitions
-import { validateSyntaxCompatibility } from './dist/src/parser/validator.js';
+import { validateSyntaxCompatibility } from './src/parser/validator.js';
 // Import version tool
-import { getServiceVersionInfo } from './dist/src/version/mcp-version-tool.js';
+import { getServiceVersionInfo } from './src/version/mcp-version-tool.js';
+// Import documentation loader initialization
+import { initializeDocumentationLoader } from './src/parser/documentation-loader.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 // ========================================
@@ -750,7 +752,7 @@ function checkVersionDeclaration(code) {
 // Extract AST validation logic
 async function runAstValidation(validatorName, completeFunctionText, lineNumber) {
     try {
-        const parser = await import('./dist/src/parser/index.js');
+        const parser = await import('./src/parser/index.js');
         const validator = parser[validatorName];
         if (!validator) {
             return [];
@@ -833,7 +835,7 @@ class DeclarationProcessor {
 // Extract line continuation validation
 async function runLineContinuationValidation(code) {
     try {
-        const { quickValidateLineContinuation } = await import('./dist/src/parser/index.js');
+        const { quickValidateLineContinuation } = await import('./src/parser/index.js');
         const lineContinuationResult = await quickValidateLineContinuation(code);
         if (lineContinuationResult.hasLineContinuationError) {
             return lineContinuationResult.violations.map((violation) => ({
@@ -890,6 +892,38 @@ function checkNamingConvention(line, lineNumber, originalLine) {
         const varMatch = line.match(/(\w+)\s*=/);
         if (varMatch) {
             const varName = varMatch[1] ?? '';
+            // COMPREHENSIVE FIX: Skip all built-in parameters + function call context detection
+            // Built-in TradingView parameters that MUST use snake_case
+            const isBuiltInParam = (varName === 'table_id' || varName === 'text_color' || varName === 'text_size' ||
+                varName === 'text_halign' || varName === 'text_valign' || varName === 'text_wrap' ||
+                varName === 'text_font_family' || varName === 'text_formatting' ||
+                varName === 'border_color' || varName === 'border_width' || varName === 'border_style' ||
+                varName === 'oca_name' || varName === 'alert_message' || varName === 'show_last' ||
+                varName === 'force_overlay' || varName === 'max_bars_back' ||
+                varName === 'max_lines_count' || varName === 'max_labels_count' || varName === 'max_boxes_count');
+            // Enhanced context detection: check if this appears to be a function parameter
+            const beforeVar = originalLine.substring(0, originalLine.indexOf(varName));
+            const isInFunctionCall = (beforeVar.includes('(') && !beforeVar.includes(')') &&
+                (beforeVar.includes('table.') || beforeVar.includes('strategy.') ||
+                    beforeVar.includes('plot(') || beforeVar.includes('input.')));
+            // Skip validation if it's a built-in parameter OR appears to be in a function call
+            if (isBuiltInParam || isInFunctionCall) {
+                return null; // Skip validation
+            }
+            // Check if this looks like a function call parameter
+            // Pattern: function_name(param1=value, param2=value)
+            const beforeAssignment = originalLine.substring(0, originalLine.indexOf(varName));
+            const afterAssignment = originalLine.substring(originalLine.indexOf(varName));
+            // Enhanced detection: look for function call pattern or known parameter context
+            if (
+            // Direct function parameter pattern: func(param=
+            /\w+\s*\([^)]*$/.test(beforeAssignment.trim()) ||
+                // Parameter in function call: ,param= or (param=
+                /[,(]\s*$/.test(beforeAssignment.trim()) ||
+                // Parameter assignment with function-like context
+                (beforeAssignment.includes('(') && !beforeAssignment.includes(')') && afterAssignment.includes('='))) {
+                return null;
+            }
             if (!/^[a-z][a-zA-Z0-9]*$/.test(varName) &&
                 !['ta', 'math', 'array', 'str'].includes(varName)) {
                 return {
@@ -951,7 +985,7 @@ function checkLineLength(line, lineNumber) {
 // Extract function signature validation
 async function runFunctionSignatureValidation(code) {
     try {
-        const { quickValidateFunctionSignatures } = await import('./dist/src/parser/index.js');
+        const { quickValidateFunctionSignatures } = await import('./src/parser/index.js');
         const functionSignatureValidationResult = await quickValidateFunctionSignatures(code);
         if (functionSignatureValidationResult.violations.length > 0) {
             return functionSignatureValidationResult.violations.map((violation) => ({
@@ -1405,7 +1439,7 @@ function getSeverityIcon(severity) {
 // ========================================
 async function validateSyntaxCompatibilityTool(code, format = 'json', migrationGuide = false) {
     try {
-        const result = await validateSyntaxCompatibility(code);
+        const result = validateSyntaxCompatibility(code);
         if (format === 'markdown') {
             return {
                 content: [
@@ -1556,6 +1590,8 @@ async function main() {
         // Preload documentation before accepting requests for optimal performance
         await preloadDocumentation();
         // Validate preloaded data integrity
+        // CRITICAL FIX: Initialize documentation loader for parameter naming validation
+        await initializeDocumentationLoader();
         const _validation = validatePreloadedData();
         // Start the server
         const transport = new StdioServerTransport();
