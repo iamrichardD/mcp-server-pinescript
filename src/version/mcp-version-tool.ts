@@ -55,8 +55,6 @@ function getCurrentVersion(): string {
         packageJsonPath = possiblePath;
         break;
       } catch {
-        // Try next path
-        continue;
       }
     }
     

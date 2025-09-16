@@ -23,8 +23,6 @@ function getCurrentVersion() {
                 break;
             }
             catch {
-                // Try next path
-                continue;
             }
         }
         if (!packageJsonPath) {
