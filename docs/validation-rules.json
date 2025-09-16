@@ -358,6 +358,10 @@
           "severity": "error",
           "category": "syntax_validation",
           "patterns": {
+            "arithmeticOperatorEOL": "[\\+\\-\\*\\/]\\s*(?:\\/\\/.*)?$",
+            "logicalOperatorEOL": "(?:and|or)\\s*(?:\\/\\/.*)?$",
+            "comparisonOperatorEOL": "[<>]=?|==|!=\\s*(?:\\/\\/.*)?$",
+            "ternaryOperatorEOL": "[\\?\\:]\\s*(?:\\/\\/.*)?$",
             "ternaryLineContinuation": "([a-zA-Z_][a-zA-Z0-9_]*\\s*=\\s*[^?\\n]*?)\\?\\s*$",
             "multiLineTernary": "([a-zA-Z_][a-zA-Z0-9_]*\\s*=\\s*[^?\\n]*?)\\?\\s*\\n\\s*\\(",
             "assignmentLineBreak": "([a-zA-Z_][a-zA-Z0-9_]*\\s*=\\s*[^?\\n]*?)\\?\\s*\\n",
@@ -367,19 +371,21 @@
           "correctSyntax": "variable = condition ? (nestedCondition ? value1 : value2) : value3",
           "examples": {
             "incorrect": [
+              "institutionalFlow = (isOrderBlockBullish ? 1.0 : isOrderBlockBearish ? -1.0 : 0.0) +\n                    (fvgBullish ? 0.5 : fvgBearish ? -0.5 : 0.0)",
+              "result = value1 +\n         value2",
+              "condition = close > ema_8 and\n            volume > threshold",
               "slowEma = useAdaptiveRibbon ?\n    (highVolRegime ? slowEma55 : slowEma34) : slowEmaBase",
-              "result = condition ?\n    value1 : value2",
-              "color = bullish ?\n    color.green : color.red",
-              "macdLine = useDynamic ?\n    (highVol ? macdHigh : macdNorm) : macdDefault"
+              "comparison = price >\n             threshold"
             ],
             "correct": [
+              "institutionalFlow = (isOrderBlockBullish ? 1.0 : isOrderBlockBearish ? -1.0 : 0.0) + (fvgBullish ? 0.5 : fvgBearish ? -0.5 : 0.0)",
+              "result = value1 + value2",
+              "condition = close > ema_8 and volume > threshold",
               "slowEma = useAdaptiveRibbon ? (highVolRegime ? slowEma55 : slowEma34) : slowEmaBase",
-              "result = condition ? value1 : value2",
-              "color = bullish ? color.green : color.red",
-              "macdLine = useDynamic ? (highVol ? macdHigh : macdNorm) : macdDefault"
+              "comparison = price > threshold"
             ]
           },
-          "documentation": "Detects improper line continuation in ternary operators. Pine Script v6 requires ternary operators to be written without line breaks at the ? operator. Multi-line ternary expressions should keep the ? on the same line as the condition."
+          "documentation": "Detects improper line continuation after operators. Pine Script v6 prohibits line continuation after arithmetic operators (+, -, *, /), logical operators (and, or), comparison operators (>, <, ==, !=), and ternary operators (?, :). All expressions must be on a single line to avoid 'end of line without line continuation' compilation errors."
         }
       }
     }

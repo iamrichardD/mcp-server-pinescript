@@ -1482,7 +1482,7 @@ async function runLineContinuationValidation(code: string): Promise<ValidationVi
     const { quickValidateLineContinuation } = await import('./src/parser/index.js');
     const lineContinuationResult = await quickValidateLineContinuation(code);
 
-    if (lineContinuationResult.hasLineContinuationError) {
+    if (lineContinuationResult.violations && lineContinuationResult.violations.length > 0) {
       return lineContinuationResult.violations.map((violation: ValidationViolation) => ({
         line: violation.line,
         column: violation.column,
@@ -2259,7 +2259,7 @@ async function validateSyntaxCompatibilityTool(
   migrationGuide = false
 ): Promise<CallToolResult> {
   try {
-    const result = validateSyntaxCompatibility(code);
+    const result = await validateSyntaxCompatibility(code);
 
     if (format === 'markdown') {
       return {

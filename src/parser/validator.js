@@ -1400,38 +1400,53 @@ export async function quickValidateLineContinuation(source) {
             metrics: { validationTimeMs: Date.now() - startTime },
         };
     }
+
     const lines = source.split('\n');
+    const operatorPatterns = {
+        arithmetic: /[\+\-\*\/]\s*(?:\/\/.*)?$/,
+        logical: /(?:and|or)\s*(?:\/\/.*)?$/,
+        comparison: /[<>]=?|==|!=\s*(?:\/\/.*)?$/,
+        ternary: /\?\s*(?:\/\/.*)?$|:\s*(?:\/\/.*)?$/
+    };
+
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
         const lineNumber = i + 1;
-        // Skip empty lines and comments
         const trimmedLine = line.trim();
+
+        // Skip empty lines, comments, and string literals
         if (!trimmedLine || trimmedLine.startsWith('//')) {
             continue;
         }
-        // Check for line continuation issues in several scenarios
-        // 1. Detect ternary operator ending with '?' at end of line (most common case)
-        // This pattern matches '?' followed by optional whitespace and optional comment
-        const ternaryPattern = /\?\s*(?:\/\/.*)?$/;
-        if (ternaryPattern.test(line)) {
-            // Make sure this isn't inside a string literal
-            const questionPos = line.indexOf('?');
-            if (questionPos !== -1 && !isInStringOrComment(line, questionPos)) {
-                violations.push({
-                    rule: 'INVALID_LINE_CONTINUATION',
-                    errorCode: 'INVALID_LINE_CONTINUATION',
-                    severity: 'error',
-                    category: 'syntax_validation',
-                    message: 'Syntax error at input \'end of line without line continuation\'. ternary operators (?) must be properly formatted without line breaks at the condition operator.',
-                    line: lineNumber,
-                    column: questionPos + 1,
-                    suggestedFix: 'Keep ternary operators on a single line or use proper line continuation',
-                    details: {
-                        issue: 'ternary_line_break',
-                        pattern: 'condition ?',
-                        suggestion: 'Keep ternary operators on a single line or use proper line continuation'
+
+        // Check for line continuation issues
+        for (const [type, pattern] of Object.entries(operatorPatterns)) {
+            if (pattern.test(line)) {
+                const operatorMatch = line.match(pattern);
+                if (operatorMatch && !isInStringOrComment(line, operatorMatch.index)) {
+                    const nextLine = i + 1 < lines.length ? lines[i + 1] : '';
+                    if (nextLine.trim().length > 0) {
+                        violations.push({
+                            rule: 'INVALID_LINE_CONTINUATION',
+                            errorCode: 'INVALID_LINE_CONTINUATION',
+                            severity: 'error',
+                            category: 'syntax_validation',
+                            message: `Pine Script v6 prohibits line continuation after ${type} operator. Combine the expression into a single line.`,
+                            line: lineNumber,
+                            column: operatorMatch.index + 1,
+                            location: {
+                                line: lineNumber,
+                                column: operatorMatch.index + 1,
+                                source: line.trim()
+                            },
+                            metadata: {
+                                operatorType: type,
+                                continuationLine: nextLine.trim(),
+                                suggestedFix: 'Combine the expression into a single line following Pine Script v6 requirements.'
+                            }
+                        });
                     }
-                });
+                }
             }
         }
         // 2. Skip function calls - they are generally allowed to span multiple lines in Pine Script
@@ -2269,6 +2284,10 @@ export async function validateSyntaxCompatibility(source) {
     const deprecatedCalls = extractDeprecatedFunctionCalls(source);
     // Phase 3: Validate namespace requirements
     const namespaceViolations = validateNamespaceRequirements(source);
+
+    // Phase 4: Validate line continuation syntax
+    const lineContinuationResult = await quickValidateLineContinuation(source);
+    const lineContinuationViolations = lineContinuationResult.violations || [];
     // Generate violations for version issues
     if (versionAnalysis.hasVersionDirective && versionAnalysis.version < 6) {
         violations.push({
@@ -2318,6 +2337,12 @@ export async function validateSyntaxCompatibility(source) {
             }
         });
     }
+
+    // Add line continuation violations
+    for (const lineContinuationViolation of lineContinuationViolations) {
+        violations.push(lineContinuationViolation);
+    }
+
     const endTime = performance.now();
     return {
         success: true,

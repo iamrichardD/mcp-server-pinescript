@@ -15,11 +15,75 @@ describe("Line Continuation Validation", () => {
   });
 
   describe("INVALID_LINE_CONTINUATION Detection", () => {
+    it("should detect arithmetic operator line continuation error", async () => {
+      const problematicCode = `
+//@version=6
+indicator("Test")
+institutionalFlow = (isOrderBlockBullish ? 1.0 : isOrderBlockBearish ? -1.0 : 0.0) +
+                    (fvgBullish ? 0.5 : fvgBearish ? -0.5 : 0.0)
+plot(institutionalFlow)
+      `.trim();
+
+      const result = await parser.validateCode(problematicCode);
+
+      expect(result.violations).toContainEqual(
+        expect.objectContaining({
+          errorCode: "INVALID_LINE_CONTINUATION",
+          severity: "error",
+          category: "syntax_validation",
+          line: expect.any(Number),
+          message: expect.stringContaining("Pine Script v6 prohibits line continuation after arithmetic operator"),
+        })
+      );
+    });
+
+    it("should detect logical operator line continuation error", async () => {
+      const problematicCode = `
+//@version=6
+indicator("Test")
+condition = close > ema_8 and close > ema_21 and
+            macd_line > signal_line and volume > threshold
+plot(condition ? 1 : 0)
+      `.trim();
+
+      const result = await parser.validateCode(problematicCode);
+
+      expect(result.violations).toContainEqual(
+        expect.objectContaining({
+          errorCode: "INVALID_LINE_CONTINUATION",
+          severity: "error",
+          category: "syntax_validation",
+          message: expect.stringContaining("Pine Script v6 prohibits line continuation after logical operator"),
+        })
+      );
+    });
+
+    it("should detect comparison operator line continuation error", async () => {
+      const problematicCode = `
+//@version=6
+indicator("Test")
+comparison = price >
+             threshold
+plot(comparison ? 1 : 0)
+      `.trim();
+
+      const result = await parser.validateCode(problematicCode);
+
+      expect(result.violations).toContainEqual(
+        expect.objectContaining({
+          errorCode: "INVALID_LINE_CONTINUATION",
+          severity: "error",
+          category: "syntax_validation",
+          message: expect.stringContaining("Pine Script v6 prohibits line continuation after comparison operator"),
+        })
+      );
+    });
+
     it("should detect ternary line continuation error - basic case", async () => {
       const problematicCode = `
 //@version=6
 indicator("Test")
-slowEma = useAdaptiveRibbon ? 
+slowEma = useAdaptiveRibbon ?
     (highVolRegime ? slowEma55 : slowEma34) : slowEmaBase
 plot(slowEma)
       `.trim();
@@ -32,7 +96,7 @@ plot(slowEma)
           severity: "error",
           category: "syntax_validation",
           line: expect.any(Number),
-          message: expect.stringContaining("end of line without line continuation"),
+          message: expect.stringContaining("Pine Script v6 prohibits line continuation after ternary operator"),
         })
       );
     });
@@ -325,12 +389,12 @@ strategy.entry("Long", strategy.long, qty=qtyPercent)
 strategy("EMA Ribbon MACD v1.1", "RIB_v11", overlay = false)
 
 slowEma55 = ta.ema(close, 55)
-slowEma34 = ta.ema(close, 34) 
+slowEma34 = ta.ema(close, 34)
 slowEmaBase = ta.ema(close, 34)
 useAdaptiveRibbon = true
 highVolRegime = true
 
-slowEma = useAdaptiveRibbon ? 
+slowEma = useAdaptiveRibbon ?
     (highVolRegime ? slowEma55 : slowEma34) : slowEmaBase
 
 plot(slowEma)
@@ -342,7 +406,32 @@ plot(slowEma)
         expect.objectContaining({
           errorCode: "INVALID_LINE_CONTINUATION",
           severity: "error",
-          message: expect.stringContaining("end of line without line continuation"),
+          message: expect.stringContaining("Pine Script v6 prohibits line continuation after ternary operator"),
+        })
+      );
+    });
+
+    it("should catch the exact arithmetic operator bug from report", async () => {
+      // The exact problematic pattern from the bug report at lines 459-463
+      const exactBugCode = `
+//@version=6
+indicator("Test")
+// Institutional order flow momentum calculation
+institutionalFlow = (isOrderBlockBullish ? 1.0 : isOrderBlockBearish ? -1.0 : 0.0) +
+                    (fvgBullish ? 0.5 : fvgBearish ? -0.5 : 0.0) +
+                    (bullishCHoCH ? 0.8 : bearishCHoCH ? -0.8 : 0.0) +
+                    (bullishBOS ? 1.2 : bearishBOS ? -1.2 : 0.0) +
+                    (bullish_IDM ? 0.6 : bearish_IDM ? -0.6 : 0.0)
+plot(institutionalFlow)
+      `.trim();
+
+      const result = await parser.validateCode(exactBugCode);
+
+      expect(result.violations).toContainEqual(
+        expect.objectContaining({
+          errorCode: "INVALID_LINE_CONTINUATION",
+          severity: "error",
+          message: expect.stringContaining("Pine Script v6 prohibits line continuation after arithmetic operator"),
         })
       );
     });
@@ -387,8 +476,8 @@ plot(result)
         (v) => v.errorCode === "INVALID_LINE_CONTINUATION"
       );
       expect(lineContError).toBeDefined();
-      expect(lineContError.message).toMatch(/ternary operators.*properly formatted.*line breaks/);
-      expect(lineContError.suggestedFix).toMatch(/single line.*proper line continuation/);
+      expect(lineContError.message).toMatch(/Pine Script v6 prohibits line continuation after ternary operator/);
+      expect(lineContError.metadata.suggestedFix).toMatch(/Combine the expression into a single line/);
     });
   });
 
